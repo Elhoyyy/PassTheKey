@@ -1,0 +1,19 @@
+<body>
+  <nav class="nav-bar">
+    <div class="nav-brand">
+      <i class="bi bi-shield-lock-fill"></i>
+      <span>PassTheKey</span>
+    </div>
+    <div class="nav-buttons">
+      <button (click)="navigateTo('home')" [class.active]="currentRoute === '/home'"><i class="bi bi-house"></i>
+        Home</button>
+      <button *ngIf="!isLoggedIn" (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'"><i class="bi bi-person-plus-fill"></i>
+        Sign in/Up</button>
+      <button *ngIf="isLoggedIn" (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'"><i class="bi bi-person"></i>
+        Profile</button>
+      <button *ngIf="isLoggedIn" (click)="logout()"><i class="bi bi-person-x-fill"></i>
+        Logout</button>
+    </div>
+  </nav>
+  <router-outlet></router-outlet>
+</body>

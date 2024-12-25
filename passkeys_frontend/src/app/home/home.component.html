@@ -1,0 +1,72 @@
+<body>
+<div class="wrapper">
+<div class="container">
+  <header>
+    <h1>Welcome to Passkeys App</h1>
+    <p class="subtitle">Discover the future of authentication: <a class="clicame" (click)="navigateToLogin()" > Try It </a></p>
+  </header>
+
+  <section class="stats-dashboard">
+    <h2>Authentication Statistics</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <i class="bi bi-people-fill"></i>
+        <h3>Total Users</h3>
+        <p>{{stats.totalUsers}}</p>
+      </div>
+      <div class="stat-card">
+        <i class="bi bi-shield-check"></i>
+        <h3>Passkey Users</h3>
+        <p>{{stats.passkeyUsers}}</p>
+      </div>
+      <div class="stat-card">
+        <i class="bi bi-key-fill"></i>
+        <h3>Password Users</h3>
+        <p>{{stats.passwordUsers}}</p>
+      </div>
+      <div class="stat-card">
+        <i class="bi bi-box-arrow-in-right"></i>
+        <h3>Login Attempts</h3>
+        <p>{{stats.loginAttempts}}</p>
+      </div>
+    </div>
+
+    <div class="usage-bar">
+      <div class="passkey-bar" [style.width.%]="passkeyPercentage">
+        {{passkeyPercentage.toFixed(1)}}% Passkeys
+      </div>
+      <div class="password-bar" [style.width.%]="passwordPercentage">
+        {{passwordPercentage.toFixed(1)}}% Passwords
+      </div>
+    </div>
+  </section>
+
+  <section class="info-section">
+    <h2>What are Passkeys?</h2>
+    <div class="info-cards">
+      <div class="info-card">
+        <i class="bi bi-fingerprint"></i>
+        <h3>Biometric Security</h3>
+        <p>Use your fingerprint or face recognition for secure login</p>
+      </div>
+      <div class="info-card">
+        <i class="bi bi-shield-lock"></i>
+        <h3>Phishing-Resistant</h3>
+        <p>Immune to password-based attacks and phishing attempts</p>
+      </div>
+      <div class="info-card">
+        <i class="bi bi-lightning"></i>
+        <h3>Fast Login</h3>
+        <p>Quick and seamless authentication process</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><i class="bi bi-person-circle"></i> Auth: Eloy Sastre</p>
+    <p><i class="bi bi-github"></i> github: <a href="https://github.com/Elhoyyy">elhoyyy</a></p>
+    <p><i class="bi bi-envelope-fill"></i> UDC: <a href="">eloy.sastre&#64;udc.es</a></p>
+  </footer>
+</div>
+</div>
+</body>

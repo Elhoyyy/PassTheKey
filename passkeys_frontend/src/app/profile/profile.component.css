@@ -1,0 +1,522 @@
+/* Estilos base */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+  background: url("https://images.pexels.com/photos/11690243/pexels-photo-11690243.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1") center center fixed;
+  background-size: cover;
+}
+
+.wrapper {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  background: rgba(115, 180, 233, 0.85);
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 60px 10px 10px 10px; /* Ajustado para el navbar */
+  box-sizing: border-box;
+}
+
+/* Estilos de la tarjeta */
+.card {
+    border: none;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px !important;
+}
+
+.card:before, .card:after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    transition: all 0.5s;
+    transform-origin: bottom;
+}
+
+.card:before {
+    background-color: #a2d4f6;
+    transform: scaleY(1);
+}
+
+.card:after {
+    background-color: #2196F3;
+    transform: scaleY(0);
+}
+
+.card:hover::after {
+    transform: scaleY(1);
+}
+
+/* Estilos de formulario y controles */
+.form-control {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ddd;
+    padding: 0.8rem;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    text-align: center;
+    width: 60%;
+    margin: 10px auto;
+    margin-top: 10px;
+}
+
+.form-control:focus {
+    border-color: #2196F3;
+    box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+    outline: none;
+}
+
+.form-control[readonly] {
+    background-color: #f8f9fa;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+/* Estilos de botones */
+.buttons {
+    margin: 10px 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.buttons.mt-2 {
+    margin-top: 0 !important;  /* Eliminar espacio superior del botón Edit */
+}
+
+.btn-outline-primary, .btn-primary {
+    height: 40px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary {
+    border: 1px solid #2196F3 !important;
+    color: #2196F3;
+}
+
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: #2196F3;
+}
+
+.btn-primary {
+    border: 1px solid #2196F3 !important;
+    background-color: #2196F3;
+    color: #fff;
+}
+
+/* Estilos de información de usuario */
+.user-info {
+    text-align: center;
+    padding: 20px 60px 0;  /* Reducido el padding bottom */
+    max-width: 600px;
+    margin: 0 auto;
+    width: 80%;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.info-item {
+    margin-bottom: 15px;  /* Reducido el margen */
+    text-align: center;
+}
+
+.info-item label {
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.info-item p {
+    color: #333;
+    margin: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 1.2rem;
+}
+
+/* Estilos de dispositivos y passkeys */
+.devices-info {
+    padding: 30px;
+    border-top: 1px solid #eee;
+    max-width: 700px;
+    margin: 20px auto 0;
+    text-align: center;
+}
+
+.list-group {
+    width: 80%;
+    margin: 0 auto;
+}
+
+.list-group-item {
+    border: none;
+    background: #f8f9fa;
+    margin-bottom: 5px;
+    border-radius: 5px !important;
+    padding: 15px;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 20px;
+}
+
+.device-name {
+    color: #2196F3;
+    font-weight: 500;
+    margin: 0 10px;
+}
+
+.text-muted {
+    margin: 0 10px;
+}
+.deleter{
+    color: #f00;
+    font-weight: 750;
+    font-size: 20px;
+    margin: 0 10px;
+    border: none;
+    background-color: #f8f9fa;
+}
+
+.device-info {
+  flex-grow: 1;
+  margin-right: 15px;
+}
+
+.device-dates {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8em;
+  margin-top: 3px;
+}
+
+.device-dates small {
+  margin: 2px 0;
+}
+
+.device-name {
+  font-weight: bold;
+  display: block;
+}
+
+/* Estilos de imagen de perfil */
+.profile-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 10px;
+    display: block;
+    border: 3px solid #6faae4;
+}
+
+/* Estilos de información de passkeys */
+.passkey-info {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 20px;
+    margin-bottom: 30px;  /* Añadir espacio después de la info de passkeys */
+}
+
+.passkey-action {
+    margin-top: 0;  /* Ajustar el margen superior */
+}
+
+.benefits-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.benefits-list li {
+    color: #2196F3;
+    margin: 8px 0;
+    font-size: 0.9rem;
+}
+
+/* Estilos del botón de añadir passkey */
+.add-passkey-btn {
+    background-color: #fff;
+    color: #2196F3;
+    border: 2px solid #2196F3;
+    padding: 10px 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.add-passkey-btn:hover {
+    background-color: #2196F3;
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Estilos de encabezados */
+h5 {
+    text-align: center;
+    width: 100%;
+    font-size: 1.5rem;
+    color: #2196F3;
+    font-weight: 600;
+    margin: 15px auto;
+}
+
+/* Utilidades */
+.col-md-7 {
+    min-width: 600px;
+    max-width: 700px;
+}
+
+.alert-danger {
+    color: #721c24;
+    align-items: center;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 70px 0 0 0;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .col-md-7 {
+    min-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    margin: 10px auto;
+    padding: 15px !important;
+    width: 90%;
+    max-width: none;
+  }
+
+  .user-info {
+    padding: 15px 10px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .form-control {
+    width: 90%;
+    margin: 10px auto;
+  }
+
+  .devices-info {
+    padding: 15px 10px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .list-group {
+    width: 90%;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .list-group-item {
+    width: 100%;
+    margin: 5px auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .buttons {
+    width: 90%;
+    margin: 10px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: 300px;
+    margin: 5px auto;
+  }
+}
+
+/* Estilos de recuperación de items */
+.recovery-items {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border-left: 4px solid #4a90e2;
+  transition: all 0.3s ease;
+}
+
+.recovery-items:hover {
+  transform: translateX(5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.recovery-items h5 {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.recovery-items label {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.form-group label {
+  color: #2c3e50;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+  font-size: 0.95rem;
+}
+
+.form-group input {
+  background: #f8f9fa;
+  border: 2px solid #e1e8ed;
+  border-radius: 10px;
+  padding: 12px 15px;
+  width: 100%;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  border-color: #4a90e2;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.form-group button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 25px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  width: auto;
+  min-width: 150px;
+}
+
+.form-group button:hover {
+  background: #357abd;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(74, 144, 226, 0.2);
+}
+
+.alert-info {
+  background: rgba(74, 144, 226, 0.1);
+  border: none;
+  border-radius: 10px;
+  color: #4a90e2;
+  padding: 15px 20px;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-info {
+    padding: 20px;
+  }
+  
+  .recovery-items {
+    padding: 15px;
+  }
+  
+  .form-group button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    width: 95%;
+    margin: 10px auto;
+    padding: 10px !important;
+  }
+
+  .form-control {
+    width: 95%;
+  }
+
+  .list-group {
+    width: 95%;
+  }
+
+  .buttons {
+    width: 95%;
+  }
+}

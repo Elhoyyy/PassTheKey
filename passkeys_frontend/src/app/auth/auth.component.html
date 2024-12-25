@@ -1,0 +1,58 @@
+<html> 
+  <body>   
+    <div class="wrapper" >
+      <form class="login">
+        <p class="title">
+          <i class="bi bi-key-fill"></i>
+          Passkeys Login
+        </p>
+        <div class="input-group">
+          <i class="bi bi-person"></i>
+          <input 
+            type="text" 
+            [(ngModel)]="username" 
+            name="username"
+            placeholder="Username"
+            autocomplete="webauthn"
+            *ngIf="!showPasswordField"
+          />
+          <input 
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="Password"
+            *ngIf="showPasswordField"
+          />
+        </div>
+        <div class = "forgot-device">
+          <a *ngIf="forgotDevice" (click)="togglePasswordField()">Forgot your device?</a>
+        </div>
+        <div class="buttons-container">
+          <button 
+          class="btn-auth" 
+          (click)="showPasswordField ? loginConContra() : authenthication()"
+          [disabled]="isAuthenticating">
+          <i *ngIf="!isAuthenticating" class="bi bi-fingerprint"></i>
+          <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isAuthenticating ? 'Loading...' : 'Authenticate' }}</span>
+        </button>
+
+          <button 
+            class="btn-register" 
+            (click)="register()"
+            *ngIf="!showPasswordField"
+            [disabled]="isRegistering">
+            <i *ngIf="!isRegistering" class="bi bi-plus-circle"></i>
+            <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
+            <span>{{ isRegistering ? 'Registering...' : 'Register with a passkey' }}</span>
+          </button>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-message">
+          <i class="bi bi-exclamation-triangle"></i>
+          {{ errorMessage }}
+        </div>
+      </form>
+    </div>
+  </body>
+</html>
