@@ -44,6 +44,11 @@ router.post('/registro/passkey/delete', (req, res) => {
 router.post('/registro/passkey', (req, res) => {
     const rpId= req.hostname;
     let { username } = req.body;
+    if(!isValidEmail(username)){
+        console.log('email not valid');
+        return res.status(400).json({ message: 'El email no es válido' });
+    }
+
     let challenge = getNewChallenge();
     challenges[username] = convertChallenge(challenge);
     const pubKey = {
@@ -173,4 +178,7 @@ router.post('/registro/passkey_first/fin', async (req, res) => {
     res.status(500).send(false);
 });
 
+function isValidEmail(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 module.exports = router;

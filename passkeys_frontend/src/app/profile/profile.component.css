@@ -4,7 +4,7 @@ body {
   padding: 0;
   min-height: 100vh;
   font-family: 'Arial', sans-serif;
-  background: url("https://images.pexels.com/photos/11690243/pexels-photo-11690243.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1") center center fixed;
+  background: url("../../../../images/catedral-image.jpeg") center center fixed;
   background-size: cover;
 }
 

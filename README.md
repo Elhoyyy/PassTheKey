@@ -7,7 +7,7 @@ El `package.json` incluye scripts que automatizan la compilación y ejecución d
 ```json
 "scripts": {
   "postinstall": "cd passkeys_frontend && npm i && npm run build",
-  "start": "cd passkeys_frontend && ng build --configuration production && cd .. && node index.js"
+  "start": "cd passkeys_frontend && ng build --configuration production && cd .. && node server.js"
 }
 ```
 
@@ -21,7 +21,7 @@ El `package.json` incluye scripts que automatizan la compilación y ejecución d
    npm start
    ```
 3. Acceder a la aplicación en el navegador:
-   - URL: [http://localhost:3000](http://localhost:3000) o utilizar: `https://<TU_IP_LOCAL>:3000`
+   - URL: [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -38,38 +38,49 @@ ng build --configuration production
 ### Ejecutar el Backend
 ```bash
 cd ..
-node index.js
+node server.js
 ```
 
-Por defecto, la aplicación se ejecutará en el puerto 3000. Puedes modificar esto editando el archivo `index.js`:
+Por defecto, la aplicación se ejecutará en el puerto 3000. Puedes modificar esto editando el archivo `server.js`:
 
 ```javascript
-const expectedOrigin = ['http://localhost:3000']; // Origen esperado
-
 // Cambia el puerto aquí
-const PORT = process.env.PORT || 4000;
-
-app.listen(PORT, '0.0.0.0', err => {
+app.listen( 3000, '0.0.0.0', err => {
     if (err) throw err;
-    console.log('Server started on port', PORT);
+    console.log('Server started on port', process.env.PORT || 3000);
 });
 ```
 
 ---
 
-## Ejecución en Red Local
+## Ejecución en Servidor HTTPS de Cloudflare:
 
-Para probar la aplicación en múltiples dispositivos dentro de la misma red local:
+Podremos levantar un servidor que apunte hacia un puerto de nuestra red local para así permitir acceso a cualqueir usuario gracias a la siguiente extensión: 
 
-### Opciones disponibles:
+![alt text](/images/captura1.png)
+Una vez descargada realizaremos los siguientes pasos para levantar el tunel y poder acceder desde cualquier dispositivo en la misma u otra red:
 
-1. Desde tu móvil accede a `https://<TU_IP_LOCAL>`
+1. Le damos a la opción de crear tunel en el output de abajo: ![alt text](/images/captura2.png)
 
-2. Utilizando la siguiente línea para permitir acceso a toda la red local: 
 
+2. Seleccionamos el puerto en el que vamos a abrir el tunel: ![alt text](/images/captura3.png)
+
+3. Observamos que se crea correctamente el enlace a nuestro puerto local (si se quisiese parar el tunel en esa misma fila al final aparece un cuadrado con la opción STOP): ![alt text](/images/captura4.png)
+
+4. Vamos al archivo `data.js` dentro de `/passkeys_application` y seguida de la línea de localhost indicamos el origen esperado por nuestra app para evitar otras conexiones no deseadas: 
 ```javascript
-app.listen(process.env.PORT || 3000, '0.0.0.0', err => ...
+const expectedOrigin = ['http://localhost:3000', 'https://determine-hint-mines-juice.trycloudflare.com'];
 ```
+
+5. Levantamos la applicación en nuestro puerto 3000 en la red local: 
+
+```bash
+PS C:\\passkeys_application> npm start
+
+Server started on port 3000
+```
+
+6. Debería funcionar todo perfectamente:  ![alt text](/images/captura5.png)
 
 
 # Usabilidad de la app: 

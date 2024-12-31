@@ -162,9 +162,10 @@ export class AuthComponent {
             });
         }
     } catch (error: any) {
-        console.error('Error during registration:', error);
-        this.errorMessage = 'Error registering device. Please try again.';
-        this.hideError();
+       if (error.status === 400 || error.status === 409 || error.status === 401) {
+            this.errorMessage = error.error.message || 'Error registrando dispositivo';
+            this.hideError();
+        }
     } finally {
         this.isRegistering = false;
     }

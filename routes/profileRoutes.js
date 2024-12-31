@@ -24,7 +24,7 @@ router.post('/update-password', async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar la contraseña' });
     }
 });
-
+/*
 router.post('/update-email', (req, res) => {
     const { username, email } = req.body;
     
@@ -47,12 +47,7 @@ router.post('/update-email', (req, res) => {
 });
 
 
-
-// Función para validar el formato de un email
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
+*/
 
 function isValidPassword(password) {
   if (password.length < 4) {
