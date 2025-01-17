@@ -1,7 +1,7 @@
 <html> 
   <body>   
     <div class="wrapper" >
-      <form class="login">
+      <form class="login" (submit)="$event.preventDefault(); handleAutofill()">
         <p class="title">
           <i class="bi bi-key-fill"></i>
           Passkeys Login
@@ -9,20 +9,14 @@
         <div class="input-group">
           <i class="bi bi-person"></i>
           <input 
-            type="email" 
+            type="text" 
             [(ngModel)]="username" 
-            name="username"
-            placeholder="Email"
-            autocomplete="webauthn"
-            *ngIf="!showPasswordField"
-          />
-          <input 
-            type="password"
-            [(ngModel)]="password"
-            name="password"
-            placeholder="Password"
-            *ngIf="showPasswordField"
-          />
+            name="username" 
+            placeholder="Email" 
+            autocomplete="username webauthn"
+            (change)="onInputChange($event)"
+            *ngIf="!showPasswordField"/>
+          <input type="password" [(ngModel)]="password" name="password" placeholder="Password" *ngIf="showPasswordField"/>
         </div>
         <div class = "forgot-device">
           <a *ngIf="forgotDevice" (click)="togglePasswordField()">Forgot your device?</a>
@@ -39,6 +33,7 @@
 
           <button 
             class="btn-register" 
+            (mousedown)="isRegistrationIntent = true"
             (click)="register()"
             *ngIf="!showPasswordField"
             [disabled]="isRegistering">

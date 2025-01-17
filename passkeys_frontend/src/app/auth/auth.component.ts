@@ -25,6 +25,7 @@ export class AuthComponent {
   isRegistering: boolean = false; // añadimos una bandera para saber si el usuario está registrando un dispositivo
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // añadimos un array para almacenar los dispositivos registrados
   forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
+  isRegistrationIntent: boolean = false; // añadimos una bandera para saber si estamos en proceso de registro
   constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
   
   async loginConContra() {
@@ -71,7 +72,7 @@ export class AuthComponent {
     this.isAuthenticating = true;
     this.forgotDevice = false;
     try {
-        const passkeyResponse = await this.http.post('/auth/login/passkey', { username: this.username }).toPromise();
+        const passkeyResponse = await this.http.post('/auth/login/passkey', { username: this.username}).toPromise();
         const options = { ...passkeyResponse } as PublicKeyCredentialRequestOptions;
 
         if (!options.allowCredentials || options.allowCredentials.length === 0) {
@@ -116,6 +117,7 @@ export class AuthComponent {
   }
 
   async register() {
+    this.isRegistrationIntent = true;
     this.errorMessage = null;
     this.isRegistering = true;
     try {
@@ -168,6 +170,7 @@ export class AuthComponent {
         }
     } finally {
         this.isRegistering = false;
+        this.isRegistrationIntent = false; // Reseteamos la bandera al finalizar
     }
   }
 
@@ -183,6 +186,22 @@ export class AuthComponent {
     setTimeout(()=> this.errorMessage=null, 3000);
   }
 
+  async handleAutofill() {
+    if (this.username) {
+      await this.authenthication();
+    }
+  }
 
-  
+  async onInputChange(event: Event) {
+    if (this.isRegistrationIntent) {
+      return; // No hacer nada si estamos en proceso de registro
+    }
+
+    if (event.type === 'change') {
+        const input = event.target as HTMLInputElement;
+        if (input.value && await window.PublicKeyCredential?.isConditionalMediationAvailable?.()) {
+            this.authenthication();
+        }
+    }
+  }
 }
