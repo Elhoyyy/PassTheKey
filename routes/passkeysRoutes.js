@@ -42,15 +42,27 @@ router.post('/registro/passkey/delete', (req, res) => {
 
 // Endpoint for passkey registration
 router.post('/registro/passkey', (req, res) => {
-    const rpId= req.hostname;
-    let { username } = req.body;
-    if(!isValidEmail(username)){
+    const rpId = req.hostname;
+    let { username, hints } = req.body; // Recibe las "hints" desde el cliente
+   
+    if (!isValidEmail(username)) {
         console.log('email not valid');
         return res.status(400).json({ message: 'El email no es válido' });
     }
 
     let challenge = getNewChallenge();
     challenges[username] = convertChallenge(challenge);
+
+    // Función para determinar el tipo de autenticador
+    function getAuthAttachment(hints) {
+        if (!hints || hints.length === 0) return undefined;  // Si no hay pistas, acepta ambos tipos
+        if (hints.includes('client-device')) {
+            if (hints.includes('security-key') || hints.includes('hybrid')) return undefined;  // Ambos
+            else return "platform";  // Si es dispositivo local
+        }
+        return "cross-platform";  // Si no, usar autenticador cruzado
+    }
+
     const pubKey = {
         challenge: challenge,
         rp: { id: rpId, name: 'webauthn-app' },
@@ -60,15 +72,14 @@ router.post('/registro/passkey', (req, res) => {
             { type: 'public-key', alg: -257 },
         ],
         authenticatorSelection: {
-            authenticatorAttachment: 'platform',
             userVerification: 'required',
+            authenticatorAttachment: getAuthAttachment(hints),  // Aquí usas la función que implementa la lógica de los hints
             residentKey: 'preferred',
             requireResidentKey: false,
         }
     };
-    console.log(challenge, 'DESAFIO REGISTER');
-    console.log(rpId, 'RPID');
-    console.log(username, 'REGISTER START');
+
+    console.log('Challenge generado:', challenge);
     res.json(pubKey);
 });
 

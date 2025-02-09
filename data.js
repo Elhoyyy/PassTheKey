@@ -1,7 +1,7 @@
 
 let users = {};//creamos un objeto para almacenar usuarios
 let challenges = {};//creamos un objeto para almacenar desafios
-const expectedOrigin = ['http://localhost:3000', 'https://flour-cons-demonstrates-ou.trycloudflare.com'];//origen esperado
+const expectedOrigin = ['http://localhost:3000', 'https://tide-treasures-appearing-universal.trycloudflare.com'];//origen esperado
 
 
 /*getNewChallenge: Genera un string único aleatorio como desafío.
