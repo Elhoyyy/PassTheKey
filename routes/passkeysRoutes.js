@@ -42,49 +42,77 @@ router.post('/registro/passkey/delete', (req, res) => {
 
 // Endpoint for passkey registration
 router.post('/registro/passkey', (req, res) => {
+    console.log('=== START REGISTRATION CHALLENGE GENERATION ===');
     const rpId = req.hostname;
-    let { username, hints } = req.body; // Recibe las "hints" desde el cliente
+    let { username } = req.body;
    
+    console.log(`[REGISTER] User: ${username}`);
+    console.log(`[REGISTER] RP ID: ${rpId}`);
+
     if (!isValidEmail(username)) {
-        console.log('email not valid');
+        console.log('[REGISTER] ❌ Invalid email');
         return res.status(400).json({ message: 'El email no es válido' });
     }
 
-    let challenge = getNewChallenge();
-    challenges[username] = convertChallenge(challenge);
+    const challenge = getNewChallenge();
+    const challengeBase64 = Buffer.from(challenge)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    
+    // Store the base64 version of the challenge
+    challenges[username] = challenge;
 
-    // Función para determinar el tipo de autenticador
-    function getAuthAttachment(hints) {
-        if (!hints || hints.length === 0) return undefined;  // Si no hay pistas, acepta ambos tipos
-        if (hints.includes('client-device')) {
-            if (hints.includes('security-key') || hints.includes('hybrid')) return undefined;  // Ambos
-            else return "platform";  // Si es dispositivo local
-        }
-        return "cross-platform";  // Si no, usar autenticador cruzado
-    }
+    // Convertir el user.id a Base64URL
+    const userIdBuffer = Buffer.from(username);
+    const userIdBase64 = userIdBuffer.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 
-    const pubKey = {
-        challenge: challenge,
-        rp: { id: rpId, name: 'webauthn-app' },
-        user: { id: username, name: username, displayName: username },
+    const response = {
+        challenge: challengeBase64, // Challenge en Base64URL
+        rp: { 
+            id: rpId, 
+            name: 'webauthn-app' 
+        },
+        user: { 
+            id: userIdBase64, // User ID en Base64URL
+            name: username, 
+            displayName: username 
+        },
         pubKeyCredParams: [
             { type: 'public-key', alg: -7 },
-            { type: 'public-key', alg: -257 },
+            { type: 'public-key', alg: -257 }
         ],
+        timeout: 60000,
+        attestation: 'none',
         authenticatorSelection: {
+            authenticatorAttachment: 'platform',
             userVerification: 'required',
-            authenticatorAttachment: getAuthAttachment(hints),  // Aquí usas la función que implementa la lógica de los hints
             residentKey: 'preferred',
-            requireResidentKey: false,
+            requireResidentKey: false
         }
     };
 
-    console.log('Challenge generado:', challenge);
-    res.json(pubKey);
+    console.log('[REGISTER] Sending response:', {
+        ...response,
+        challenge: `${response.challenge} (Base64URL)`,
+        user: {
+            ...response.user,
+            id: `${response.user.id} (Base64URL)`
+        }
+    });
+
+    console.log(`[REGISTER] Challenge generation complete`);
+    console.log('=== END REGISTRATION CHALLENGE GENERATION ===');
+    res.json(response);
 });
 
 
 router.post('/registro/passkey/fin', async (req, res) => {
+    console.log('=== START REGISTRATION VERIFICATION ===');
     const { username, deviceName, device_creationDate } = req.body;
     const userAgent = req.headers['user-agent'];
     
@@ -92,12 +120,16 @@ router.post('/registro/passkey/fin', async (req, res) => {
     console.log(`[REGISTER] Device: ${deviceName}, User-Agent: ${userAgent}`);
 
     try {
+        console.log(`[REGISTER-VERIFY] Challenge: ${challenges[username]}`);
+        console.log('[REGISTER-VERIFY] Attestation:', req.body.data);
+
         const verification = await SimpleWebAuthnServer.verifyRegistrationResponse({
             response: req.body.data,
             expectedChallenge: challenges[username],
             expectedOrigin: expectedOrigin
         });
-        console.log(`[REGISTER] Verification result:`, verification);
+        
+        console.log(`[REGISTER-VERIFY] ✅ Verification successful:`, verification);
 
         if (verification.verified) {
             if (!users[username].credential) {
@@ -140,26 +172,47 @@ router.post('/registro/passkey/fin', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error(`[REGISTER] Error:`, error);
+        console.error(`[REGISTER-VERIFY] ❌ Error:`, error);
         return res.status(400).send({ message: error.message });
     }
-
+    console.log('=== END REGISTRATION VERIFICATION ===');
     res.status(500).send(false);
 });
 
 router.post('/registro/passkey_first/fin', async (req, res) => {
+    console.log('=== START FIRST REGISTRATION VERIFICATION ===');
     const { username, deviceName, device_creationDate } = req.body;
     const userAgent = req.headers['user-agent'];
     
+    console.log('[FIRST-REGISTER] Request body:', req.body);
     console.log(`[FIRST-REGISTER] Starting registration for new user ${username}`);
     console.log(`[FIRST-REGISTER] Device: ${deviceName}, User-Agent: ${userAgent}`);
 
     try {
+        if (!req.body.data) {
+            throw new Error('Missing attestation data');
+        }
+
+        // Convert the stored challenge to Base64URL format
+        const expectedChallenge = Buffer.from(challenges[username])
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+
+        console.log('[FIRST-REGISTER] Verifying with data:', {
+            expectedChallenge,
+            response: req.body.data,
+            expectedOrigin
+        });
+
         const verification = await SimpleWebAuthnServer.verifyRegistrationResponse({
             response: req.body.data,
-            expectedChallenge: challenges[username],
-            expectedOrigin: expectedOrigin
+            expectedChallenge: expectedChallenge, // Use the Base64URL version
+            expectedOrigin: expectedOrigin,
+            requireUserVerification: false
         });
+
         console.log(`[FIRST-REGISTER] Verification result:`, verification);
 
         if (verification.verified) {
@@ -182,10 +235,14 @@ router.post('/registro/passkey_first/fin', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error(`[FIRST-REGISTER] Error:`, error);
+        console.error('[FIRST-REGISTER] Detailed error:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body
+        });
         return res.status(400).send({ message: error.message });
     }
-
+    console.log('=== END FIRST REGISTRATION VERIFICATION ===');
     res.status(500).send(false);
 });
 

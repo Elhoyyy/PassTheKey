@@ -1,7 +1,7 @@
 <html> 
   <body>   
     <div class="wrapper" >
-      <form class="login" (submit)="$event.preventDefault(); handleAutofill()">
+      <form class="login">
         <p class="title">
           <i class="bi bi-key-fill"></i>
           Passkeys Login
@@ -13,10 +13,13 @@
             [(ngModel)]="username" 
             name="username" 
             placeholder="Email" 
-            autocomplete="username webauthn"
-            (change)="onInputChange($event)"
             *ngIf="!showPasswordField"/>
-          <input type="password" [(ngModel)]="password" name="password" placeholder="Password" *ngIf="showPasswordField"/>
+          <input 
+            type="password" 
+            [(ngModel)]="password" 
+            name="password" 
+            placeholder="Password" 
+            *ngIf="showPasswordField"/>
         </div>
         <div class = "forgot-device">
           <a *ngIf="forgotDevice" (click)="togglePasswordField()">Forgot your device?</a>

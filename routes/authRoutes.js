@@ -10,16 +10,19 @@ router.post('/login/passkey', (req, res) => {
     let username = req.body.username;
     const userAgent = req.headers['user-agent'];
 
-    
-    console.log(`[LOGIN] Login attempt for user ${username} from device: ${userAgent}`);
+    console.log('=== START LOGIN CHALLENGE GENERATION ===');
+    console.log(`[LOGIN] User: ${username}`);
+    console.log(`[LOGIN] User-Agent: ${userAgent}`);
+    console.log(`[LOGIN] RP ID: ${rpId}`);
     
     if (!users[username]) {
-        console.log('user not found');
+        console.log('[LOGIN] ❌ User not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
     }
 
     let challenge = getNewChallenge();
-    challenges[username] = convertChallenge(challenge);
+    console.log(`[LOGIN] Generated challenge: ${challenge}`);
+    challenges[username] = challenge; // Store the original challenge
 
     // Filtrar las credenciales basadas en el User-Agent actual
     const matchingCredentialIndex = users[username].devices.findIndex(device => 
@@ -45,16 +48,24 @@ router.post('/login/passkey', (req, res) => {
     console.log(`[LOGIN] Sending single credential for device: ${users[username].devices[matchingCredentialIndex].name}`);
 
     res.json({
-        challenge,
-        rpId,
-        allowCredentials,
-        userVerification: 'preferred',
+        challenge: challenge, // Will be converted to ArrayBuffer in frontend
+        rpId: rpId,
+        allowCredentials: [{
+            type: 'public-key',
+            id: users[username].credential[matchingCredentialIndex].id, // Base64URL encoded
+            transports: ['internal', 'ble', 'nfc', 'usb'],
+        }],
+        timeout: 60000,
+        userVerification: 'preferred'
     });
+    console.log(`[LOGIN] ✅ Challenge generation complete`);
+    console.log('=== END LOGIN CHALLENGE GENERATION ===');
     console.log(username, 'LOGIN START');
 });
 
 
 router.post('/login/passkey/fin', async (req, res) => {
+    console.log('=== START LOGIN VERIFICATION ===');
     const rpId= req.hostname;
     let username = req.body.username;
     const credentialId = req.body.data.id;
@@ -72,6 +83,8 @@ router.post('/login/passkey/fin', async (req, res) => {
     }
     try {
         const credentialId = req.body.data.id;
+        console.log(`[LOGIN-VERIFY] Credential ID: ${credentialId}`);
+        console.log(`[LOGIN-VERIFY] Challenge: ${challenges[username]}`);
         console.log(`[LOGIN-VERIFY] Attempting login with credential ID:`, credentialId);
 
         // Find the device index and credential
@@ -98,6 +111,7 @@ router.post('/login/passkey/fin', async (req, res) => {
         console.log(`[LOGIN-VERIFY] Verification result:`, verification);
 
         if (verification.verified) {
+            console.log(`[LOGIN-VERIFY] ✅ Authentication successful`);
             // Actualizar lastUsed al momento actual
             users[username].devices[deviceIndex].lastUsed = new Date().toISOString();
             
@@ -112,15 +126,17 @@ router.post('/login/passkey/fin', async (req, res) => {
             });
         }
 
+        console.log('[LOGIN-VERIFY] ❌ Verification failed');
         throw new Error('Verificación fallida');
 
     } catch (error) {
-        console.error(`[LOGIN-VERIFY] Error:`, error);
+        console.error(`[LOGIN-VERIFY] ❌ Error:`, error);
         return res.status(400).send({
             error: error.message,
             message: 'Error en la autenticación'
         });
     }
+    console.log('=== END LOGIN VERIFICATION ===');
 });
 
 

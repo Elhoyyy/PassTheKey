@@ -1,6 +1,5 @@
 import { Component } from '@angular/core'; //simplemente definimos los componentes angular
 import { HttpClient, HttpClientModule } from '@angular/common/http';//importamos el modulo httpclient y httpclientmodule para interactuar con el backend
-import { fido2Get, fido2Create} from '@ownid/webauthn'; //importamos la funcion fido2Get de la libreria webauthn para autenticar mediante FIDO2
 import { FormsModule } from '@angular/forms'; //importamos el modulo forms para trabajar con formularios en angular y enlacar datos de manera bidireccional entre el componente y la vista
 import { CommonModule } from '@angular/common'; //importamos el modulo common para trabajar con directivas estructurales y de atributos
 import { Router, RouterModule } from '@angular/router'; //importamos el modulo router y routermodule para trabajar con las rutas de la aplicacion
@@ -68,30 +67,61 @@ export class AuthComponent {
  
 
   async authenthication() {
+    console.log('[AUTHENTICATION] Starting authentication process');
     this.errorMessage = null;
     this.isAuthenticating = true;
     this.forgotDevice = false;
     try {
-        const passkeyResponse = await this.http.post('/auth/login/passkey', { username: this.username}).toPromise();
-        const options = { ...passkeyResponse } as PublicKeyCredentialRequestOptions;
+        console.log('[AUTHENTICATION] Requesting challenge for user:', this.username);
+        const options = await this.http.post<PublicKeyCredentialRequestOptions>(
+            '/auth/login/passkey', 
+            { username: this.username}
+        ).toPromise();
 
-        if (!options.allowCredentials || options.allowCredentials.length === 0) {
+        console.log('[AUTHENTICATION] Received options:', options);
+        if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
+            console.warn('[AUTHENTICATION] No credentials available');
             this.forgotDevice = true;
             throw new Error('No hay credenciales disponibles');
         }
 
-        console.log('[LOGIN] Available credentials:', options.allowCredentials);
+        // Convert base64 challenge to ArrayBuffer
+        options.challenge = this.base64URLToBuffer(options.challenge as unknown as string);
+        options.allowCredentials = options.allowCredentials.map(credential => {
+            console.log('[AUTHENTICATION] Processing credential:', credential.id);
+            return {
+                ...credential,
+                id: this.base64URLToBuffer(credential.id as unknown as string)
+            };
+        });
 
-        const assertion = await fido2Get(options, this.username);
-        console.log('[LOGIN] Selected credential:', assertion.data.rawId
-        );
+        console.log('[AUTHENTICATION] Calling navigator.credentials.get');
+        const assertion = await navigator.credentials.get({
+            publicKey: options
+        }) as PublicKeyCredential;
+        console.log('[AUTHENTICATION] Received assertion:', assertion);
+
+        // Convert response for sending to server
+        const authData = {
+            id: assertion.id,
+            rawId: this.bufferToBase64URL(assertion.rawId),
+            response: {
+                authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+                clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+                signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+                userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+                    this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+                    null
+            },
+            type: assertion.type
+        };
 
         const loginResponse = await this.http.post<{
             res: boolean,
             redirectUrl?: string,
             userProfile?: any
         }>('/auth/login/passkey/fin', {
-            ...assertion,
+            data: authData,
             username: this.username
         }).toPromise();
 
@@ -108,7 +138,7 @@ export class AuthComponent {
         }
     } catch (error: any) {
       this.forgotDevice = true;  
-      console.error('[LOGIN] Error:', error);
+      console.error('[AUTHENTICATION] Error:', error);
       this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
       this.hideError();
     } finally {
@@ -117,44 +147,64 @@ export class AuthComponent {
   }
 
   async register() {
-    this.isRegistrationIntent = true;
-    this.errorMessage = null;
-    this.isRegistering = true;
+      const deviceName = 'Device-' + new Date().toISOString();
+      const device_creationDate = new Date().toISOString();
+      console.log('[REGISTRATION] Starting registration process');
+      this.isRegistrationIntent = true;
+      this.errorMessage = null;
+      this.isRegistering = true;
     try {
-        const publicKey = await this.http.post('/passkey/registro/passkey', { username: this.username }).toPromise();
-        const fidoData = await fido2Create(publicKey, this.username);
-        let deviceName = 'Passkey_Device';
-        const userAgent = navigator.userAgent;
+        console.log('[REGISTRATION] Requesting creation options for user:', this.username);
+        const options = await this.http.post<PublicKeyCredentialCreationOptions>(
+            '/passkey/registro/passkey', 
+            { username: this.username }
+        ).toPromise();
         
-        // Detect device type
-        if (userAgent.includes('Windows')) {
-            const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-            deviceName = version ? `Windows ${version[1]}` : 'Windows';
-        } else if (userAgent.includes('iPhone')) {
-            const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-            deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-        } else if (userAgent.includes('Android')) {
-            const version = userAgent.match(/Android (\d+\.\d+)/);
-            deviceName = version ? `Android ${version[1]}` : 'Android';
-        } else if (userAgent.includes('Linux')) {
-            deviceName = 'Linux';
+        console.log('[REGISTRATION] Received options:', options);
+        if (!options) {
+            throw new Error('Failed to get credential creation options');
         }
 
-        const device_creationDate = new Date().toLocaleString('en-GB', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
+        // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+        const publicKeyCredentialCreationOptions = {
+            ...options,
+            challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+            user: {
+                ...options.user,
+                id: this.base64URLToBuffer(options.user.id as unknown as string),
+            }
+        };
 
-        const response = await this.http.post<any>('/passkey/registro/passkey_first/fin', { 
-            ...fidoData, 
-            username: this.username, 
-            deviceName, 
+        console.log('[REGISTRATION] Processed options:', publicKeyCredentialCreationOptions);
+
+        console.log('[REGISTRATION] Calling navigator.credentials.create');
+        const credential = await navigator.credentials.create({
+            publicKey: publicKeyCredentialCreationOptions
+        }) as PublicKeyCredential;
+        console.log('[REGISTRATION] Created credential:', credential);
+
+        // Convert credential for sending to server
+        const attestationResponse = {
+            data: {  // Wrap in data object to match SimpleWebAuthn expectations
+                id: credential.id,
+                rawId: this.bufferToBase64URL(credential.rawId),
+                response: {
+                    attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
+                    clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
+                },
+                type: credential.type
+            },
+            username: this.username,
+            deviceName,
             device_creationDate
-        }).toPromise();
+        };
+
+        console.log('[REGISTRATION] Sending attestation response:', attestationResponse);
+
+        const response = await this.http.post<any>(
+            '/passkey/registro/passkey_first/fin', 
+            attestationResponse
+        ).toPromise();
         
         if (response && response.res) {
             // Redirect to profile after successful registration
@@ -186,22 +236,22 @@ export class AuthComponent {
     setTimeout(()=> this.errorMessage=null, 3000);
   }
 
-  async handleAutofill() {
-    if (this.username) {
-      await this.authenthication();
-    }
+  // Utility methods for converting between ArrayBuffer and Base64URL
+  private bufferToBase64URL(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
-  async onInputChange(event: Event) {
-    if (this.isRegistrationIntent) {
-      return; // No hacer nada si estamos en proceso de registro
+  private base64URLToBuffer(base64URL: string): ArrayBuffer {
+    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const binary = atob(padded);
+    const buffer = new ArrayBuffer(binary.length);
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
     }
-
-    if (event.type === 'change') {
-        const input = event.target as HTMLInputElement;
-        if (input.value && await window.PublicKeyCredential?.isConditionalMediationAvailable?.()) {
-            this.authenthication();
-        }
-    }
+    return buffer;
   }
 }

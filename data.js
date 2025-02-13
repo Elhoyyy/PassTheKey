@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 
 let users = {};//creamos un objeto para almacenar usuarios
 let challenges = {};//creamos un objeto para almacenar desafios
@@ -7,11 +8,17 @@ const expectedOrigin = ['http://localhost:3000', 'https://tide-treasures-appeari
 /*getNewChallenge: Genera un string único aleatorio como desafío.
 convertChallenge: Codifica el desafío en Base64 URL-safe.*/
 function getNewChallenge() {
-    return Math.random().toString(36).substring(2);
+    // Generate a random challenge and return it in Base64URL format
+    const randomBytes = crypto.randomBytes(32);
+    return randomBytes.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
+// Remove convertChallenge as it's no longer needed
 function convertChallenge(challenge) {
-    return btoa(challenge).replaceAll('=', '');
+    return challenge; // Just return the challenge as-is since it's already in Base64URL format
 }
 
 
