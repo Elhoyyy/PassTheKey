@@ -63,12 +63,65 @@ router.post('/login/passkey', (req, res) => {
     console.log(username, 'LOGIN START');
 });
 
+// Endpoint for direct passkey login
+router.post('/login/passkey/direct', (req, res) => {
+    const rpId = req.hostname;
+    console.log('=== START DIRECT LOGIN CHALLENGE GENERATION ===');
+    console.log(`[DIRECT-LOGIN] RP ID: ${rpId}`);
 
+    const challenge = getNewChallenge();
+    console.log(`[DIRECT-LOGIN] Generated challenge: ${challenge}`);
+
+    // Store challenge under special key for direct login
+    challenges['_direct'] = challenge;
+
+    // Collect all registered credentials from all users
+    const allCredentials = [];
+    for (const [username, userData] of Object.entries(users)) {
+        if (userData.credential) {
+            userData.credential.forEach(cred => {
+                allCredentials.push({
+                    type: 'public-key',
+                    id: cred.id, // This is already in Base64URL format
+                    transports: ['internal', 'ble', 'nfc', 'usb'],
+                });
+            });
+        }
+    }
+
+    console.log(`[DIRECT-LOGIN] Found ${allCredentials.length} total credentials`);
+    console.log('[DIRECT-LOGIN] Credentials:', allCredentials);
+
+    res.json({
+        challenge: challenge,
+        rpId: rpId,
+        allowCredentials: allCredentials,
+        timeout: 60000,
+        userVerification: 'preferred'
+    });
+    console.log('=== END DIRECT LOGIN CHALLENGE GENERATION ===');
+});
+
+// Update the existing /login/passkey/fin endpoint to handle direct login
 router.post('/login/passkey/fin', async (req, res) => {
     console.log('=== START LOGIN VERIFICATION ===');
     const rpId= req.hostname;
     let username = req.body.username;
     const credentialId = req.body.data.id;
+
+    // For direct login, find user by credential ID
+    if (!username) {
+        const expectedChallenge = challenges['_direct'];
+        for (const [user, userData] of Object.entries(users)) {
+            const credentialIndex = userData.credential?.findIndex(cred => cred.id === credentialId);
+            if (credentialIndex !== -1 && credentialIndex !== undefined) {
+                username = user;
+                // Use the direct login challenge
+                challenges[username] = expectedChallenge;
+                break;
+            }
+        }
+    }
 
     // Si no hay username (caso autofill), buscarlo por credentialId
     if (!users[username]) {

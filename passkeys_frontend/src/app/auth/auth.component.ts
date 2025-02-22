@@ -146,6 +146,87 @@ export class AuthComponent {
     }
   }
 
+  async directAuthentication() {
+    console.log('[DIRECT-AUTH] Starting direct authentication process');
+    this.errorMessage = null;
+    this.isAuthenticating = true;
+
+    try {
+        const options = await this.http.post<PublicKeyCredentialRequestOptions>(
+            '/auth/login/passkey/direct',
+            {}
+        ).toPromise();
+
+        console.log('[DIRECT-AUTH] Received options:', options);
+
+        if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
+            throw new Error('No credentials available');
+        }
+
+        // Convert challenge and credential IDs to ArrayBuffer
+        const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+            challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+            rpId: options.rpId,
+            allowCredentials: options.allowCredentials.map(credential => ({
+                type: 'public-key',
+                id: this.base64URLToBuffer(credential.id as unknown as string),
+                transports: credential.transports
+            })),
+            timeout: options.timeout,
+            userVerification: options.userVerification
+        };
+
+        console.log('[DIRECT-AUTH] Processed options:', publicKeyCredentialRequestOptions);
+
+        console.log('[DIRECT-AUTH] Calling navigator.credentials.get');
+        const assertion = await navigator.credentials.get({
+            publicKey: publicKeyCredentialRequestOptions
+        }) as PublicKeyCredential;
+
+        console.log('[DIRECT-AUTH] Received assertion:', assertion);
+
+        // Convert response for sending to server
+        const authData = {
+            id: assertion.id,
+            rawId: this.bufferToBase64URL(assertion.rawId),
+            response: {
+                authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+                clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+                signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+                userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+                    this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+                    null
+            },
+            type: assertion.type
+        };
+
+        const loginResponse = await this.http.post<{
+            res: boolean,
+            redirectUrl?: string,
+            userProfile?: any
+        }>('/auth/login/passkey/fin', {
+            data: authData,
+            username: null // Server will determine username from credential
+        }).toPromise();
+
+        if (loginResponse?.res) {
+            console.log('[DIRECT-AUTH] Success:', loginResponse);
+            this.appComponent.isLoggedIn = true;
+            this.router.navigate(['/profile'], { 
+                state: { userProfile: loginResponse.userProfile }
+            });
+        } else {
+            throw new Error('Error en la respuesta del servidor');
+        }
+    } catch (error: any) {
+        console.error('[DIRECT-AUTH] Error:', error);
+        this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
+        this.hideError();
+    } finally {
+        this.isAuthenticating = false;
+    }
+  }
+
   async register() {
       const deviceName = 'Device-' + new Date().toISOString();
       const device_creationDate = new Date().toISOString();
