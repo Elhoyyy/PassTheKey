@@ -10,7 +10,8 @@ import { Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { fido2Create } from '@ownid/webauthn';
 import { AppComponent } from '../app.component';
-
+import { AuthService } from '../services/auth.service';
+import { ProfileService } from '../services/profile.service';
 
 // Decorador que define las configuraciones del componente
 @Component({
@@ -42,21 +43,28 @@ export class ProfileComponent implements OnInit {
   originalLastName: string = '';
   
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
-  constructor(private router: Router, private http: HttpClient, private appComponent: AppComponent) {
-    // Si no hay usuario registrado o autenticado no se puede acceder a /profile y se redirige a /auth
-    //if (!this.router.getCurrentNavigation()?.extras.state?.['userProfile']) {
-    //  this.router.navigate(['/auth']);
-    //}
-    // Obtiene la navegación actual
+  constructor(
+    private router: Router, 
+    private http: HttpClient, 
+    private appComponent: AppComponent,
+    private authService: AuthService,
+    private profileService: ProfileService
+  ) {
     const navigation = this.router.getCurrentNavigation();
-    // Extrae el estado que contiene el perfil del usuario
     const state = navigation?.extras.state as { userProfile: any };
-    // Si el estado contiene un perfil, asigna sus datos a las propiedades correspondientes
+    
     if (state && state.userProfile) {
-      this.username = state.userProfile.username || ''; // Ensure username is assigned
-      this.email = state.userProfile.email || '';
-      this.devices = state.userProfile.devices || [];
-      this.device_creationDate = state.userProfile.device_creationDate || '';
+      this.profileService.setProfile(state.userProfile);
+    }
+    
+    const profile = this.profileService.getProfile();
+    if (profile) {
+      this.username = profile.username || '';
+      this.email = profile.email || '';
+      this.devices = profile.devices || [];
+      this.device_creationDate = profile.device_creationDate || '';
+    } else {
+      this.router.navigate(['/auth']);
     }
   }
 
@@ -117,6 +125,8 @@ export class ProfileComponent implements OnInit {
   logout() {
     this.isEditing = false;
     this.appComponent.isLoggedIn = false;
+    this.authService.logout();
+    this.profileService.clearProfile(); // Limpiar el perfil al cerrar sesión
     this.router.navigate(['/auth']);
   }
 

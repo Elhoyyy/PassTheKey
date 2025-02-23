@@ -45,6 +45,11 @@ router.post('/registro/passkey', (req, res) => {
     console.log('=== START REGISTRATION CHALLENGE GENERATION ===');
     const rpId = req.hostname;
     let { username } = req.body;
+    // Verificar si el usuario ya existe
+    if (users[username]) {
+        console.log(`[REGISTER] User ${username} already exists`);  
+        return res.status(409).json({ message: 'El usuario ya existe' });
+    }
    
     console.log(`[REGISTER] User: ${username}`);
     console.log(`[REGISTER] RP ID: ${rpId}`);

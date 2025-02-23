@@ -4,7 +4,7 @@ body {
   display: block;
   background: url("../../../../images/catedral-image.jpeg") center center fixed;
   background-size: cover;
-  min-height: 100vh;
+  min-height: 100.75vh;
   width: 100%;
 }
 

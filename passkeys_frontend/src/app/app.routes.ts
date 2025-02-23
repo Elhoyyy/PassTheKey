@@ -3,9 +3,12 @@ import { AppComponent } from './app.component';
 import { ProfileComponent } from './profile/profile.component';
 import { AuthComponent } from './auth/auth.component';
 import { HomeComponent } from './home/home.component';
+import { authGuard } from './auth.guard';
 
 export const routes: Routes = [
-  { path: 'profile', component: ProfileComponent },
+  { path: 'profile', component: ProfileComponent,
+    canActivate: [authGuard]
+   },
   { path: 'auth', component: AuthComponent },
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: '', component: AppComponent },

@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms'; //importamos el modulo forms para 
 import { CommonModule } from '@angular/common'; //importamos el modulo common para trabajar con directivas estructurales y de atributos
 import { Router, RouterModule } from '@angular/router'; //importamos el modulo router y routermodule para trabajar con las rutas de la aplicacion
 import { AppComponent } from '../app.component';
+import { AuthService } from '../services/auth.service';
+import { ProfileService } from '../services/profile.service';
 
 @Component({
   selector: 'app-auth',
@@ -25,7 +27,7 @@ export class AuthComponent {
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // añadimos un array para almacenar los dispositivos registrados
   forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
   isRegistrationIntent: boolean = false; // añadimos una bandera para saber si estamos en proceso de registro
-  constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
+  constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
   
   async loginConContra() {
     this.isAuthenticating = true;
@@ -37,12 +39,14 @@ export class AuthComponent {
       }).toPromise();
       
       if (response && response.res) {
+        this.authService.login();
         this.appComponent.isLoggedIn = true;
         // Aseguramos que pasamos la contraseña al perfil
         const userProfile = {
           ...response.userProfile,
           plainPassword: this.password // Añadimos la contraseña sin hashear
         };
+        this.profileService.setProfile(userProfile);
         this.router.navigate(['/profile'], { state: { userProfile } });
       } else {
         this.errorMessage = 'Invalid credentials.';
@@ -127,7 +131,9 @@ export class AuthComponent {
 
         if (loginResponse?.res) {
             console.log('[LOGIN] Success with device:', loginResponse.userProfile?.lastUsedDevice);
+            this.authService.login(); // Añadir esta línea
             this.appComponent.isLoggedIn = true;
+            this.profileService.setProfile(loginResponse.userProfile);
             this.router.navigate(['/profile'], { 
                 state: { userProfile: loginResponse.userProfile, 
                   password: this.password 
@@ -211,7 +217,9 @@ export class AuthComponent {
 
         if (loginResponse?.res) {
             console.log('[DIRECT-AUTH] Success:', loginResponse);
+            this.authService.login(); // Añadir esta línea
             this.appComponent.isLoggedIn = true;
+            this.profileService.setProfile(loginResponse.userProfile);
             this.router.navigate(['/profile'], { 
                 state: { userProfile: loginResponse.userProfile }
             });
@@ -228,12 +236,33 @@ export class AuthComponent {
   }
 
   async register() {
-      const deviceName = 'Device-' + new Date().toISOString();
-      const device_creationDate = new Date().toISOString();
-      console.log('[REGISTRATION] Starting registration process');
-      this.isRegistrationIntent = true;
-      this.errorMessage = null;
-      this.isRegistering = true;
+    let deviceName = 'Passkey_Device';
+    const userAgent = navigator.userAgent;
+      console.log('User Agent:', userAgent);
+      if (userAgent.includes('Windows')) {
+        const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+        deviceName = version ? `Windows ${version[1]}` : 'Windows';
+      } else if (userAgent.includes('iPhone')) {
+        const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+        deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+      } else if (userAgent.includes('Android')) {
+        const version = userAgent.match(/Android (\d+\.\d+)/);
+        deviceName = version ? `Android ${version[1]}` : 'Android';
+      } else if (userAgent.includes('Linux')) {
+        deviceName = 'Linux';
+    }
+    const device_creationDate = new Date().toLocaleString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    console.log('[REGISTRATION] Starting registration process');
+    this.isRegistrationIntent = true;
+    this.errorMessage = null;
+    this.isRegistering = true;
     try {
         console.log('[REGISTRATION] Requesting creation options for user:', this.username);
         const options = await this.http.post<PublicKeyCredentialCreationOptions>(
@@ -288,8 +317,10 @@ export class AuthComponent {
         ).toPromise();
         
         if (response && response.res) {
+            this.authService.login(); // Añadir esta línea
             // Redirect to profile after successful registration
             this.appComponent.isLoggedIn = true;
+            this.profileService.setProfile(response.userProfile);
             this.router.navigate(['/profile'], { 
                 state: { userProfile: response.userProfile }
             });
