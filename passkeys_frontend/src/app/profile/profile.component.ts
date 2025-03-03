@@ -29,7 +29,6 @@ import { ProfileService } from '../services/profile.service';
 export class ProfileComponent implements OnInit {
   // Propiedades que almacenan la información del perfil del usuario
   username: string = '';  // Nombre de usuario
-  password: string = ''; // Contraseña
   email: string = '';     // Correo electrónico
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
   device_creationDate: string = ''; // Fecha de creación del dispositivo
@@ -68,29 +67,6 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  async savePassword() {
-    this.isLoading = true;
-    this.errorMessage = null;
-    
-    try {
-        await this.http.post('/profile/update-password', {
-            username: this.username,
-            password: this.password
-        }).toPromise();
-        
-        this.password = this.password; // Mantenemos el valor de la contraseña después de guardar
-        this.errorMessage = 'Contraseña actualizada correctamente';
-        this.hideError();
-    } catch (error : any ) {
-      if (error.status === 400 || error.status === 409 || error.status === 401) {
-        this.errorMessage = error.error.message || 'Error al actualizar la contraseña';
-        this.hideError();
-      }
-    } finally {
-        this.isLoading = false;
-    }
-  }
-
   async saveEmail() {
     this.isLoading = true;
     this.errorMessage = null;
@@ -118,8 +94,6 @@ export class ProfileComponent implements OnInit {
     this.originalUsername = this.username;
     this.originalEmail = this.email;
   }
-
-
 
   // Método para cerrar sesión y redirigir al usuario a la ruta de autenticación
   logout() {

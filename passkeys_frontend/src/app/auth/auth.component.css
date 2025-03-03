@@ -70,7 +70,7 @@ body {
   transform: translateY(-50%);
   color: #666;
 }
-.btn-direct-auth {
+.btn-direct-auth, .btn-auth {
   width: 100%;
   margin: 10px 0;
   padding: 10px;
@@ -110,43 +110,25 @@ body {
 
 .buttons-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 15px;
   margin-top: 20px;
 }
 
-.btn-auth, .btn-register {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.btn-direct-auth, .btn-auth {
+  flex: 1;
+  padding: 10px;
 }
+
 
 .btn-auth {
   background: #2196F3;
   color: white;
 }
 
-.btn-register {
-  background: #fff;
-  color: #2196F3;
-  border: 2px solid #2196F3;
-}
 
 .btn-auth:hover {
   background: #1976D2;
-}
-
-.btn-register:hover {
-  background: #E3F2FD;
 }
 
 .btn-auth:disabled, .btn-register:disabled {
@@ -190,6 +172,29 @@ a, p{
   align-items: center;
   gap: 8px;
   font-size: 14px;
+}
+
+.error-message.success {
+  background: #e6ffe6;
+  color: #2ecc71;
+}
+
+.links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.links-container a {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
+.links-container a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 768px) {

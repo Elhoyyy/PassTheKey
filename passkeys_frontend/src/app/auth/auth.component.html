@@ -4,7 +4,7 @@
       <form class="login">
         <p class="title">
           <i class="bi bi-key-fill"></i>
-          Passkeys Login
+          {{ isInRegistrationMode ? 'Registro de Usuario' : 'Passkeys Login' }}
         </p>
 
         <div class="input-group">
@@ -14,50 +14,98 @@
             [(ngModel)]="username" 
             name="username" 
             placeholder="Email" 
-            autocomplete= "username webauthn"
-            *ngIf="!showPasswordField"/>
+            autocomplete= "username webauthn"/>
+        </div>
+
+        <div class="input-group" *ngIf="showPasswordField && isInRegistrationMode">
+          <i class="bi bi-lock"></i>
           <input 
             type="password" 
             [(ngModel)]="password" 
             name="password" 
-            placeholder="Password" 
-            *ngIf="showPasswordField"/>
+            placeholder="Password" />
         </div>
-        <div class = "forgot-device">
-          <a *ngIf="forgotDevice" (click)="togglePasswordField()">Forgot your device?</a>
+        
+        <div class="input-group" *ngIf="showPasswordField && !isInRegistrationMode">
+          <i class="bi bi-lock"></i>
+          <input 
+            type="password" 
+            [(ngModel)]="password" 
+            name="password" 
+            placeholder="Password" />
         </div>
-        <div class="buttons-container">
-          <button 
-          class="btn-direct-auth" 
-          (click)="directAuthentication()"
-          [disabled]="isAuthenticating">
-          <i *ngIf="!isAuthenticating" class="bi bi-key"></i>
-          <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
-          <span>{{ isAuthenticating ? 'Loading...' : 'Sign in with passkey' }}</span>
-        </button>
-          <button 
-          class="btn-auth" 
-          (click)="showPasswordField ? loginConContra() : authenthication()"
-          [disabled]="isAuthenticating">
-          <i *ngIf="!isAuthenticating" class="bi bi-fingerprint"></i>
-          <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
-          <span>{{ isAuthenticating ? 'Loading...' : 'Authenticate' }}</span>
-        </button>
 
+        <div class = "forgot-device">
+          <a *ngIf="forgotDevice && !isInRegistrationMode" (click)="togglePasswordField()">Forgot your device?</a>
+          <a *ngIf="showPasswordField && !isInRegistrationMode && !forgotDevice" (click)="togglePasswordField()">Usar passkey</a>
+        </div>
+
+        <div class="buttons-container">
+          <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
           <button 
-            class="btn-register" 
-            (mousedown)="isRegistrationIntent = true"
-            (click)="register()"
-            *ngIf="!showPasswordField"
+            *ngIf="isInRegistrationMode && showPasswordField"
+            class="btn-direct-auth" 
+            (click)="registerWithPassword()"
             [disabled]="isRegistering">
-            <i *ngIf="!isRegistering" class="bi bi-plus-circle"></i>
+            <i *ngIf="!isRegistering" class="bi bi-person-plus"></i>
             <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isRegistering ? 'Registering...' : 'Register with a passkey' }}</span>
+            <span>{{ isRegistering ? 'Registrando...' : 'Registrar con contraseña' }}</span>
+          </button>
+          
+          <!-- Si estamos en modo registro y NO se muestra el campo de contraseña -->
+          <button 
+            *ngIf="isInRegistrationMode && !showPasswordField"
+            class="btn-direct-auth" 
+            (click)="continueRegistration()"
+            [disabled]="isAuthenticating">
+            <i *ngIf="!isAuthenticating" class="bi bi-arrow-right-circle"></i>
+            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+            <span>{{ isAuthenticating ? 'Loading...' : 'Continuar' }}</span>
+          </button>
+          
+          <!-- Si NO estamos en modo registro -->
+          <button 
+            *ngIf="!isInRegistrationMode"
+            class="btn-direct-auth" 
+            (click)="directAuthentication()"
+            [disabled]="isAuthenticating">
+            <i *ngIf="!isAuthenticating" class="bi bi-key"></i>
+            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+            <span>{{ isAuthenticating ? 'Loading...' : 'Log in with Passkey' }}</span>
+          </button>
+          
+          <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
+          <button 
+            *ngIf="isInRegistrationMode && showPasswordField"
+            class="btn-auth" 
+            (click)="register()"
+            [disabled]="isRegistering">
+            <i *ngIf="!isRegistering" class="bi bi-key"></i>
+            <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
+            <span>{{ isRegistering ? 'Registrando...' : 'Registrar con passkey' }}</span>
+          </button>
+          
+          <!-- Si NO estamos en modo registro -->
+          <button 
+            *ngIf="!isInRegistrationMode"
+            class="btn-auth" 
+            (click)="showPasswordField ? loginConContra() : authenthication()"
+            [disabled]="isAuthenticating">
+            <i *ngIf="!isAuthenticating" class="bi bi-fingerprint"></i>
+            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+            <span>{{ isAuthenticating ? 'Loading...' : 'Log in' }}</span>
           </button>
         </div>
-
-        <div *ngIf="errorMessage" class="error-message">
-          <i class="bi bi-exclamation-triangle"></i>
+        
+        <div class="links-container">
+          <a (click)="toggleRegistrationMode()">
+            {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
+          </a>
+          <a *ngIf="!isInRegistrationMode" (click)="togglePasswordField()">Perdiste la cuenta?</a>
+        </div>
+        
+        <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">
+          <i class="bi" [ngClass]="errorMessage.includes('exitoso') ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
           {{ errorMessage }}
         </div>
       </form>

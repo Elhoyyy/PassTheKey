@@ -192,8 +192,6 @@ router.post('/login/passkey/fin', async (req, res) => {
     console.log('=== END LOGIN VERIFICATION ===');
 });
 
-
-
 // Endpoint for password login
 router.post('/login/password', (req, res) => {
     let { username, password } = req.body;
@@ -215,57 +213,60 @@ router.post('/login/password', (req, res) => {
     });
 });
 
-
-
-/*
 // Endpoint to check if user has a registered passkey
 router.post('/login/check-passkey', (req, res) => {
     let { username } = req.body;
     if (!users[username]) {
       console.log('user not found');  
-      return res.status(400).json({ message: 'Usuario no encontrado' }); // Ensure only one response is sent
+      return res.status(400).json({ message: 'Usuario no encontrado' });
     }
     const hasPasskey = !!users[username].credential;
     res.status(200).json({ hasPasskey });
-  });
-
-
+});
 
 // Endpoint for user registration with password
 router.post('/registro/usuario', (req, res) => {
-    let { username, firstName, lastName, email, password } = req.body;
-    if (!username || !email) {
-        return res.status(400).json({ message: 'El nombre de usuario y la contraseña son obligatorias.' });
+    let { username, password } = req.body;
+    
+    if (!username || !password) {
+        return res.status(400).json({ message: 'El nombre de usuario y la contraseña son obligatorios.' });
     }
-    if (!isValidEmail(email)) {
+    
+    if (!isValidEmail(username)) {
         console.log('Email inválido');
         return res.status(400).json({ message: 'Email inválido' });
     }
+    
     if (password.length < 4) {
         console.log('Contraseña muy corta');
         return res.status(400).json({ message: 'La contraseña debe tener al menos 4 caracteres' });
     }
 
-    if (users[email]) {
-        console.log('Email ya registrado');
-        return res.status(409).json({ message: 'El email ya está registrado' });
-    }
     if (users[username]) {
         console.log('Usuario ya registrado');
         return res.status(409).json({ message: 'El usuario ya está registrado' });
     }
-    if (/\d/.test(firstName) || /\d/.test(lastName)) {
-        return res.status(400).json({ message: 'El nombre y apellido no pueden contener números.' });
-    }
 
     bcrypt.hash(password, 10, (err, hash) => {
         if (err) {
-            return res.status(500).json({ message: 'Error hashing password' });
+            return res.status(500).json({ message: 'Error al encriptar la contraseña' });
         }
-        users[username] = { password: hash, firstName, lastName, email, devices: [] }; // Store hashed password
-        console.log(username, 'USER REGISTERED');
-        res.status(200).json({ message: 'Usuario registrado correctamente' });
+        // Guardar usuario con contraseña
+        users[username] = { 
+            password: hash,
+            email: username,
+            devices: [],
+            credential: [] // Añadimos un array vacío para evitar errores
+        };
+        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA`);
+        res.status(200).json({ success: true, message: 'Usuario registrado correctamente' });
     });
 });
-*/
+
+// Helper function to validate email
+function isValidEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
 module.exports = router;

@@ -27,6 +27,7 @@ export class AuthComponent {
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // añadimos un array para almacenar los dispositivos registrados
   forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
   isRegistrationIntent: boolean = false; // añadimos una bandera para saber si estamos en proceso de registro
+  isInRegistrationMode: boolean = false; // Nueva propiedad para controlar el modo de registro
   constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
   
   async loginConContra() {
@@ -75,7 +76,20 @@ export class AuthComponent {
     this.errorMessage = null;
     this.isAuthenticating = true;
     this.forgotDevice = false;
+    
     try {
+        // Primero comprobamos si el usuario tiene passkeys
+        const checkResponse = await this.http.post<{ hasPasskey: boolean }>('/auth/login/check-passkey', { 
+            username: this.username
+        }).toPromise();
+        
+        if (!checkResponse || !checkResponse.hasPasskey) {
+            console.log('[AUTHENTICATION] User has no passkeys, showing password field');
+            this.showPasswordField = true;
+            this.isAuthenticating = false;
+            return;
+        }
+        
         console.log('[AUTHENTICATION] Requesting challenge for user:', this.username);
         const options = await this.http.post<PublicKeyCredentialRequestOptions>(
             '/auth/login/passkey', 
@@ -143,12 +157,23 @@ export class AuthComponent {
             throw new Error('Error en la respuesta del servidor');
         }
     } catch (error: any) {
-      this.forgotDevice = true;  
-      console.error('[AUTHENTICATION] Error:', error);
-      this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
-      this.hideError();
+      // Si hay un error 400 y es porque el usuario no existe, mostramos la opción de registro
+      if (error.status === 400 && error.error?.message === 'Usuario no encontrado') {
+        this.errorMessage = 'El usuario no existe. ¿Deseas registrarte?';
+        setTimeout(() => {
+          if (this.errorMessage === 'El usuario no existe. ¿Deseas registrarte?') {
+            this.toggleRegistrationMode();
+            this.errorMessage = null;
+          }
+        }, 3000);
+      } else {
+        this.forgotDevice = true;  
+        console.error('[AUTHENTICATION] Error:', error);
+        this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
+        this.hideError();
+      }
     } finally {
-        this.isAuthenticating = false;
+      this.isAuthenticating = false;
     }
   }
 
@@ -344,8 +369,62 @@ export class AuthComponent {
     this.showPasswordField = !this.showPasswordField;
   }
 
+  toggleRegistrationMode() {
+    this.isInRegistrationMode = !this.isInRegistrationMode;
+    this.showPasswordField = false;
+    this.errorMessage = null;
+  }
+
+  async continueRegistration() {
+    if (!this.username || !this.validateEmail(this.username)) {
+      this.errorMessage = "Por favor, introduce un correo electrónico válido";
+      this.hideError();
+      return;
+    }
+    
+    // Ahora mostramos el campo de contraseña para el registro
+    this.showPasswordField = true;
+  }
+  
+  async registerWithPassword() {
+    this.isRegistering = true;
+    this.errorMessage = null;
+    
+    try {
+      // Validar la contraseña
+      if (!this.password || this.password.length < 4) {
+        throw new Error('La contraseña debe tener al menos 4 caracteres');
+      }
+      
+      const response = await this.http.post<any>('/auth/registro/usuario', {
+        username: this.username,
+        password: this.password
+      }).toPromise();
+      
+      if (response && response.success) {
+        this.errorMessage = 'Registro exitoso! Iniciando sesión...';
+        // Después del registro exitoso, iniciar sesión automáticamente
+        setTimeout(() => this.loginConContra(), 1500);
+      } else {
+        throw new Error('Error en el registro');
+      }
+    } catch (error: any) {
+      console.error('Error en el registro con contraseña:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error en el registro';
+      this.hideError();
+    } finally {
+      this.isRegistering = false;
+    }
+  }
+
   hideError(){
     setTimeout(()=> this.errorMessage=null, 3000);
+  }
+
+  // Validador simple de email
+  private validateEmail(email: string): boolean {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
   }
 
   // Utility methods for converting between ArrayBuffer and Base64URL
