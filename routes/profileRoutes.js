@@ -50,15 +50,17 @@ router.post('/update-email', (req, res) => {
 */
 
 function isValidPassword(password) {
+  // Fix the logic - return false if any condition fails (invalid password)
   if (password.length < 4) {
-    return true;
+    return false;
   }
-  if (!/\d/.test(password)) {//si no tiene numeros
-    return true;
+  if (!/\d/.test(password)) {  // no numbers
+    return false;
   }
-  if (!/[!@#$%^&*]/.test(password)) {
-    return true;
+  if (!/[!@#$%^&*]/.test(password)) {  // no special characters
+    return false;
   }
+  return true;  // All conditions passed, password is valid
 }
 
 module.exports = router;
