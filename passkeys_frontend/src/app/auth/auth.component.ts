@@ -78,17 +78,14 @@ export class AuthComponent {
     this.forgotDevice = false;
     
     try {
+        if (!this.username) {
+            throw new Error('Por favor, introduce un nombre de usuario');
+        }
+
         // Primero comprobamos si el usuario tiene passkeys
         const checkResponse = await this.http.post<{ hasPasskey: boolean }>('/auth/login/check-passkey', { 
             username: this.username
         }).toPromise();
-        
-        if (!checkResponse || !checkResponse.hasPasskey) {
-            console.log('[AUTHENTICATION] User has no passkeys, showing password field');
-            this.showPasswordField = true;
-            this.isAuthenticating = false;
-            return;
-        }
         
         console.log('[AUTHENTICATION] Requesting challenge for user:', this.username);
         const options = await this.http.post<PublicKeyCredentialRequestOptions>(
@@ -157,23 +154,24 @@ export class AuthComponent {
             throw new Error('Error en la respuesta del servidor');
         }
     } catch (error: any) {
-      // Si hay un error 400 y es porque el usuario no existe, mostramos la opción de registro
-      if (error.status === 400 && error.error?.message === 'Usuario no encontrado') {
-        this.errorMessage = 'El usuario no existe. ¿Deseas registrarte?';
-        setTimeout(() => {
-          if (this.errorMessage === 'El usuario no existe. ¿Deseas registrarte?') {
-            this.toggleRegistrationMode();
-            this.errorMessage = null;
-          }
-        }, 3000);
-      } else {
-        this.forgotDevice = true;  
         console.error('[AUTHENTICATION] Error:', error);
-        this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
-        this.hideError();
-      }
+        // Si el error es 400 y contiene el mensaje específico sobre credenciales
+        if (error.status === 400 && error.error?.message?.includes('No hay credenciales')) {
+            console.log('[AUTHENTICATION] No credentials available, showing password field');
+            this.showPasswordField = true;
+            return;
+        }
+        
+        // Para otros tipos de errores
+        if (error.status === 400 && error.error?.message === 'Usuario no encontrado') {
+            this.errorMessage = 'El usuario no existe. ¿Deseas registrarte?';
+        } else {
+            this.forgotDevice = true;  
+            this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
+            this.hideError();
+        }
     } finally {
-      this.isAuthenticating = false;
+        this.isAuthenticating = false;
     }
   }
 

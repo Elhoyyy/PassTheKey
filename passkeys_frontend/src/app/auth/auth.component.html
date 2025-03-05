@@ -35,10 +35,6 @@
             placeholder="Password" />
         </div>
 
-        <div class = "forgot-device">
-          <a *ngIf="forgotDevice && !isInRegistrationMode" (click)="togglePasswordField()">Forgot your device?</a>
-          <a *ngIf="showPasswordField && !isInRegistrationMode && !forgotDevice" (click)="togglePasswordField()">Usar passkey</a>
-        </div>
 
         <div class="buttons-container">
           <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
@@ -101,7 +97,8 @@
           <a (click)="toggleRegistrationMode()">
             {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
           </a>
-          <a *ngIf="!isInRegistrationMode" (click)="togglePasswordField()">Perdiste la cuenta?</a>
+          <hr>
+          <a *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
         </div>
         
         <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">
