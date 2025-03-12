@@ -1,4 +1,4 @@
-import { Component } from '@angular/core'; //simplemente definimos los componentes angular
+import { Component, ElementRef, ViewChild } from '@angular/core'; //simplemente definimos los componentes angular
 import { HttpClient, HttpClientModule } from '@angular/common/http';//importamos el modulo httpclient y httpclientmodule para interactuar con el backend
 import { FormsModule } from '@angular/forms'; //importamos el modulo forms para trabajar con formularios en angular y enlacar datos de manera bidireccional entre el componente y la vista
 import { CommonModule } from '@angular/common'; //importamos el modulo common para trabajar con directivas estructurales y de atributos
@@ -28,7 +28,259 @@ export class AuthComponent {
   forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
   isRegistrationIntent: boolean = false; // añadimos una bandera para saber si estamos en proceso de registro
   isInRegistrationMode: boolean = false; // Nueva propiedad para controlar el modo de registro
+  isAutofillInProgress = false; // Nueva variable para controlar el estado del autofill
+  private pendingAutofill: Promise<void> | null = null; // Para rastrear la operación de autofill en curso
+  private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
+  
+  @ViewChild('usernameInput') usernameInput!: ElementRef;
+  
   constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
+  
+  // Método para manejar el evento de focus en el campo de username
+  async onUsernameFieldFocus() {
+    console.log('[AUTOFILL] Username field focused, attempting WebAuthn conditional UI');
+    
+    // Si ya hay un autofill en progreso, no iniciamos otro
+    if (this.isAutofillInProgress) {
+      console.log('[AUTOFILL] Autofill already in progress, ignoring focus event');
+      return;
+    }
+    
+    try {
+      // Verificar si el navegador soporta la mediación condicional
+      if (window.PublicKeyCredential && 
+          typeof window.PublicKeyCredential.isConditionalMediationAvailable === 'function') {
+        
+        const available = await PublicKeyCredential.isConditionalMediationAvailable();
+        
+        if (available) {
+          console.log('[AUTOFILL] Conditional mediation is available, requesting credentials');
+          this.isAutofillInProgress = true;
+          this.startWebAuthnAutofill();
+        } else {
+          console.log('[AUTOFILL] Conditional mediation not available in this browser');
+        }
+      } else {
+        console.log('[AUTOFILL] WebAuthn conditional UI not supported in this browser');
+      }
+    } catch (error) {
+      console.error('[AUTOFILL] Error checking conditional mediation:', error);
+      this.isAutofillInProgress = false;
+    }
+  }
+
+  // Método para cancelar cualquier operación de autofill activa
+  cancelActiveAutofill() {
+    if (this.isAutofillInProgress && this.autofillAbortController) {
+      console.log('[AUTOFILL] Cancelling active autofill operation');
+      this.autofillAbortController.abort();
+      this.isAutofillInProgress = false;
+      this.autofillAbortController = null;
+    }
+  }
+
+  // Método para iniciar el proceso de autocompletado WebAuthn
+  async startWebAuthnAutofill() {
+    console.log('[AUTOFILL] Starting WebAuthn autofill process');
+    
+    // Crear nuevo AbortController para esta operación de autofill
+    this.autofillAbortController = new AbortController();
+    
+    try {
+      // Preparar la señal para cancelar la operación
+      const signal = this.autofillAbortController.signal;
+      
+      // Crear una promesa que se puede cancelar
+      const autofillPromise = new Promise<void>(async (resolve, reject) => {
+        try {
+          // Si la señal ya está abortada, rechazamos inmediatamente
+          if (signal.aborted) {
+            reject(new DOMException('Aborted', 'AbortError'));
+            return;
+          }
+          
+          // Configurar listener para cancelación
+          signal.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+          
+          // Intentar autenticación con passkey en modo condicional
+          await this.authenticateWithPasskey(true);
+          resolve();
+        } catch (error:any) {
+          console.error('[AUTOFILL] Error in autofill operation:', error);
+          if (error.name === 'AbortError' || signal.aborted) {
+            reject(new DOMException('Aborted', 'AbortError'));
+          } else {
+            reject(error);
+          }
+        }
+      });
+      
+      // Configurar un timeout automático para el autofill (5 minutos)
+      const timeoutId = setTimeout(() => {
+        if (this.autofillAbortController) {
+          console.log('[AUTOFILL] Autofill timeout reached, auto-cancelling');
+          this.autofillAbortController.abort();
+        }
+      }, 300000); // 5 minutos
+      
+      try {
+        await autofillPromise;
+        console.log('[AUTOFILL] Autofill completed successfully');
+      } catch (error:any) {
+        if (error.name === 'AbortError') {
+          console.log('[AUTOFILL] Autofill was cancelled');
+        } else {
+          console.error('[AUTOFILL] Autofill failed with error:', error);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } finally {
+      // Asegurarnos de limpiar el estado incluso si hay errores
+      this.isAutofillInProgress = false;
+      this.autofillAbortController = null;
+    }
+  }
+  
+  // Reemplazar el método directAuthentication para cancelar cualquier autofill y usar el nuevo unificado
+  async directAuthentication() {
+    // Cancelar cualquier operación activa de autofill
+    this.cancelActiveAutofill();
+    
+    // Pequeña pausa para asegurar que se liberan los recursos
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Iniciar la autenticación directa
+    await this.authenticateWithPasskey(false);
+  }
+
+  // Método unificado para autenticación con passkey (directa o autofill)
+  async authenticateWithPasskey(isConditionalMedation = false) {
+    const operationType = isConditionalMedation ? 'AUTOFILL' : 'DIRECT-AUTH';
+    console.log(`[${operationType}] Starting authentication process`);
+    
+    if (!isConditionalMedation) {
+      // Solo actualizamos UI si no es autofill
+      this.errorMessage = null;
+      this.isAuthenticating = true;
+    }
+  
+    try {
+      // Mismo endpoint para direct auth y autofill
+      const options = await this.http.post<PublicKeyCredentialRequestOptions>(
+        '/auth/login/passkey/direct',
+        { isConditional: isConditionalMedation }
+      ).toPromise();
+  
+      console.log(`[${operationType}] Received options:`, options);
+  
+      if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
+        throw new Error('No credentials available');
+      }
+  
+      // Convert challenge and credential IDs to ArrayBuffer
+      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        rpId: options.rpId,
+        allowCredentials: options.allowCredentials.map(credential => ({
+          type: 'public-key',
+          id: this.base64URLToBuffer(credential.id as unknown as string),
+          transports: credential.transports
+        })),
+        timeout: options.timeout,
+        userVerification: options.userVerification
+      };
+  
+      console.log(`[${operationType}] Processed options:`, publicKeyCredentialRequestOptions);
+  
+      // Configurar la solicitud de credenciales según el tipo
+      const getCredentialOptions: CredentialRequestOptions = {
+        publicKey: publicKeyCredentialRequestOptions
+      };
+  
+      // Solo para autofill/conditional añadimos el parámetro mediation
+      if (isConditionalMedation) {
+        getCredentialOptions.mediation = 'conditional';
+        getCredentialOptions.signal = this.autofillAbortController?.signal;
+      }
+  
+      console.log(`[${operationType}] Calling navigator.credentials.get with options:`, getCredentialOptions);
+      
+      // Esperar a que el usuario seleccione una credencial
+      const assertion = await navigator.credentials.get(getCredentialOptions) as PublicKeyCredential;
+  
+      // Si llegamos aquí es que el usuario seleccionó una credencial
+      console.log(`[${operationType}] Received assertion:`, assertion);
+  
+      // Convertir respuesta para enviar al servidor
+      const authData = {
+        id: assertion.id,
+        rawId: this.bufferToBase64URL(assertion.rawId),
+        response: {
+          authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+          clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+          signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+          userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+            this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+            null
+        },
+        type: assertion.type
+      };
+  
+      // Enviar al servidor con indicación de tipo (direct o autofill)
+      const loginResponse = await this.http.post<{
+        res: boolean,
+        redirectUrl?: string,
+        userProfile?: any
+      }>('/auth/login/passkey/fin', {
+        data: authData,
+        username: null, // El servidor determinará el username basado en la credencial
+        isConditional: isConditionalMedation
+      }).toPromise();
+  
+      if (loginResponse?.res) {
+        console.log(`[${operationType}] Success:`, loginResponse);
+        this.authService.login();
+        this.appComponent.isLoggedIn = true;
+        this.profileService.setProfile(loginResponse.userProfile);
+        
+        // Limpiar cualquier estado de autofill pendiente
+        this.isAutofillInProgress = false;
+        this.pendingAutofill = null;
+        
+        this.router.navigate(['/profile'], { 
+          state: { userProfile: loginResponse.userProfile }
+        });
+      } else {
+        throw new Error('Error en la respuesta del servidor');
+      }
+    } catch (error: any) {
+      console.error(`[${operationType}] Error:`, error);
+      
+      // Si fue cancelado, simplemente registramos y continuamos
+      if (error.name === 'AbortError' || error.name === 'NotAllowedError') {
+        console.log(`[${operationType}] Operation was aborted or cancelled by user`);
+      } else if (error.name === 'OperationError') {
+        // Específicamente manejar el error de operación pendiente
+        console.warn(`[${operationType}] WebAuthn operation already pending`);
+        if (!isConditionalMedation) {
+          this.errorMessage = 'Ya hay una operación de autenticación en curso. Por favor, inténtalo de nuevo en unos segundos.';
+          this.hideError();
+        }
+      } else if (!isConditionalMedation) {
+        // Mostrar otros errores solo para autenticación directa
+        this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
+        this.hideError();
+      }
+    } finally {
+      // Restaurar UI si no es autofill
+      if (!isConditionalMedation) {
+        this.isAuthenticating = false;
+      }
+    }
+  }
   
   async loginConContra() {
     this.isAuthenticating = true;
@@ -70,193 +322,6 @@ export class AuthComponent {
     }
   }
  
-
-  async authenthication() {
-    console.log('[AUTHENTICATION] Starting authentication process');
-    this.errorMessage = null;
-    this.isAuthenticating = true;
-    this.forgotDevice = false;
-    
-    try {
-        if (!this.username) {
-            throw new Error('Por favor, introduce un nombre de usuario');
-        }
-
-        // Primero comprobamos si el usuario tiene passkeys
-        const checkResponse = await this.http.post<{ hasPasskey: boolean }>('/auth/login/check-passkey', { 
-            username: this.username
-        }).toPromise();
-        
-        console.log('[AUTHENTICATION] Requesting challenge for user:', this.username);
-        const options = await this.http.post<PublicKeyCredentialRequestOptions>(
-            '/auth/login/passkey', 
-            { username: this.username}
-        ).toPromise();
-
-        console.log('[AUTHENTICATION] Received options:', options);
-        if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
-            console.warn('[AUTHENTICATION] No credentials available');
-            this.forgotDevice = true;
-            throw new Error('No hay credenciales disponibles');
-        }
-
-        // Convert base64 challenge to ArrayBuffer
-        options.challenge = this.base64URLToBuffer(options.challenge as unknown as string);
-        options.allowCredentials = options.allowCredentials.map(credential => {
-            console.log('[AUTHENTICATION] Processing credential:', credential.id);
-            return {
-                ...credential,
-                id: this.base64URLToBuffer(credential.id as unknown as string)
-            };
-        });
-
-        console.log('[AUTHENTICATION] Calling navigator.credentials.get');
-        const assertion = await navigator.credentials.get({
-            publicKey: options
-        }) as PublicKeyCredential;
-        console.log('[AUTHENTICATION] Received assertion:', assertion);
-
-        // Convert response for sending to server
-        const authData = {
-            id: assertion.id,
-            rawId: this.bufferToBase64URL(assertion.rawId),
-            response: {
-                authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
-                clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
-                signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
-                userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
-                    this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
-                    null
-            },
-            type: assertion.type
-        };
-
-        const loginResponse = await this.http.post<{
-            res: boolean,
-            redirectUrl?: string,
-            userProfile?: any
-        }>('/auth/login/passkey/fin', {
-            data: authData,
-            username: this.username
-        }).toPromise();
-
-        if (loginResponse?.res) {
-            console.log('[LOGIN] Success with device:', loginResponse.userProfile?.lastUsedDevice);
-            this.authService.login(); // Añadir esta línea
-            this.appComponent.isLoggedIn = true;
-            this.profileService.setProfile(loginResponse.userProfile);
-            this.router.navigate(['/profile'], { 
-                state: { userProfile: loginResponse.userProfile, 
-                  password: this.password 
-                }
-            });
-        } else {
-            throw new Error('Error en la respuesta del servidor');
-        }
-    } catch (error: any) {
-        console.error('[AUTHENTICATION] Error:', error);
-        // Si el error es 400 y contiene el mensaje específico sobre credenciales
-        if (error.status === 400 && error.error?.message?.includes('No hay credenciales')) {
-            console.log('[AUTHENTICATION] No credentials available, showing password field');
-            this.showPasswordField = true;
-            return;
-        }
-        
-        // Para otros tipos de errores
-        if (error.status === 400 && error.error?.message === 'Usuario no encontrado') {
-            this.errorMessage = 'El usuario no existe. ¿Deseas registrarte?';
-        } else {
-            this.forgotDevice = true;  
-            this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
-            this.hideError();
-        }
-    } finally {
-        this.isAuthenticating = false;
-    }
-  }
-
-  async directAuthentication() {
-    console.log('[DIRECT-AUTH] Starting direct authentication process');
-    this.errorMessage = null;
-    this.isAuthenticating = true;
-
-    try {
-        const options = await this.http.post<PublicKeyCredentialRequestOptions>(
-            '/auth/login/passkey/direct',
-            {}
-        ).toPromise();
-
-        console.log('[DIRECT-AUTH] Received options:', options);
-
-        if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
-            throw new Error('No credentials available');
-        }
-
-        // Convert challenge and credential IDs to ArrayBuffer
-        const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-            challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-            rpId: options.rpId,
-            allowCredentials: options.allowCredentials.map(credential => ({
-                type: 'public-key',
-                id: this.base64URLToBuffer(credential.id as unknown as string),
-                transports: credential.transports
-            })),
-            timeout: options.timeout,
-            userVerification: options.userVerification
-        };
-
-        console.log('[DIRECT-AUTH] Processed options:', publicKeyCredentialRequestOptions);
-
-        console.log('[DIRECT-AUTH] Calling navigator.credentials.get');
-        const assertion = await navigator.credentials.get({
-            publicKey: publicKeyCredentialRequestOptions
-        }) as PublicKeyCredential;
-
-        console.log('[DIRECT-AUTH] Received assertion:', assertion);
-
-        // Convert response for sending to server
-        const authData = {
-            id: assertion.id,
-            rawId: this.bufferToBase64URL(assertion.rawId),
-            response: {
-                authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
-                clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
-                signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
-                userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
-                    this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
-                    null
-            },
-            type: assertion.type
-        };
-
-        const loginResponse = await this.http.post<{
-            res: boolean,
-            redirectUrl?: string,
-            userProfile?: any
-        }>('/auth/login/passkey/fin', {
-            data: authData,
-            username: null // Server will determine username from credential
-        }).toPromise();
-
-        if (loginResponse?.res) {
-            console.log('[DIRECT-AUTH] Success:', loginResponse);
-            this.authService.login(); // Añadir esta línea
-            this.appComponent.isLoggedIn = true;
-            this.profileService.setProfile(loginResponse.userProfile);
-            this.router.navigate(['/profile'], { 
-                state: { userProfile: loginResponse.userProfile }
-            });
-        } else {
-            throw new Error('Error en la respuesta del servidor');
-        }
-    } catch (error: any) {
-        console.error('[DIRECT-AUTH] Error:', error);
-        this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
-        this.hideError();
-    } finally {
-        this.isAuthenticating = false;
-    }
-  }
 
   async register() {
     let deviceName = 'Passkey_Device';
@@ -369,8 +434,9 @@ export class AuthComponent {
 
   toggleRegistrationMode() {
     this.isInRegistrationMode = !this.isInRegistrationMode;
-    this.showPasswordField = false;
     this.errorMessage = null;
+    // Resetear la contraseña al cambiar de modo
+    this.password = '';
   }
 
   async continueRegistration() {
@@ -442,5 +508,10 @@ export class AuthComponent {
         bytes[i] = binary.charCodeAt(i);
     }
     return buffer;
+  }
+
+  // Asegurarnos de cancelar cualquier autofill al desmontar el componente o navegar
+  ngOnDestroy() {
+    this.cancelActiveAutofill();
   }
 }

@@ -10,14 +10,19 @@
         <div class="input-group">
           <i class="bi bi-person"></i>
           <input 
-            type="text" 
+            type="email" 
             [(ngModel)]="username" 
             name="username" 
             placeholder="Email" 
-            autocomplete= "username webauthn"/>
+            autocomplete="username webauthn"
+            id="username"
+            (focus)="onUsernameFieldFocus()"
+            (click)="onUsernameFieldFocus()"
+            #usernameInput/>
         </div>
 
-        <div class="input-group" *ngIf="showPasswordField && isInRegistrationMode">
+        <!-- Campo de contraseña para registro -->
+        <div class="input-group" *ngIf="isInRegistrationMode">
           <i class="bi bi-lock"></i>
           <input 
             type="password" 
@@ -26,7 +31,8 @@
             placeholder="Password" />
         </div>
         
-        <div class="input-group" *ngIf="showPasswordField && !isInRegistrationMode">
+        <!-- Campo de contraseña para login (siempre visible en modo login) -->
+        <div class="input-group" *ngIf="!isInRegistrationMode">
           <i class="bi bi-lock"></i>
           <input 
             type="password" 
@@ -39,7 +45,7 @@
         <div class="buttons-container">
           <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
           <button 
-            *ngIf="isInRegistrationMode && showPasswordField"
+            *ngIf="isInRegistrationMode"
             class="btn-direct-auth" 
             (click)="registerWithPassword()"
             [disabled]="isRegistering">
@@ -48,18 +54,7 @@
             <span>{{ isRegistering ? 'Registrando...' : 'Registrar con contraseña' }}</span>
           </button>
           
-          <!-- Si estamos en modo registro y NO se muestra el campo de contraseña -->
-          <button 
-            *ngIf="isInRegistrationMode && !showPasswordField"
-            class="btn-direct-auth" 
-            (click)="continueRegistration()"
-            [disabled]="isAuthenticating">
-            <i *ngIf="!isAuthenticating" class="bi bi-arrow-right-circle"></i>
-            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isAuthenticating ? 'Loading...' : 'Continuar' }}</span>
-          </button>
-          
-          <!-- Si NO estamos en modo registro -->
+          <!-- Si NO estamos en modo registro - Botón para passkey -->
           <button 
             *ngIf="!isInRegistrationMode"
             class="btn-direct-auth" 
@@ -70,9 +65,9 @@
             <span>{{ isAuthenticating ? 'Loading...' : 'Log in with Passkey' }}</span>
           </button>
           
-          <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
+          <!-- Si estamos en modo registro -->
           <button 
-            *ngIf="isInRegistrationMode && showPasswordField"
+            *ngIf="isInRegistrationMode"
             class="btn-auth" 
             (click)="register()"
             [disabled]="isRegistering">
@@ -81,13 +76,13 @@
             <span>{{ isRegistering ? 'Registrando...' : 'Registrar con passkey' }}</span>
           </button>
           
-          <!-- Si NO estamos en modo registro -->
+          <!-- Si NO estamos en modo registro - Botón para login con contraseña -->
           <button 
             *ngIf="!isInRegistrationMode"
             class="btn-auth" 
-            (click)="showPasswordField ? loginConContra() : authenthication()"
+            (click)="loginConContra()"
             [disabled]="isAuthenticating">
-            <i *ngIf="!isAuthenticating" class="bi bi-fingerprint"></i>
+            <i *ngIf="!isAuthenticating" class="bi bi-person-lock"></i>
             <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
             <span>{{ isAuthenticating ? 'Loading...' : 'Log in' }}</span>
           </button>
