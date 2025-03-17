@@ -324,6 +324,9 @@ export class AuthComponent {
  
 
   async register() {
+    // Cancel any active autofill before proceeding with registration
+    this.cancelActiveAutofill();
+    
     let deviceName = 'Passkey_Device';
     const userAgent = navigator.userAgent;
       console.log('User Agent:', userAgent);
@@ -433,6 +436,9 @@ export class AuthComponent {
   }
 
   toggleRegistrationMode() {
+    // Cancel any active autofill when switching modes
+    this.cancelActiveAutofill();
+    
     this.isInRegistrationMode = !this.isInRegistrationMode;
     this.errorMessage = null;
     // Resetear la contraseña al cambiar de modo
@@ -440,6 +446,9 @@ export class AuthComponent {
   }
 
   async continueRegistration() {
+    // Cancel any active autofill before proceeding with registration
+    this.cancelActiveAutofill();
+    
     if (!this.username || !this.validateEmail(this.username)) {
       this.errorMessage = "Por favor, introduce un correo electrónico válido";
       this.hideError();
@@ -451,6 +460,9 @@ export class AuthComponent {
   }
   
   async registerWithPassword() {
+    // Cancel any active autofill before proceeding with registration
+    this.cancelActiveAutofill();
+    
     this.isRegistering = true;
     this.errorMessage = null;
     
