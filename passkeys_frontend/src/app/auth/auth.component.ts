@@ -31,6 +31,13 @@ export class AuthComponent {
   isAutofillInProgress = false; // Nueva variable para controlar el estado del autofill
   private pendingAutofill: Promise<void> | null = null; // Para rastrear la operación de autofill en curso
   private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
+  showPasswordForRegistration: boolean = false; // Nueva propiedad para mostrar/ocultar contraseña en registro
+  
+  // OTP verification properties
+  showOtpVerification: boolean = false; // Para mostrar el campo de verificación OTP
+  otpCode: string = ''; // Almacena el código OTP ingresado por el usuario
+  isVerifyingOtp: boolean = false; // Indica si estamos procesando la verificación
+  pendingUserProfile: any = null; // Almacena temporalmente el perfil de usuario hasta que se verifique el OTP
   
   @ViewChild('usernameInput') usernameInput!: ElementRef;
   
@@ -286,42 +293,95 @@ export class AuthComponent {
     this.isAuthenticating = true;
     this.errorMessage = null;
     try {
-      const response = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
+      const response = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
         username: this.username, 
         password: this.password 
       }).toPromise();
       
       if (response && response.res) {
-        this.authService.login();
-        this.appComponent.isLoggedIn = true;
-        // Aseguramos que pasamos la contraseña al perfil
-        const userProfile = {
-          ...response.userProfile,
-          plainPassword: this.password // Añadimos la contraseña sin hashear
-        };
-        this.profileService.setProfile(userProfile);
-        this.router.navigate(['/profile'], { state: { userProfile } });
+        // Si se requiere verificación OTP
+        if (response.requireOtp) {
+          this.pendingUserProfile = response.userProfile;
+          this.showOtpVerification = true;
+          this.errorMessage = "Por favor, ingresa el código de verificación enviado a tu email/dispositivo";
+          this.hideError();
+        } else {
+          // Si no se requiere OTP, proceder normalmente
+          this.authService.login();
+          this.appComponent.isLoggedIn = true;
+          const userProfile = {
+            ...response.userProfile,
+            plainPassword: this.password // Añadimos la contraseña sin hashear
+          };
+          this.profileService.setProfile(userProfile);
+          this.router.navigate(['/profile'], { state: { userProfile } });
+        }
       } else {
         this.errorMessage = 'Invalid credentials.';
       }
     } catch (error: any) {
       // Manejo de errores
-      console.error('Error en el registro:', error);
+      console.error('Error en el login:', error);
       // Si el error es del backend, puede tener un mensaje
       if (error.status === 400 || error.status === 409 || error.status === 401) {
         this.errorMessage = error.error.message || 'Ocurrió un error inesperado en el servidor.';
       } else {
-        'No se pudo conectar al servidor. Verifica tu conexión.';
+        this.errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
       }
       this.hideError();
-
-    }
-    finally {
+    } finally {
       this.isAuthenticating = false;
-        return new Uint8Array();
     }
   }
- 
+  
+  async verifyAccount() {
+    if (!this.otpCode) {
+      this.errorMessage = "Por favor, ingresa el código de verificación";
+      this.hideError();
+      return;
+    }
+    
+    this.isVerifyingOtp = true;
+    this.errorMessage = null;
+    
+    try {
+      const response = await this.http.post<{ success: boolean, userProfile?: any }>('/auth/verify-otp', {
+        username: this.username,
+        otpCode: this.otpCode
+      }).toPromise();
+      
+      if (response && response.success) {
+        this.showOtpVerification = false;
+        this.authService.login();
+        this.appComponent.isLoggedIn = true;
+        
+        // Combinar el perfil pendiente con cualquier información adicional de la verificación
+        const userProfile = {
+          ...this.pendingUserProfile,
+          ...response.userProfile,
+          plainPassword: this.password // Mantener la contraseña sin hashear
+        };
+        
+        this.profileService.setProfile(userProfile);
+        this.router.navigate(['/profile'], { state: { userProfile } });
+      } else {
+        throw new Error('Código de verificación incorrecto');
+      }
+    } catch (error: any) {
+      console.error('Error en la verificación:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error en la verificación';
+      this.hideError();
+    } finally {
+      this.isVerifyingOtp = false;
+    }
+  }
+  
+  // Método para cancelar la verificación OTP
+  cancelOtpVerification() {
+    this.showOtpVerification = false;
+    this.otpCode = '';
+    this.pendingUserProfile = null;
+  }
 
   async register() {
     // Cancel any active autofill before proceeding with registration
@@ -443,6 +503,24 @@ export class AuthComponent {
     this.errorMessage = null;
     // Resetear la contraseña al cambiar de modo
     this.password = '';
+    // Resetear la visibilidad del campo de contraseña
+    this.showPasswordForRegistration = false;
+  }
+
+  // Nuevo método para alternar la visibilidad del campo de contraseña en registro
+  togglePasswordForRegistration() {
+    this.showPasswordForRegistration = !this.showPasswordForRegistration;
+  }
+
+  // Método para manejar el registro unificado
+  async handleRegistration() {
+    // Si el campo de contraseña está visible, registrar con contraseña
+    if (this.showPasswordForRegistration) {
+      await this.registerWithPassword();
+    } else {
+      // De lo contrario, registrar con passkey
+      await this.register();
+    }
   }
 
   async continueRegistration() {
@@ -455,8 +533,8 @@ export class AuthComponent {
       return;
     }
     
-    // Ahora mostramos el campo de contraseña para el registro
-    this.showPasswordField = true;
+    // Ahora no mostramos automáticamente el campo de contraseña para el registro
+    // El usuario debe elegir explícitamente usar contraseña o passkey
   }
   
   async registerWithPassword() {

@@ -4,96 +4,136 @@
       <form class="login">
         <p class="title">
           <i class="bi bi-key-fill"></i>
-          {{ isInRegistrationMode ? 'Registro de Usuario' : 'Passkeys Login' }}
+          {{ isInRegistrationMode ? 'Registro de Usuario' : showOtpVerification ? 'Verificación de código' : 'Passkeys Login' }}
         </p>
 
-        <div class="input-group">
-          <i class="bi bi-person"></i>
-          <input 
-            type="email" 
-            [(ngModel)]="username" 
-            name="username" 
-            placeholder="Email" 
-            autocomplete="username webauthn"
-            id="username"
-            (focus)="onUsernameFieldFocus()"
-            (click)="onUsernameFieldFocus()"
-            #usernameInput/>
+        <!-- Campos normales de login/registro (ocultos durante verificación OTP) -->
+        <div *ngIf="!showOtpVerification">
+          <div class="input-group">
+            <i class="bi bi-person"></i>
+            <input 
+              type="email" 
+              [(ngModel)]="username" 
+              name="username" 
+              placeholder="Email" 
+              autocomplete="username webauthn"
+              id="username"
+              (focus)="onUsernameFieldFocus()"
+              (click)="onUsernameFieldFocus()"
+              #usernameInput/>
+          </div>
+
+          <!-- Campo de contraseña para registro (solo visible si se activa) -->
+          <div class="input-group" *ngIf="isInRegistrationMode && showPasswordForRegistration">
+            <i class="bi bi-lock"></i>
+            <input 
+              type="password" 
+              [(ngModel)]="password" 
+              name="password" 
+              placeholder="Password" />
+          </div>
+          
+          <!-- Toggle para mostrar/ocultar contraseña en registro -->
+          <div class="password-toggle" *ngIf="isInRegistrationMode">
+            <label class="toggle">
+              <input type="checkbox" [(ngModel)]="showPasswordForRegistration" name="showPassword">
+              <span class="slider"></span>
+            </label>
+            <span>{{ showPasswordForRegistration ? 'Usar contraseña' : 'Usar passkey' }}</span>
+          </div>
+          
+          <!-- Campo de contraseña para login (siempre visible en modo login) -->
+          <div class="input-group" *ngIf="!isInRegistrationMode">
+            <i class="bi bi-lock"></i>
+            <input 
+              type="password" 
+              [(ngModel)]="password" 
+              name="password" 
+              placeholder="Password" />
+          </div>
+
+
+          <div class="buttons-container">
+            <!-- Si estamos en modo registro - Botón unificado para registro -->
+            <button 
+              *ngIf="isInRegistrationMode"
+              class="btn-register" 
+              (click)="handleRegistration()"
+              [disabled]="isRegistering">
+              <i *ngIf="!isRegistering" class="bi" [ngClass]="showPasswordForRegistration ? 'bi-person-plus' : 'bi-key'"></i>
+              <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
+              <span>{{ isRegistering ? 'Registrando...' : showPasswordForRegistration ? 'Registrar con contraseña' : 'Registrar con passkey' }}</span>
+            </button>
+            
+            <!-- Si NO estamos en modo registro - Botón para passkey -->
+            <button 
+              *ngIf="!isInRegistrationMode"
+              class="btn-direct-auth" 
+              (click)="directAuthentication()"
+              [disabled]="isAuthenticating">
+              <i *ngIf="!isAuthenticating" class="bi bi-key"></i>
+              <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+              <span>{{ isAuthenticating ? 'Loading...' : 'Log in with Passkey' }}</span>
+            </button>
+            
+            <!-- Si NO estamos en modo registro - Botón para login con contraseña -->
+            <button 
+              *ngIf="!isInRegistrationMode"
+              class="btn-auth" 
+              (click)="loginConContra()"
+              [disabled]="isAuthenticating">
+              <i *ngIf="!isAuthenticating" class="bi bi-person-lock"></i>
+              <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
+              <span>{{ isAuthenticating ? 'Loading...' : 'Log in con Contraseña' }}</span>
+            </button>
+          </div>
+          
+          <div class="links-container">
+            <a (click)="toggleRegistrationMode()">
+              {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
+            </a>
+            <hr>
+            <a *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
+          </div>
         </div>
 
-        <!-- Campo de contraseña para registro -->
-        <div class="input-group" *ngIf="isInRegistrationMode">
-          <i class="bi bi-lock"></i>
-          <input 
-            type="password" 
-            [(ngModel)]="password" 
-            name="password" 
-            placeholder="Password" />
-        </div>
-        
-        <!-- Campo de contraseña para login (siempre visible en modo login) -->
-        <div class="input-group" *ngIf="!isInRegistrationMode">
-          <i class="bi bi-lock"></i>
-          <input 
-            type="password" 
-            [(ngModel)]="password" 
-            name="password" 
-            placeholder="Password" />
-        </div>
+        <!-- Pantalla de verificación OTP -->
+        <div *ngIf="showOtpVerification">
+          <div class="input-group">
+            <i class="bi bi-shield-lock"></i>
+            <input 
+              type="text" 
+              [(ngModel)]="otpCode" 
+              name="otpCode" 
+              placeholder="Código de verificación" 
+              maxlength="6"
+              autocomplete="one-time-code" />
+          </div>
 
+          <div class="otp-description">
+            <p>Se ha enviado un código de verificación a tu correo/dispositivo.</p>
+            <p>Por favor, ingrésalo para continuar.</p>
+            <p><small>Código de prueba: 123456</small></p>
+          </div>
 
-        <div class="buttons-container">
-          <!-- Si estamos en modo registro y ya se muestra el campo de contraseña -->
-          <button 
-            *ngIf="isInRegistrationMode"
-            class="btn-direct-auth" 
-            (click)="registerWithPassword()"
-            [disabled]="isRegistering">
-            <i *ngIf="!isRegistering" class="bi bi-person-plus"></i>
-            <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isRegistering ? 'Registrando...' : 'Registrar con contraseña' }}</span>
-          </button>
-          
-          <!-- Si NO estamos en modo registro - Botón para passkey -->
-          <button 
-            *ngIf="!isInRegistrationMode"
-            class="btn-direct-auth" 
-            (click)="directAuthentication()"
-            [disabled]="isAuthenticating">
-            <i *ngIf="!isAuthenticating" class="bi bi-key"></i>
-            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isAuthenticating ? 'Loading...' : 'Log in with Passkey' }}</span>
-          </button>
-          
-          <!-- Si estamos en modo registro -->
-          <button 
-            *ngIf="isInRegistrationMode"
-            class="btn-auth" 
-            (click)="register()"
-            [disabled]="isRegistering">
-            <i *ngIf="!isRegistering" class="bi bi-key"></i>
-            <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isRegistering ? 'Registrando...' : 'Registrar con passkey' }}</span>
-          </button>
-          
-          <!-- Si NO estamos en modo registro - Botón para login con contraseña -->
-          <button 
-            *ngIf="!isInRegistrationMode"
-            class="btn-auth" 
-            (click)="loginConContra()"
-            [disabled]="isAuthenticating">
-            <i *ngIf="!isAuthenticating" class="bi bi-person-lock"></i>
-            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isAuthenticating ? 'Loading...' : 'Log in con Contraseña' }}</span>
-          </button>
-        </div>
-        
-        <div class="links-container">
-          <a (click)="toggleRegistrationMode()">
-            {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
-          </a>
-          <hr>
-          <a *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
+          <div class="buttons-container">
+            <button 
+              class="btn-verify" 
+              (click)="verifyAccount()"
+              [disabled]="isVerifyingOtp">
+              <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
+              <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
+              <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
+            </button>
+            
+            <button 
+              class="btn-cancel" 
+              (click)="cancelOtpVerification()"
+              [disabled]="isVerifyingOtp">
+              <i class="bi bi-x-circle"></i>
+              <span>Cancelar</span>
+            </button>
+          </div>
         </div>
         
         <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">

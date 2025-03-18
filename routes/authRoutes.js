@@ -253,13 +253,81 @@ router.post('/login/password', (req, res) => {
             console.log('incorrect password');
             return res.status(401).json({ message: 'Contraseña Incorrecta' });
         }
+        
+        // Password is correct - require OTP verification
+        console.log(`${username} - PASSWORD CORRECT, REQUIRING OTP VERIFICATION`);
+        
+        // Store the verification code (in a real app, this would be sent to the user via email/SMS)
+        // For this demo, we're using a fixed code 123456
+        if (!challenges.otp) {
+            challenges.otp = {};
+        }
+        challenges.otp[username] = {
+            code: '123456', // Fixed code for demo purposes
+            timestamp: Date.now(),
+            attempts: 0
+        };
+        
         res.status(200).send({
             res: true,
-            redirectUrl: '/profile',
+            requireOtp: true,
             userProfile: { username, ...users[username] }
         });
-        console.log(username, 'LOGIN SUCCESSFUL');
     });
+});
+
+// New endpoint to verify OTP
+router.post('/verify-otp', (req, res) => {
+    const { username, otpCode } = req.body;
+    console.log(`[OTP-VERIFY] Starting verification for user: ${username}`);
+    
+    if (!users[username]) {
+        console.log('[OTP-VERIFY] User not found');
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Check if there's a pending OTP verification for this user
+    if (!challenges.otp || !challenges.otp[username]) {
+        console.log('[OTP-VERIFY] No pending OTP verification');
+        return res.status(400).json({ message: 'No hay verificación pendiente' });
+    }
+    
+    const otpData = challenges.otp[username];
+    
+    // Check if OTP has expired (15 minutes)
+    const now = Date.now();
+    if (now - otpData.timestamp > 15 * 60 * 1000) {
+        console.log('[OTP-VERIFY] OTP expired');
+        delete challenges.otp[username];
+        return res.status(400).json({ message: 'El código de verificación ha expirado' });
+    }
+    
+    // Increment attempts counter
+    otpData.attempts++;
+    
+    // Check if too many attempts (max 3)
+    if (otpData.attempts > 3) {
+        console.log('[OTP-VERIFY] Too many attempts');
+        delete challenges.otp[username];
+        return res.status(400).json({ message: 'Demasiados intentos. Inicia sesión nuevamente.' });
+    }
+    
+    // Verify OTP code
+    if (otpCode === otpData.code) {
+        console.log('[OTP-VERIFY] OTP verification successful');
+        // Delete the OTP challenge after successful verification
+        delete challenges.otp[username];
+        
+        return res.status(200).json({
+            success: true,
+            userProfile: { username, ...users[username] }
+        });
+    } else {
+        console.log('[OTP-VERIFY] Incorrect OTP');
+        return res.status(400).json({ 
+            message: `Código incorrecto. Intentos restantes: ${3 - otpData.attempts}`
+        });
+    }
 });
 
 // Endpoint to check if user has a registered passkey
@@ -323,12 +391,23 @@ setInterval(() => {
     const now = Date.now();
     const threshold = 15 * 60 * 1000; // 15 minutos
     
+    // Existing challenge cleanup
     if (challenges['_direct']) {
         const age = now - (challenges['_direct_timestamp'] || 0);
         if (age > threshold) {
             delete challenges['_direct'];
             delete challenges['_direct_timestamp'];
             console.log(`[CLEANUP] Removed stale direct challenge`);
+        }
+    }
+    
+    // OTP cleanup
+    if (challenges.otp) {
+        for (const [username, otpData] of Object.entries(challenges.otp)) {
+            if (now - otpData.timestamp > threshold) {
+                delete challenges.otp[username];
+                console.log(`[CLEANUP] Removed stale OTP for ${username}`);
+            }
         }
     }
 }, 5 * 60 * 1000); // Ejecutar cada 5 minutos
