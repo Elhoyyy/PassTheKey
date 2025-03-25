@@ -31,7 +31,7 @@ export class AuthComponent {
   isAutofillInProgress = false; // Nueva variable para controlar el estado del autofill
   private pendingAutofill: Promise<void> | null = null; // Para rastrear la operación de autofill en curso
   private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
-  showPasswordForRegistration: boolean = false; // Nueva propiedad para mostrar/ocultar contraseña en registro
+  showPasswordForRegistration: boolean = false; // Already false by default, which is what we want
   
   // OTP verification properties
   showOtpVerification: boolean = false; // Para mostrar el campo de verificación OTP
@@ -303,8 +303,6 @@ export class AuthComponent {
         if (response.requireOtp) {
           this.pendingUserProfile = response.userProfile;
           this.showOtpVerification = true;
-          this.errorMessage = "Por favor, ingresa el código de verificación enviado a tu email/dispositivo";
-          this.hideError();
         } else {
           // Si no se requiere OTP, proceder normalmente
           this.authService.login();

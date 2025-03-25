@@ -94,7 +94,6 @@ router.post('/registro/passkey', (req, res) => {
         timeout: 60000,
         attestation: 'none',
         authenticatorSelection: {
-            authenticatorAttachment: 'platform',
             userVerification: 'required',
             residentKey: 'preferred',
             requireResidentKey: false

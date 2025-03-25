@@ -25,17 +25,9 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- Security and Access Section Button -->
-                <div class="text-center mt-4 d-flex justify-content-center">
-                  <button class="btn btn-outline-primary px-4" (click)="toggleSecuritySection()">
-                    <i class="bi" [ngClass]="showSecuritySection ? 'bi-lock-fill' : 'bi-lock'"></i>
-                    Security and Access
-                  </button>
-                </div>
                 
                 <!-- Collapsible Security Section -->
-                <div class="security-section mt-4" *ngIf="showSecuritySection">
+                <div class="security-section mt-4">
                   <!-- Password Change Section -->
                   <div class="password-section">
                     <h5>Change Password</h5>

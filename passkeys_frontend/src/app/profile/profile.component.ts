@@ -42,58 +42,12 @@ export class ProfileComponent implements OnInit {
   originalLastName: string = '';
   
   // New properties for security section
-  showSecuritySection: boolean = false;
   newPassword: string = '';
   confirmPassword: string = '';
   isPasswordLoading: boolean = false;
   passwordError: string | null = null;
   passwordSuccess: string | null = null;
   
-  // Fake banking information
-  bankingInfo = {
-    balance: 12567.89,
-    transfersMade: 24,
-    accountNumber: '1234 5678 9012 3456',
-    cardExpiry: '05/28',
-    contacts: [
-      { name: 'Carlos Rodríguez', accountNumber: 'ES91 2100 0418 4502 0005 1332' },
-      { name: 'María González', accountNumber: 'ES66 0182 1111 2233 4455 6677' },
-      { name: 'Alejandro Martínez', accountNumber: 'ES21 2095 0032 1190 0098 7654' },
-      { name: 'Laura Fernández', accountNumber: 'ES80 2100 5555 6677 8899 0011' }
-    ],
-    recentTransactions: [
-      { 
-        description: 'Salary Deposit', 
-        amount: 1850.00, 
-        date: new Date(2023, 10, 28), 
-        type: 'credit' 
-      },
-      { 
-        description: 'Supermarket Purchase', 
-        amount: 85.32, 
-        date: new Date(2023, 10, 29), 
-        type: 'debit' 
-      },
-      { 
-        description: 'Restaurant Payment', 
-        amount: 42.50, 
-        date: new Date(2023, 10, 30), 
-        type: 'debit' 
-      },
-      { 
-        description: 'Transfer from María', 
-        amount: 250.00, 
-        date: new Date(2023, 11, 1), 
-        type: 'credit' 
-      },
-      { 
-        description: 'Electricity Bill', 
-        amount: 68.75, 
-        date: new Date(2023, 11, 2), 
-        type: 'debit' 
-      }
-    ]
-  };
 
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
   constructor(
@@ -149,14 +103,6 @@ export class ProfileComponent implements OnInit {
     this.originalEmail = this.email;
   }
 
-  // Toggle security section visibility
-  toggleSecuritySection() {
-    this.showSecuritySection = !this.showSecuritySection;
-    // Reset password fields when hiding the section
-    if (!this.showSecuritySection) {
-      this.resetPasswordFields();
-    }
-  }
 
   // Reset password form fields and messages
   resetPasswordFields() {

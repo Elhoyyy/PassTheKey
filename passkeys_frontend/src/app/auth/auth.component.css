@@ -110,16 +110,22 @@ body {
 
 .buttons-container {
   display: flex;
-  flex-direction: row;
+  flex-direction: column; /* Changed from row to column */
   gap: 15px;
   margin-top: 20px;
 }
 
-.btn-direct-auth, .btn-auth {
-  flex: 1;
-  padding: 10px;
+.btn-direct-auth, .btn-auth, .btn-register {
+  width: 100%;
+  padding: 12px; /* Slightly increased padding for better touch targets */
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500; /* Make text slightly bolder */
 }
-
 
 .btn-auth {
   background: #2196F3;
@@ -233,7 +239,7 @@ a, p{
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: #2196F3;
   transition: .4s;
   border-radius: 24px;
 }
@@ -243,7 +249,7 @@ a, p{
   content: "";
   height: 18px;
   width: 18px;
-  left: 3px;
+  left: 27px; /* Changed from 3px to 27px to start at the right */
   bottom: 3px;
   background-color: white;
   transition: .4s;
@@ -251,15 +257,15 @@ a, p{
 }
 
 input:checked + .slider {
-  background-color: #2196F3;
+  background-color: #ccc;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
+  box-shadow: 0 0 1px #ccc;
 }
 
 input:checked + .slider:before {
-  transform: translateX(24px);
+  transform: translateX(-24px); /* Changed from translateX(24px) to translateX(-24px) to move left when checked */
 }
 
 /* Estilo para el botón de registro unificado */
