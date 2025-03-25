@@ -141,13 +141,18 @@ router.post('/login/passkey/fin', async (req, res) => {
     console.log(`[LOGIN-VERIFY] RP ID: ${rpId}`);
     console.log(`[LOGIN-VERIFY] Credential ID: ${credentialId}`);
     console.log(`[LOGIN-VERIFY] isConditional: ${isConditional}`);
+    console.log(`[LOGIN-VERIFY] Username provided: ${username || 'None'}`);
     
     try {
-        // Si no hay username, buscar por credentialId
-        if (!username) {
+        // Si hay username, usamos el challenge específico del usuario
+        let expectedChallenge;
+        if (username) {
+            expectedChallenge = challenges[username];
+            console.log(`[LOGIN-VERIFY] Using user-specific challenge for ${username}: ${expectedChallenge}`);
+        } else {
+            // Si no hay username, buscar por credentialId usando el challenge global
             console.log('[LOGIN-VERIFY] No username provided, looking up by credential ID');
-            
-            const expectedChallenge = challenges['_direct'];
+            expectedChallenge = challenges['_direct'];
             
             if (!expectedChallenge) {
                 console.log('[LOGIN-VERIFY] No challenge found');
@@ -196,9 +201,11 @@ router.post('/login/passkey/fin', async (req, res) => {
         const device = users[username].devices[deviceIndex];
         console.log(`[LOGIN-VERIFY] Found matching device:`, device.name);
 
-        // Siempre usamos el challenge de _direct para la verificación
-        const expectedChallenge = challenges['_direct'];
-        console.log(`[LOGIN-VERIFY] Using challenge: ${expectedChallenge}`);
+        // Usar el challenge adecuado para la verificación
+        if (!expectedChallenge) {
+            console.log('[LOGIN-VERIFY] No challenge found for this verification');
+            return res.status(400).json({ message: 'Sesión inválida o expirada' });
+        }
 
         const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
             expectedChallenge: expectedChallenge,
@@ -341,6 +348,67 @@ router.post('/login/check-passkey', (req, res) => {
     res.status(200).json({ hasPasskey });
 });
 
+// Endpoint to check if user exists and has passkeys
+router.post('/check-user-passkey', (req, res) => {
+    const { username } = req.body;
+    console.log(`[CHECK] Checking if user ${username} exists and has passkeys`);
+    
+    if (!username) {
+        return res.status(400).json({ message: 'Usuario requerido' });
+    }
+    
+    const exists = !!users[username];
+    const hasPasskey = exists && Array.isArray(users[username].credential) && users[username].credential.length > 0;
+    
+    console.log(`[CHECK] User exists: ${exists}, has passkey: ${hasPasskey}`);
+    
+    res.status(200).json({ exists, hasPasskey });
+});
+
+// Endpoint for login with passkey by email
+router.post('/login/passkey/by-email', (req, res) => {
+    const rpId = req.hostname;
+    const { username } = req.body;
+    
+    console.log('=== START EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
+    console.log(`[EMAIL-PASSKEY] User: ${username}`);
+    
+    if (!username || !users[username]) {
+        console.log('[EMAIL-PASSKEY] User not found');
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    if (!users[username].credential || users[username].credential.length === 0) {
+        console.log('[EMAIL-PASSKEY] No passkeys for this user');
+        return res.status(400).json({ message: 'No hay passkeys registradas para este usuario' });
+    }
+    
+    // Generate a new challenge
+    let challenge = getNewChallenge();
+    console.log(`[EMAIL-PASSKEY] Generated challenge: ${challenge}`);
+    challenges[username] = challenge;
+    
+    // Collect all credentials for this user
+    const userCredentials = users[username].credential.map(cred => ({
+        type: 'public-key',
+        id: cred.id,
+        transports: ['internal', 'ble', 'nfc', 'usb'],
+    }));
+    
+    console.log(`[EMAIL-PASSKEY] Found ${userCredentials.length} credentials for user ${username}`);
+    
+    res.json({
+        challenge: challenge,
+        rpId: rpId,
+        allowCredentials: userCredentials,
+        timeout: 60000,
+        userVerification: 'preferred'
+    });
+    
+    console.log(`[EMAIL-PASSKEY] ✅ Challenge generation complete`);
+    console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
+});
+
 // Endpoint for user registration with password
 router.post('/registro/usuario', (req, res) => {
     let { username, password } = req.body;
@@ -376,6 +444,8 @@ router.post('/registro/usuario', (req, res) => {
             credential: [] // Añadimos un array vacío para evitar errores
         };
         console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA`);
+        
+        // Ya estamos preparados para la verificación OTP cuando el usuario inicie sesión
         res.status(200).json({ success: true, message: 'Usuario registrado correctamente' });
     });
 });

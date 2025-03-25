@@ -78,12 +78,14 @@ export class AuthComponent {
 
   // Método para cancelar cualquier operación de autofill activa
   cancelActiveAutofill() {
-    if (this.isAutofillInProgress && this.autofillAbortController) {
+    if (this.autofillAbortController) {
       console.log('[AUTOFILL] Cancelling active autofill operation');
       this.autofillAbortController.abort();
-      this.isAutofillInProgress = false;
       this.autofillAbortController = null;
     }
+    
+    // Siempre establecer isAutofillInProgress a false al cancelar
+    this.isAutofillInProgress = false;
   }
 
   // Método para iniciar el proceso de autocompletado WebAuthn
@@ -156,6 +158,9 @@ export class AuthComponent {
     // Cancelar cualquier operación activa de autofill
     this.cancelActiveAutofill();
     
+    // Asegurarnos de restablecer el estado
+    this.isAutofillInProgress = false;
+    
     // Pequeña pausa para asegurar que se liberan los recursos
     await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -165,6 +170,11 @@ export class AuthComponent {
 
   // Método unificado para autenticación con passkey (directa o autofill)
   async authenticateWithPasskey(isConditionalMedation = false) {
+    // Cancelar cualquier autofill activo para evitar conflictos
+    if (!isConditionalMedation) {
+      this.cancelActiveAutofill();
+    }
+    
     const operationType = isConditionalMedation ? 'AUTOFILL' : 'DIRECT-AUTH';
     console.log(`[${operationType}] Starting authentication process`);
     
@@ -290,8 +300,22 @@ export class AuthComponent {
   }
   
   async loginConContra() {
+    // Si aún no estamos mostrando el campo de contraseña
+    if (!this.showLoginPasswordField) {
+      await this.checkUserAndAuthenticate();
+      return;
+    }
+    
+    // Si ya estamos mostrando el campo de contraseña, continuar con el login normal
     this.isAuthenticating = true;
     this.errorMessage = null;
+    
+    // Si la contraseña está vacía, intentamos autenticar con passkey por email
+    if (!this.password && this.username) {
+      await this.loginWithPasskeyByEmail();
+      return;
+    }
+    
     try {
       const response = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
         username: this.username, 
@@ -332,6 +356,125 @@ export class AuthComponent {
     }
   }
   
+  // Nueva función para iniciar sesión con passkey usando email
+  async loginWithPasskeyByEmail() {
+    // Cancelar cualquier autofill activo antes de iniciar la autenticación por email
+    this.cancelActiveAutofill();
+    
+    if (!this.username) {
+      this.errorMessage = "Por favor, ingresa tu correo electrónico";
+      this.hideError();
+      this.isAuthenticating = false;
+      return;
+    }
+    
+    this.errorMessage = null;
+    
+    try {
+      // Verificar si el usuario existe y tiene passkeys registradas
+      const checkResponse = await this.http.post<{ exists: boolean, hasPasskey: boolean }>('/auth/check-user-passkey', { 
+        username: this.username
+      }).toPromise();
+      
+      if (!checkResponse || !checkResponse.exists) {
+        this.errorMessage = "Usuario no encontrado";
+        this.hideError();
+        return;
+      }
+      
+      if (!checkResponse.hasPasskey) {
+        this.errorMessage = "No tienes passkeys registradas. Utiliza tu contraseña.";
+        this.hideError();
+        return;
+      }
+      
+      // Obtener opciones de autenticación para este usuario específico
+      const options = await this.http.post<PublicKeyCredentialRequestOptions>(
+        '/auth/login/passkey/by-email',
+        { username: this.username }
+      ).toPromise();
+      
+      console.log(`[EMAIL-PASSKEY] Received options:`, options);
+      
+      if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
+        throw new Error('No credentials available');
+      }
+      
+      // Convert challenge and credential IDs to ArrayBuffer
+      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        rpId: options.rpId,
+        allowCredentials: options.allowCredentials.map(credential => ({
+          type: 'public-key',
+          id: this.base64URLToBuffer(credential.id as unknown as string),
+          transports: credential.transports
+        })),
+        timeout: options.timeout,
+        userVerification: options.userVerification
+      };
+      
+      console.log(`[EMAIL-PASSKEY] Processed options:`, publicKeyCredentialRequestOptions);
+      
+      // Configurar la solicitud de credenciales
+      const getCredentialOptions: CredentialRequestOptions = {
+        publicKey: publicKeyCredentialRequestOptions
+      };
+      
+      console.log(`[EMAIL-PASSKEY] Calling navigator.credentials.get with options:`, getCredentialOptions);
+      
+      // Esperar a que el usuario seleccione una credencial
+      const assertion = await navigator.credentials.get(getCredentialOptions) as PublicKeyCredential;
+      
+      // Si llegamos aquí es que el usuario seleccionó una credencial
+      console.log(`[EMAIL-PASSKEY] Received assertion:`, assertion);
+      
+      // Convertir respuesta para enviar al servidor
+      const authData = {
+        id: assertion.id,
+        rawId: this.bufferToBase64URL(assertion.rawId),
+        response: {
+          authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+          clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+          signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+          userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+            this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+            null
+        },
+        type: assertion.type
+      };
+      
+      // Enviar al servidor para verificación
+      const loginResponse = await this.http.post<{
+        res: boolean,
+        redirectUrl?: string,
+        userProfile?: any
+      }>('/auth/login/passkey/fin', {
+        data: authData,
+        username: this.username,
+        isConditional: false
+      }).toPromise();
+      
+      if (loginResponse?.res) {
+        console.log(`[EMAIL-PASSKEY] Success:`, loginResponse);
+        this.authService.login();
+        this.appComponent.isLoggedIn = true;
+        this.profileService.setProfile(loginResponse.userProfile);
+        
+        this.router.navigate(['/profile'], { 
+          state: { userProfile: loginResponse.userProfile }
+        });
+      } else {
+        throw new Error('Error en la respuesta del servidor');
+      }
+    } catch (error: any) {
+      console.error(`[EMAIL-PASSKEY] Error:`, error);
+      this.errorMessage = error.error?.message || error.message || 'Error durante el inicio de sesión';
+      this.hideError();
+    } finally {
+      this.isAuthenticating = false;
+    }
+  }
+
   async verifyAccount() {
     if (!this.otpCode) {
       this.errorMessage = "Por favor, ingresa el código de verificación";
@@ -499,10 +642,10 @@ export class AuthComponent {
     
     this.isInRegistrationMode = !this.isInRegistrationMode;
     this.errorMessage = null;
-    // Resetear la contraseña al cambiar de modo
+    // Resetear varios campos al cambiar de modo
     this.password = '';
-    // Resetear la visibilidad del campo de contraseña
     this.showPasswordForRegistration = false;
+    this.showLoginPasswordField = false; // Resetear la visibilidad del campo de contraseña para login
   }
 
   // Nuevo método para alternar la visibilidad del campo de contraseña en registro
@@ -554,9 +697,46 @@ export class AuthComponent {
       }).toPromise();
       
       if (response && response.success) {
-        this.errorMessage = 'Registro exitoso! Iniciando sesión...';
-        // Después del registro exitoso, iniciar sesión automáticamente
-        setTimeout(() => this.loginConContra(), 1500);
+        // Modificamos esta parte para autenticar directamente sin mensaje intermedio
+        console.log('Registro exitoso, iniciando sesión automáticamente');
+        
+        // Guardar la contraseña para usarla en la autenticación
+        const savedPassword = this.password;
+        
+        // Iniciar sesión directamente sin mostrar mensaje
+        try {
+          const loginResponse = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
+            username: this.username, 
+            password: savedPassword
+          }).toPromise();
+          
+          if (loginResponse && loginResponse.res) {
+            // Si se requiere verificación OTP
+            if (loginResponse.requireOtp) {
+              this.pendingUserProfile = loginResponse.userProfile;
+              this.showOtpVerification = true;
+              this.isRegistering = false;
+            } else {
+              // Si no se requiere OTP, proceder normalmente
+              this.authService.login();
+              this.appComponent.isLoggedIn = true;
+              const userProfile = {
+                ...loginResponse.userProfile,
+                plainPassword: savedPassword // Añadimos la contraseña sin hashear
+              };
+              this.profileService.setProfile(userProfile);
+              this.router.navigate(['/profile'], { state: { userProfile } });
+            }
+          } else {
+            throw new Error('Error en el inicio de sesión automático');
+          }
+        } catch (loginError) {
+          console.error('Error en el inicio de sesión automático:', loginError);
+          this.errorMessage = 'Registro exitoso, pero no se pudo iniciar sesión automáticamente. Por favor, inicie sesión manualmente.';
+          this.hideError();
+          this.isRegistering = false;
+          this.toggleRegistrationMode(); // Cambiar a modo login
+        }
       } else {
         throw new Error('Error en el registro');
       }
@@ -564,7 +744,6 @@ export class AuthComponent {
       console.error('Error en el registro con contraseña:', error);
       this.errorMessage = error.error?.message || error.message || 'Error en el registro';
       this.hideError();
-    } finally {
       this.isRegistering = false;
     }
   }
@@ -601,5 +780,58 @@ export class AuthComponent {
   // Asegurarnos de cancelar cualquier autofill al desmontar el componente o navegar
   ngOnDestroy() {
     this.cancelActiveAutofill();
+  }
+
+  // Nueva propiedad para controlar la visibilidad del campo de contraseña
+  showLoginPasswordField: boolean = false;
+  // Nueva propiedad para controlar el estado del flujo de autenticación
+  isCheckingPasskeys: boolean = false;
+
+  // Nuevo método para manejar el flujo inicial de autenticación
+  async checkUserAndAuthenticate() {
+    if (!this.username) {
+      this.errorMessage = "Por favor, ingresa tu correo electrónico";
+      this.hideError();
+      return;
+    }
+    
+    if (!this.validateEmail(this.username)) {
+      this.errorMessage = "Por favor, ingresa un email válido";
+      this.hideError();
+      return;
+    }
+    
+    this.isCheckingPasskeys = true;
+    this.errorMessage = null;
+    
+    try {
+      // Verificar si el usuario existe y tiene passkeys
+      const checkResponse = await this.http.post<{ exists: boolean, hasPasskey: boolean }>('/auth/check-user-passkey', { 
+        username: this.username
+      }).toPromise();
+      
+      if (!checkResponse || !checkResponse.exists) {
+        this.errorMessage = "Usuario no encontrado";
+        this.hideError();
+        this.isCheckingPasskeys = false;
+        return;
+      }
+      
+      // Si el usuario tiene passkeys, autenticar directamente con passkey
+      if (checkResponse.hasPasskey) {
+        console.log('Usuario tiene passkeys, autenticando...');
+        await this.loginWithPasskeyByEmail();
+      } else {
+        // Si no tiene passkeys, mostrar el campo de contraseña
+        console.log('Usuario no tiene passkeys, mostrando campo de contraseña');
+        this.showLoginPasswordField = true;
+      }
+    } catch (error: any) {
+      console.error('Error verificando usuario:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error al verificar usuario';
+      this.hideError();
+    } finally {
+      this.isCheckingPasskeys = false;
+    }
   }
 }
