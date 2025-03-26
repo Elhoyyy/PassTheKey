@@ -32,15 +32,15 @@ export class AuthComponent {
   private pendingAutofill: Promise<void> | null = null; // Para rastrear la operación de autofill en curso
   private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
   showPasswordForRegistration: boolean = false; // Already false by default, which is what we want
-  
   // OTP verification properties
   showOtpVerification: boolean = false; // Para mostrar el campo de verificación OTP
   otpCode: string = ''; // Almacena el código OTP ingresado por el usuario
   isVerifyingOtp: boolean = false; // Indica si estamos procesando la verificación
   pendingUserProfile: any = null; // Almacena temporalmente el perfil de usuario hasta que se verifique el OTP
-  
-  @ViewChild('usernameInput') usernameInput!: ElementRef;
-  
+  // Nueva propiedad para controlar la visibilidad del campo de contraseña
+  showLoginPasswordField: boolean = false;
+  // Nueva propiedad para controlar el estado del flujo de autenticación
+  isCheckingPasskeys: boolean = false;
   constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
   
   // Método para manejar el evento de focus en el campo de username
@@ -197,19 +197,9 @@ export class AuthComponent {
         throw new Error('No credentials available');
       }
   
-      // Convert challenge and credential IDs to ArrayBuffer
-      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-        rpId: options.rpId,
-        allowCredentials: options.allowCredentials.map(credential => ({
-          type: 'public-key',
-          id: this.base64URLToBuffer(credential.id as unknown as string),
-          transports: credential.transports
-        })),
-        timeout: options.timeout,
-        userVerification: options.userVerification
-      };
-  
+      // Instead of repeating the same conversion logic
+      const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(options);
+        
       console.log(`[${operationType}] Processed options:`, publicKeyCredentialRequestOptions);
   
       // Configurar la solicitud de credenciales según el tipo
@@ -310,12 +300,6 @@ export class AuthComponent {
     this.isAuthenticating = true;
     this.errorMessage = null;
     
-    // Si la contraseña está vacía, intentamos autenticar con passkey por email
-    if (!this.password && this.username) {
-      await this.loginWithPasskeyByEmail();
-      return;
-    }
-    
     try {
       const response = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
         username: this.username, 
@@ -401,18 +385,9 @@ export class AuthComponent {
       }
       
       // Convert challenge and credential IDs to ArrayBuffer
-      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-        rpId: options.rpId,
-        allowCredentials: options.allowCredentials.map(credential => ({
-          type: 'public-key',
-          id: this.base64URLToBuffer(credential.id as unknown as string),
-          transports: credential.transports
-        })),
-        timeout: options.timeout,
-        userVerification: options.userVerification
-      };
-      
+      // Instead of repeating the same conversion logic
+      const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(options);
+            
       console.log(`[EMAIL-PASSKEY] Processed options:`, publicKeyCredentialRequestOptions);
       
       // Configurar la solicitud de credenciales
@@ -486,7 +461,7 @@ export class AuthComponent {
     this.errorMessage = null;
     
     try {
-      const response = await this.http.post<{ success: boolean, userProfile?: any }>('/auth/verify-otp', {
+      const response = await this.http.post<{ success: boolean, userProfile?: any }>('/passkey/verify-otp', {
         username: this.username,
         otpCode: this.otpCode
       }).toPromise();
@@ -517,6 +492,19 @@ export class AuthComponent {
     }
   }
   
+  private processCredentialRequestOptions(options: any): PublicKeyCredentialRequestOptions {
+    return {
+      challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+      rpId: options.rpId,
+      allowCredentials: options.allowCredentials.map((credential: any) => ({
+        type: 'public-key',
+        id: this.base64URLToBuffer(credential.id as unknown as string),
+        transports: credential.transports
+      })),
+      timeout: options.timeout,
+      userVerification: options.userVerification
+    };
+  }
   // Método para cancelar la verificación OTP
   cancelOtpVerification() {
     this.showOtpVerification = false;
@@ -691,7 +679,7 @@ export class AuthComponent {
         throw new Error('La contraseña debe tener al menos 4 caracteres');
       }
       
-      const response = await this.http.post<any>('/auth/registro/usuario', {
+      const response = await this.http.post<any>('/passkey/registro/usuario', {
         username: this.username,
         password: this.password
       }).toPromise();
@@ -781,11 +769,6 @@ export class AuthComponent {
   ngOnDestroy() {
     this.cancelActiveAutofill();
   }
-
-  // Nueva propiedad para controlar la visibilidad del campo de contraseña
-  showLoginPasswordField: boolean = false;
-  // Nueva propiedad para controlar el estado del flujo de autenticación
-  isCheckingPasskeys: boolean = false;
 
   // Nuevo método para manejar el flujo inicial de autenticación
   async checkUserAndAuthenticate() {

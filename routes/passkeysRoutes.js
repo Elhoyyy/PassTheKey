@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const router = express.Router();
 const { users, challenges, getNewChallenge, convertChallenge, expectedOrigin } = require('../data');
 const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
@@ -114,6 +115,46 @@ router.post('/registro/passkey', (req, res) => {
     res.json(response);
 });
 
+// Endpoint for user registration with password
+router.post('/registro/usuario', (req, res) => {
+    let { username, password } = req.body;
+    
+    if (!username || !password) {
+        return res.status(400).json({ message: 'El nombre de usuario y la contraseña son obligatorios.' });
+    }
+    
+    if (!isValidEmail(username)) {
+        console.log('Email inválido');
+        return res.status(400).json({ message: 'Email inválido' });
+    }
+    
+    if (password.length < 4) {
+        console.log('Contraseña muy corta');
+        return res.status(400).json({ message: 'La contraseña debe tener al menos 4 caracteres' });
+    }
+
+    if (users[username]) {
+        console.log('Usuario ya registrado');
+        return res.status(409).json({ message: 'El usuario ya está registrado' });
+    }
+
+    bcrypt.hash(password, 10, (err, hash) => {
+        if (err) {
+            return res.status(500).json({ message: 'Error al encriptar la contraseña' });
+        }
+        // Guardar usuario con contraseña
+        users[username] = { 
+            password: hash,
+            email: username,
+            devices: [],
+            credential: [] // Añadimos un array vacío para evitar errores
+        };
+        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA`);
+        
+        // Ya estamos preparados para la verificación OTP cuando el usuario inicie sesión
+        res.status(200).json({ success: true, message: 'Usuario registrado correctamente' });
+    });
+});
 
 router.post('/registro/passkey/fin', async (req, res) => {
     console.log('=== START REGISTRATION VERIFICATION ===');
@@ -253,4 +294,59 @@ router.post('/registro/passkey_first/fin', async (req, res) => {
 function isValidEmail(email){
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+
+// New endpoint to verify OTP
+router.post('/verify-otp', (req, res) => {
+    const { username, otpCode } = req.body;
+    console.log(`[OTP-VERIFY] Starting verification for user: ${username}`);
+    
+    if (!users[username]) {
+        console.log('[OTP-VERIFY] User not found');
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Check if there's a pending OTP verification for this user
+    if (!challenges.otp || !challenges.otp[username]) {
+        console.log('[OTP-VERIFY] No pending OTP verification');
+        return res.status(400).json({ message: 'No hay verificación pendiente' });
+    }
+    
+    const otpData = challenges.otp[username];
+    
+    // Check if OTP has expired (15 minutes)
+    const now = Date.now();
+    if (now - otpData.timestamp > 15 * 60 * 1000) {
+        console.log('[OTP-VERIFY] OTP expired');
+        delete challenges.otp[username];
+        return res.status(400).json({ message: 'El código de verificación ha expirado' });
+    }
+    
+    // Increment attempts counter
+    otpData.attempts++;
+    
+    // Check if too many attempts (max 3)
+    if (otpData.attempts > 3) {
+        console.log('[OTP-VERIFY] Too many attempts');
+        delete challenges.otp[username];
+        return res.status(400).json({ message: 'Demasiados intentos. Inicia sesión nuevamente.' });
+    }
+    
+    // Verify OTP code
+    if (otpCode === otpData.code) {
+        console.log('[OTP-VERIFY] OTP verification successful');
+        // Delete the OTP challenge after successful verification
+        delete challenges.otp[username];
+        
+        return res.status(200).json({
+            success: true,
+            userProfile: { username, ...users[username] }
+        });
+    } else {
+        console.log('[OTP-VERIFY] Incorrect OTP');
+        return res.status(400).json({ 
+            message: `Código incorrecto. Intentos restantes: ${3 - otpData.attempts}`
+        });
+    }
+});
 module.exports = router;

@@ -91,3 +91,148 @@ Server started on port 3000
 
  Tras crear las passkeys cada vez que volvamos a la página de inicio de sesión simplemente tendremos que indicar el usuario, si detecta que tienes passkey solo tienes que poner la huella digital entre otras. 
 
+## Diferencias entre los tres tipos de login con passkeys
+
+Esta aplicación implementa tres flujos distintos de autenticación con passkeys:
+
+### 1. Login por Email (Username-first)
+
+```javascript
+router.post('/login/passkey/by-email', (req, res) => {
+    const rpId = req.hostname;
+    const { username } = req.body;
+    
+    // Genera un challenge específico para este usuario
+    let challenge = getNewChallenge();
+    challenges[username] = challenge;
+    
+    // Solo envía las credenciales de este usuario específico
+    const userCredentials = users[username].credential.map(cred => ({
+        type: 'public-key',
+        id: cred.id,
+        transports: ['internal', 'ble', 'nfc', 'usb'],
+    }));
+    
+    res.json({
+        challenge: challenge,
+        rpId: rpId,
+        allowCredentials: userCredentials,
+        timeout: 60000,
+        userVerification: 'preferred'
+    });
+});
+```
+
+- **Flujo de usuario:** El usuario introduce primero su email y luego usa la passkey
+- **Características técnicas:**
+  - Usa un desafío específico para cada usuario (`challenges[username]`)
+  - Envía solo las credenciales asociadas a ese usuario
+  - Timeout: 60 segundos
+- **Ventajas:** Mayor seguridad al exponer solo las credenciales del usuario correcto
+- **Caso de uso:** Usuario que conoce su email y quiere usar passkey en lugar de contraseña
+
+### 2. Direct-Login (Login directo)
+```javascript
+router.post('/login/passkey/direct', (req, res) => {
+    const rpId = req.hostname;
+    const isConditional = req.body.isConditional === true;
+    // isConditional = false para Direct Login
+    
+    // Usa un challenge global compartido
+    if (!challenges['_direct']) {
+        challenges['_direct'] = getNewChallenge();
+        challenges['_direct_timestamp'] = Date.now();
+    }
+    const challenge = challenges['_direct'];
+    
+    // Envía TODAS las credenciales de TODOS los usuarios
+    const allCredentials = [];
+    for (const [username, userData] of Object.entries(users)) {
+        if (userData.credential && userData.credential.length > 0) {
+            userData.credential.forEach(cred => {
+                if (cred && cred.id) {
+                    allCredentials.push({
+                        type: 'public-key',
+                        id: cred.id,
+                        transports: ['internal', 'ble', 'nfc', 'usb'],
+                    });
+                }
+            });
+        }
+    }
+    
+    // Timeout estándar para direct login
+    const timeout = 60000; // (isConditional ? 120000 : 60000)
+    
+    res.json({
+        challenge: challenge,
+        rpId: rpId,
+        allowCredentials: allCredentials,
+        timeout: timeout,
+        userVerification: 'preferred'
+    });
+});
+```
+
+- **Flujo de usuario:** El usuario hace clic en un botón "Iniciar sesión con passkey"
+- **Características técnicas:**
+  - Usa un desafío global compartido (`challenges['_direct']`)
+  - Envía todas las credenciales de todos los usuarios
+  - Timeout: 60 segundos
+  - `isConditional = false`
+- **Ventajas:** Experiencia de usuario simplificada, sin necesidad de introducir email
+- **Caso de uso:** Inicio de sesión rápido con un solo clic para usuarios frecuentes
+
+### 3. Autofill (Autocompletado)
+```javascript 
+// Mismo endpoint que Direct Login pero con isConditional=true
+router.post('/login/passkey/direct', (req, res) => {
+    const rpId = req.hostname;
+    const isConditional = req.body.isConditional === true;
+    // isConditional = true para Autofill
+    
+    // Usa el mismo challenge global compartido
+    if (!challenges['_direct']) {
+        challenges['_direct'] = getNewChallenge();
+        challenges['_direct_timestamp'] = Date.now();
+    }
+    const challenge = challenges['_direct'];
+    
+    // También envía TODAS las credenciales de TODOS los usuarios
+    const allCredentials = [];
+    // ...mismo código para recopilar credenciales...
+    
+    // Timeout extendido específico para autofill
+    const timeout = 120000; // (isConditional ? 120000 : 60000)
+    
+    res.json({
+        challenge: challenge,
+        rpId: rpId,
+        allowCredentials: allCredentials,
+        timeout: timeout,
+        userVerification: 'preferred'
+    });
+});
+```
+
+- **Flujo de usuario:** El navegador detecta un formulario de login y ofrece completarlo automáticamente
+- **Características técnicas:**
+  - Usa el mismo desafío global que Direct-Login
+  - Envía todas las credenciales de todos los usuarios
+  - Timeout: 120 segundos (mayor para dar tiempo a la interacción)
+  - `isConditional = true`
+- **Ventajas:** Experiencia "mágica" donde el navegador inicia el proceso automáticamente
+- **Caso de uso:** Usuario que visita la página y recibe sugerencia automática de su navegador
+
+### Comparativa técnica
+
+| Característica | Login por Email | Direct-Login | Autofill |
+|----------------|----------------|--------------|----------|
+| Desafío | Específico por usuario | Global compartido | Global compartido |
+| Credenciales | Solo del usuario | Todas | Todas |
+| Timeout | 60 segundos | 60 segundos | 120 segundos |
+| Iniciado por | Usuario (email) | Usuario (botón) | Navegador |
+| Necesita username | Sí | No | No |
+| isConditional | No aplica | false | true |
+
+Todos los métodos convergen en el mismo endpoint final (`/login/passkey/fin`) que identifica al usuario según la credencial utilizada y completa la verificación.
