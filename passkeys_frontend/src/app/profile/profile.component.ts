@@ -47,6 +47,9 @@ export class ProfileComponent implements OnInit {
   isPasswordLoading: boolean = false;
   passwordError: string | null = null;
   passwordSuccess: string | null = null;
+
+  newDeviceName: string = '';
+  editingDeviceIndex: number = -1; // Track which device is being edited
   
 
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
@@ -131,6 +134,7 @@ export class ProfileComponent implements OnInit {
       return;
     }
     
+  
     this.isPasswordLoading = true;
     
     try {
@@ -151,6 +155,43 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  async updateDeviceName(index: number, newName: string) {
+    this.isLoading = true;
+    this.errorMessage = null;
+
+    try {
+      await this.http.post('/profile/update-device-name', {
+        username: this.username,
+        deviceIndex: index,
+        newDeviceName: newName
+      }).toPromise();
+      
+      // Update the device name locally
+      this.devices[index].name = newName;
+      this.editingDeviceIndex = -1; // Exit editing mode
+      
+    } catch (error: any) {
+      console.error('Error updating device name:', error);
+      this.errorMessage = 'Error updating device name. Please try again';
+      this.hideError();
+    }
+    finally {
+      this.isLoading = false;
+    }
+  }
+  
+  // Start editing a device name
+  startEditingDevice(index: number) {
+    this.editingDeviceIndex = index;
+    this.newDeviceName = this.devices[index].name;
+  }
+  
+  // Cancel editing
+  cancelEditingDevice() {
+    this.editingDeviceIndex = -1;
+    this.newDeviceName = '';
+  }
+
   // Método para cerrar sesión y redirigir al usuario a la ruta de autenticación
   logout() {
     this.isEditing = false;
@@ -164,8 +205,10 @@ export class ProfileComponent implements OnInit {
     this.errorMessage = null;
     this.isLoading = true;
     try {
-      const publicKey = await this.http.post('/passkey/registro/passkey', { username: this.username }).toPromise();
-      const fidoData = await fido2Create(publicKey, this.username);
+      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
+        '/passkey/registro/passkey', 
+        { username: this.username }
+      ).toPromise();
       let deviceName = 'Passkey_Device';
       const userAgent = navigator.userAgent;
       console.log('User Agent:', userAgent);
@@ -189,8 +232,8 @@ export class ProfileComponent implements OnInit {
         minute: '2-digit',
         hour12: false
       });
-      const response = await this.http.post<any>('/passkey/registro/passkey/fin', { 
-        ...fidoData, 
+      const response = await this.http.post<any>('/passkey/registro/passkey/fin', {
+        ...options,
         username: this.username, 
         deviceName, 
         device_creationDate
@@ -221,9 +264,11 @@ export class ProfileComponent implements OnInit {
             this.devices.splice(index, 1); // Eliminar el dispositivo específico
         }
     } catch (error: any) {
-        console.error('Error borrando el dispositivo:', error);
-        this.errorMessage = 'Error borrando el dispositivo. Porfavor inténtelo de nuevo.';
+      if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error eliminando el dispositivo';
         this.hideError();
+      } 
+      this.hideError();
     }
     finally {
         this.isLoading = false;

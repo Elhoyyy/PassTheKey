@@ -142,6 +142,7 @@ export class AuthComponent {
           console.log('[AUTOFILL] Autofill was cancelled');
         } else {
           console.error('[AUTOFILL] Autofill failed with error:', error);
+          this.errorMessage = 'Error en la autenticación. Intente de nuevo.';
         }
       } finally {
         clearTimeout(timeoutId);
@@ -281,6 +282,10 @@ export class AuthComponent {
         this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
         this.hideError();
       }
+      else{
+        this.errorMessage = 'Error en la autenticación. Por favor, inténtalo de nuevo.';
+        this.hideError();
+      }
     } finally {
       // Restaurar UI si no es autofill
       if (!isConditionalMedation) {
@@ -332,7 +337,7 @@ export class AuthComponent {
       if (error.status === 400 || error.status === 409 || error.status === 401) {
         this.errorMessage = error.error.message || 'Ocurrió un error inesperado en el servidor.';
       } else {
-        this.errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
+        this.errorMessage = 'Error en el inicio de sesión. Por favor, inténtalo de nuevo.';
       }
       this.hideError();
     } finally {
@@ -608,6 +613,10 @@ export class AuthComponent {
     } catch (error: any) {
        if (error.status === 400 || error.status === 409 || error.status === 401) {
             this.errorMessage = error.error.message || 'Error registrando dispositivo';
+            this.hideError();
+        }
+        else{
+            this.errorMessage = 'Error en el registro, intente de nuevo';
             this.hideError();
         }
     } finally {

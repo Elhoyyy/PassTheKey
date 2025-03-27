@@ -51,15 +51,33 @@
                     <ul class="list-group">
                       <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let device of devices; let i = index">
                         <div class="device-info">
-                          <span class="device-name">{{ device.name }}</span>
+                          <!-- Show input field when editing this device -->
+                          <span class="device-name" *ngIf="editingDeviceIndex !== i">{{ device.name }}</span>
+                          <div *ngIf="editingDeviceIndex === i" class="edit-name-form">
+                            <input type="text" class="form-control device-edit-input" [(ngModel)]="newDeviceName">
+                            <div class="edit-buttons mt-2">
+                              <button class="btn btn-sm btn-success me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoading">
+                                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Save
+                              </button>
+                              <button class="btn btn-sm btn-secondary" (click)="cancelEditingDevice()">Cancel</button>
+                            </div>
+                          </div>
                           <div class="device-dates">
                             <small class="text-muted">Created: {{ device.creationDate }}</small>
                             <small class="text-muted">Last used: {{ device.lastUsed | date:'dd/MM/yyyy HH:mm' }}</small>
                           </div>
                         </div>
-                        <button class="deleter" (click)="deleteDevice(i)">
-                          <i class="bi bi-trash"></i>
-                        </button>
+                        <div class="device-actions">
+                          <!-- Edit button - only show when not currently editing this device -->
+                          <button class="btn btn-sm btn-outline-primary me-2" *ngIf="editingDeviceIndex !== i" (click)="startEditingDevice(i)">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <!-- Delete button - only show when not editing -->
+                          <button class="deleter" *ngIf="editingDeviceIndex !== i" (click)="deleteDevice(i)">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
                       </li>
                     </ul>
                     <div class="passkey-info mt-4">

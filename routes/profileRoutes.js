@@ -24,6 +24,28 @@ router.post('/update-password', async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar la contraseña' });
     }
 });
+
+router.post('/update-device-name', async (req, res) => {
+    const { username, deviceIndex, newDeviceName } = req.body;
+    
+    if (!users[username]) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (deviceIndex < 0 || deviceIndex >= users[username].devices.length) {
+        return res.status(400).json({ message: 'Invalid device index' });
+    }
+    
+    // Update the device name
+    users[username].devices[deviceIndex].name = newDeviceName;
+    
+    console.log('Device name updated');
+    res.status(200).json({ 
+        message: 'Device name updated successfully',
+        devices: users[username].devices 
+    });
+});
+
 /*
 router.post('/update-email', (req, res) => {
     const { username, email } = req.body;
