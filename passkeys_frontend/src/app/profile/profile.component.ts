@@ -8,7 +8,6 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 // Importa el servicio HttpClient para realizar peticiones HTTP al servidor
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { fido2Create } from '@ownid/webauthn';
 import { AppComponent } from '../app.component';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
@@ -202,54 +201,134 @@ export class ProfileComponent implements OnInit {
   }
 
   async addDevice() {
-    this.errorMessage = null;
     this.isLoading = true;
+    this.errorMessage = null;
+    
+    let deviceName = 'Passkey_Device';
+    const userAgent = navigator.userAgent;
+    console.log('User Agent:', userAgent);
+    
+    // Determine device name based on user agent
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      deviceName = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      deviceName = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Linux')) {
+      deviceName = 'Linux';
+    } else if (userAgent.includes('Mac')) {
+      const version = userAgent.match(/Mac OS X (\d+[._]\d+)/);
+      deviceName = version ? `MacOS ${version[1].replace('_', '.')}` : 'MacOS';
+    }
+  
+    const device_creationDate = new Date().toLocaleString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  
     try {
+      console.log('[ADD-DEVICE] Requesting creation options for user:', this.username);
       const options = await this.http.post<PublicKeyCredentialCreationOptions>(
-        '/passkey/registro/passkey', 
+        '/passkey/registro/passkey/additional', 
         { username: this.username }
       ).toPromise();
-      let deviceName = 'Passkey_Device';
-      const userAgent = navigator.userAgent;
-      console.log('User Agent:', userAgent);
-      if (userAgent.includes('Windows')) {
-        const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-        deviceName = version ? `Windows ${version[1]}` : 'Windows';
-      } else if (userAgent.includes('iPhone')) {
-        const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-        deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-      } else if (userAgent.includes('Android')) {
-        const version = userAgent.match(/Android (\d+\.\d+)/);
-        deviceName = version ? `Android ${version[1]}` : 'Android';
-      } else if (userAgent.includes('Linux')) {
-        deviceName = 'Linux';
+      
+      console.log('[ADD-DEVICE] Received options:', options);
+      if (!options) {
+        throw new Error('Failed to get credential creation options');
       }
-      const device_creationDate = new Date().toLocaleString('en-GB', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-      const response = await this.http.post<any>('/passkey/registro/passkey/fin', {
+  
+      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+      const publicKeyCredentialCreationOptions = {
         ...options,
-        username: this.username, 
-        deviceName, 
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        user: {
+          ...options.user,
+          id: this.base64URLToBuffer(options.user.id as unknown as string),
+        },
+        // Critical fix: Convert each excludeCredential.id to ArrayBuffer
+        excludeCredentials: options.excludeCredentials ? 
+          options.excludeCredentials.map(credential => ({
+            ...credential,
+            id: this.base64URLToBuffer(credential.id as unknown as string)
+          })) : []
+      };
+  
+      console.log('[ADD-DEVICE] Processed options:', publicKeyCredentialCreationOptions);
+  
+      console.log('[ADD-DEVICE] Calling navigator.credentials.create');
+      const credential = await navigator.credentials.create({
+        publicKey: publicKeyCredentialCreationOptions
+      }) as PublicKeyCredential;
+      console.log('[ADD-DEVICE] Created credential:', credential);
+  
+      // Convert credential for sending to server
+      const attestationResponse = {
+        data: {  // Wrap in data object to match SimpleWebAuthn expectations
+          id: credential.id,
+          rawId: this.bufferToBase64URL(credential.rawId),
+          response: {
+            attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
+          },
+          type: credential.type
+        },
+        username: this.username,
+        deviceName,
         device_creationDate
-      }).toPromise();
+      };
+  
+      console.log('[ADD-DEVICE] Sending attestation response:', attestationResponse);
+  
+      const response = await this.http.post<any>(
+        '/passkey/registro/passkey/additional/fin', 
+        attestationResponse
+      ).toPromise();
       
       if (response && response.res) {
-        this.devices = response.userProfile.devices; // Actualiza toda la lista de dispositivos
+        // Update the devices list with the newly added device
+        this.devices = response.userProfile.devices;
+        this.errorMessage = 'New passkey added successfully!';
+        setTimeout(() => this.errorMessage = null, 3000);
       }
     } catch (error: any) {
-      console.error('Error añadiendo el dispositivo:', error);
-      this.errorMessage = 'Error añadiendo el dispositivo. Porfavor inténtelo de nuevo';
+      console.error('[ADD-DEVICE] Error:', error);
+      if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error adding new passkey';
+      } else {
+        this.errorMessage = 'Error adding new passkey. Please try again.';
+      }
       this.hideError();
-    }
-    finally {
+    } finally {
       this.isLoading = false;
     }
+  }
+  
+  // Add utility methods for buffer conversions if they don't exist
+  private bufferToBase64URL(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+  
+  private base64URLToBuffer(base64URL: string): ArrayBuffer {
+    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const binary = atob(padded);
+    const buffer = new ArrayBuffer(binary.length);
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return buffer;
   }
 
   async deleteDevice(index: number) {

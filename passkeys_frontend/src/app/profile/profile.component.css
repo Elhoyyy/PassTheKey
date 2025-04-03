@@ -319,20 +319,15 @@ h5 {
 }
 
 .alert-danger {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 5px;
-  padding: 10px 20px;
-  align-items: center;
-  text-align: center;
-  margin: 15px auto 0;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  background: #fee;
+  color: #e74c3c;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 20px;
   display: flex;
-  justify-content: center;
-  font-weight: 500;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
 }
 
 .alert-danger i {

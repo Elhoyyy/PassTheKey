@@ -157,74 +157,6 @@ router.post('/registro/usuario', (req, res) => {
 });
 
 router.post('/registro/passkey/fin', async (req, res) => {
-    console.log('=== START REGISTRATION VERIFICATION ===');
-    const { username, deviceName, device_creationDate } = req.body;
-    const userAgent = req.headers['user-agent'];
-    
-    console.log(`[REGISTER] Starting registration for user ${username}`);
-    console.log(`[REGISTER] Device: ${deviceName}, User-Agent: ${userAgent}`);
-
-    try {
-        console.log(`[REGISTER-VERIFY] Challenge: ${challenges[username]}`);
-        console.log('[REGISTER-VERIFY] Attestation:', req.body.data);
-
-        const verification = await SimpleWebAuthnServer.verifyRegistrationResponse({
-            response: req.body.data,
-            expectedChallenge: challenges[username],
-            expectedOrigin: expectedOrigin
-        });
-        
-        console.log(`[REGISTER-VERIFY] ✅ Verification successful:`, verification);
-
-        if (verification.verified) {
-            if (!users[username].credential) {
-                users[username].credential = [];
-                users[username].devices = [];
-            }
-
-            // Verificar si ya existe un dispositivo con el mismo User-Agent
-            const existingDeviceIndex = users[username].devices.findIndex(
-                device => device.userAgent === userAgent
-            );
-
-            console.log(`[REGISTER] Existing device index:`, existingDeviceIndex);
-            const now = new Date().toISOString();
-            
-            if (existingDeviceIndex !== -1) {
-                // Actualizar el dispositivo existente
-                users[username].credential[existingDeviceIndex] = verification.registrationInfo.credential;
-                users[username].devices[existingDeviceIndex] = {
-                    name: deviceName,
-                    creationDate: device_creationDate,
-                    userAgent: userAgent,
-                    lastUsed: now
-                };
-            } else {
-                // Agregar nuevo dispositivo
-                users[username].credential.push(verification.registrationInfo.credential);
-                users[username].devices.push({
-                    name: deviceName,
-                    creationDate: device_creationDate,
-                    userAgent: userAgent,
-                    lastUsed: now
-                });
-            }
-
-            console.log(`[REGISTER] Registration successful for device: ${deviceName}`);
-            return res.status(200).send({
-                res: true,
-                userProfile: { username, ...users[username] }
-            });
-        }
-    } catch (error) {
-        console.error(`[REGISTER-VERIFY] ❌ Error:`, error);
-        return res.status(400).send({ message: error.message });
-    }
-    console.log('=== END REGISTRATION VERIFICATION ===');
-    res.status(500).send(false);
-});
-
-router.post('/registro/passkey_first/fin', async (req, res) => {
     console.log('=== START FIRST REGISTRATION VERIFICATION ===');
     const { username, deviceName, device_creationDate } = req.body;
     const userAgent = req.headers['user-agent'];
@@ -288,6 +220,155 @@ router.post('/registro/passkey_first/fin', async (req, res) => {
         return res.status(400).send({ message: error.message });
     }
     console.log('=== END FIRST REGISTRATION VERIFICATION ===');
+    res.status(500).send(false);
+});
+
+// Endpoint for additional passkey registration
+router.post('/registro/passkey/additional', (req, res) => {
+    console.log('=== START ADDITIONAL PASSKEY REGISTRATION CHALLENGE GENERATION ===');
+    const rpId = req.hostname;
+    let { username } = req.body;
+    
+   
+    console.log(`[ADD-PASSKEY] User: ${username}`);
+    console.log(`[ADD-PASSKEY] RP ID: ${rpId}`);
+
+    const challenge = getNewChallenge();
+    const challengeBase64 = Buffer.from(challenge)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    
+    // Store the challenge for verification later
+    challenges[username] = challenge;
+
+    // Convert the user ID to Base64URL
+    const userIdBuffer = Buffer.from(username);
+    const userIdBase64 = userIdBuffer.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+    // Get existing credential IDs to exclude from new registration
+    const existingCredentials = users[username].credential.map(cred => ({
+        // The id must be sent as a Base64URL string that the client will convert to ArrayBuffer
+        id: cred.id,
+        type: 'public-key',
+        // Optionally add transports if available
+        transports: cred.transports || ['internal']
+    }));
+
+    console.log(`[ADD-PASSKEY] Existing credentials:`, existingCredentials.map(c => c.id));
+
+    const response = {
+        challenge: challengeBase64,
+        rp: { 
+            id: rpId, 
+            name: 'webauthn-app' 
+        },
+        user: { 
+            id: userIdBase64,
+            name: username, 
+            displayName: username 
+        },
+        pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },
+            { type: 'public-key', alg: -257 }
+        ],
+        timeout: 60000,
+        attestation: 'none',
+        excludeCredentials: existingCredentials,
+        authenticatorSelection: {
+            userVerification: 'required'
+        }
+    };
+
+    console.log('[ADD-PASSKEY] Sending response:', {
+        ...response,
+        challenge: `${response.challenge} (Base64URL)`,
+        user: {
+            ...response.user,
+            id: `${response.user.id} (Base64URL)`
+        },
+        excludeCredentials: existingCredentials
+    });
+
+    console.log(`[ADD-PASSKEY] Challenge generation complete`);
+    console.log('=== END ADDITIONAL PASSKEY REGISTRATION CHALLENGE GENERATION ===');
+    res.json(response);
+});
+
+router.post('/registro/passkey/additional/fin', async (req, res) => {
+    console.log('=== START ADDITIONAL PASSKEY REGISTRATION VERIFICATION ===');
+    const { username, deviceName, device_creationDate } = req.body;
+    const userAgent = req.headers['user-agent'];
+    
+    console.log('[ADDITIONAL-REGISTER] Request body:', req.body);
+    console.log(`[ADDITIONAL-REGISTER] Adding new device for user ${username}`);
+    console.log(`[ADDITIONAL-REGISTER] Device: ${deviceName}, User-Agent: ${userAgent}`);
+
+    try {
+        if (!req.body.data) {
+            throw new Error('Missing attestation data');
+        }
+
+        if (!users[username]) {
+            throw new Error('User not found');
+        }
+
+        // Convert the stored challenge to Base64URL format
+        const expectedChallenge = Buffer.from(challenges[username])
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+
+        console.log('[ADDITIONAL-REGISTER] Verifying with data:', {
+            expectedChallenge,
+            response: req.body.data,
+            expectedOrigin
+        });
+
+        const verification = await SimpleWebAuthnServer.verifyRegistrationResponse({
+            response: req.body.data,
+            expectedChallenge: expectedChallenge, // Use the Base64URL version
+            expectedOrigin: expectedOrigin,
+            requireUserVerification: false
+        });
+
+        console.log(`[ADDITIONAL-REGISTER] Verification result:`, verification);
+
+        if (verification.verified) {
+            // Add the new credential to the user's existing credentials
+            users[username].credential.push(verification.registrationInfo.credential);
+            
+            // Add the new device to the user's devices list
+            users[username].devices.push({
+                name: deviceName,
+                creationDate: device_creationDate,
+                userAgent: userAgent,
+                lastUsed: new Date().toISOString()
+            });
+            
+            console.log(`[ADDITIONAL-REGISTER] Updated devices for ${username}:`, users[username].devices);
+            console.log(`[ADDITIONAL-REGISTER] Updated credentials for ${username}:`, users[username].credential.map(c => ({ id: c.id })));
+
+            console.log(`[ADDITIONAL-REGISTER] Registration successful for user: ${username}`);
+            return res.status(200).send({
+                res: true,
+                userProfile: { username, ...users[username] }
+            });
+        }
+    } catch (error) {
+        console.error('[ADDITIONAL-REGISTER] Detailed error:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body
+        });
+        return res.status(400).send({ message: error.message });
+    }
+    console.log('=== END ADDITIONAL PASSKEY REGISTRATION VERIFICATION ===');
     res.status(500).send(false);
 });
 

@@ -386,3 +386,16 @@ input:checked + .slider:before {
   color: #999;
   font-style: italic;
 }
+
+
+/* Ajustes para dispositivos móviles */
+@media (max-width: 768px) {
+  .input-group i {
+    width: 10px; /* Ancho fijo para el icono */
+    text-align: center;
+  }
+  
+  .email-input {
+    padding-left: 30px !important; /* Ajustar según el ancho del icono */
+  }
+}

@@ -142,7 +142,6 @@ export class AuthComponent {
           console.log('[AUTOFILL] Autofill was cancelled');
         } else {
           console.error('[AUTOFILL] Autofill failed with error:', error);
-          this.errorMessage = 'Error en la autenticación. Intente de nuevo.';
         }
       } finally {
         clearTimeout(timeoutId);
@@ -280,10 +279,6 @@ export class AuthComponent {
       } else if (!isConditionalMedation) {
         // Mostrar otros errores solo para autenticación directa
         this.errorMessage = error.error?.message || 'Error durante el inicio de sesión';
-        this.hideError();
-      }
-      else{
-        this.errorMessage = 'Error en la autenticación. Por favor, inténtalo de nuevo.';
         this.hideError();
       }
     } finally {
@@ -536,6 +531,7 @@ export class AuthComponent {
       } else if (userAgent.includes('Linux')) {
         deviceName = 'Linux';
     }
+
     const device_creationDate = new Date().toLocaleString('en-GB', {
         year: 'numeric',
         month: '2-digit',
@@ -543,7 +539,8 @@ export class AuthComponent {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
-      });
+    });
+
     console.log('[REGISTRATION] Starting registration process');
     this.isRegistrationIntent = true;
     this.errorMessage = null;
@@ -597,7 +594,7 @@ export class AuthComponent {
         console.log('[REGISTRATION] Sending attestation response:', attestationResponse);
 
         const response = await this.http.post<any>(
-            '/passkey/registro/passkey_first/fin', 
+            '/passkey/registro/passkey/fin', 
             attestationResponse
         ).toPromise();
         
