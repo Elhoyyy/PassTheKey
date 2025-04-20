@@ -33,8 +33,10 @@ export class ProfileComponent implements OnInit {
   device_creationDate: string = ''; // Fecha de creación del dispositivo
   isEditing: boolean = false; // Bandera para saber si está en modo de edición
   errorMessage: string | null = null;
+  successMessage: string | null = null; // Mensaje de éxito para mostrar al usuario
   isLoading: boolean = false; // Comprobar si hay algo cargando para activar el spinner. 
-  
+  showPasskeyRecommendation: boolean = false; // Flag to control the passkey recommendation
+  showAddDeviceButton: boolean = true; // Flag to control the visibility of the add device button
   originalUsername: string = '';
   originalEmail: string = '';
   originalFirstName: string = '';
@@ -77,34 +79,21 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  async saveEmail() {
-    this.isLoading = true;
-    this.errorMessage = null;
-    
-    try {
-        await this.http.post('/profile/update-email', {
-            username: this.username,
-            email: this.email
-        }).toPromise();
-        
-        this.originalEmail = this.email;
-        this.errorMessage = 'Email actualizado correctamente';
-    } catch (error: any) {
-      if ( error.status === 400 || error.status === 409 || error.status === 401) {
-        this.errorMessage = error.error.message || 'Error al actualizar el email';
-        this.hideError();
-      }
-    } finally {
-        this.isLoading = false;
-    }
-  }
 
   ngOnInit() {
     // Inicializa los valores originales cuando se carga el componente
     this.originalUsername = this.username;
     this.originalEmail = this.email;
+    
+    // Check if user has no passkeys and update UI accordingly
+    this.updatePasskeyUIState();
   }
 
+  // Update UI state based on passkeys availability
+  updatePasskeyUIState() {
+    this.showPasskeyRecommendation = this.devices.length === 0;
+    this.showAddDeviceButton = !this.showPasskeyRecommendation;
+  }
 
   // Reset password form fields and messages
   resetPasswordFields() {
@@ -296,7 +285,17 @@ export class ProfileComponent implements OnInit {
       if (response && response.res) {
         // Update the devices list with the newly added device
         this.devices = response.userProfile.devices;
-        this.errorMessage = 'New passkey added successfully!';
+        // Update profile service with new data
+        const currentProfile = this.profileService.getProfile();
+        if (currentProfile) {
+          currentProfile.devices = this.devices;
+          this.profileService.setProfile(currentProfile);
+        }
+        
+        // Update UI state based on new passkey data
+        this.updatePasskeyUIState();
+        
+        this.successMessage = 'New passkey added successfully!';
         setTimeout(() => this.errorMessage = null, 3000);
       }
     } catch (error: any) {
@@ -341,6 +340,16 @@ export class ProfileComponent implements OnInit {
         
         if (response) {
             this.devices.splice(index, 1); // Eliminar el dispositivo específico
+            
+            // Update profile service with new data
+            const currentProfile = this.profileService.getProfile();
+            if (currentProfile) {
+              currentProfile.devices = this.devices;
+              this.profileService.setProfile(currentProfile);
+            }
+            
+            // Update UI state after deletion
+            this.updatePasskeyUIState();
         }
     } catch (error: any) {
       if (error.status === 400 || error.status === 409 || error.status === 401) {
@@ -352,10 +361,9 @@ export class ProfileComponent implements OnInit {
     finally {
         this.isLoading = false;
     }
-}
+  }
+
   async hideError(){
     setTimeout(()=> this.errorMessage=null, 3000);
   }
-
-  
 }

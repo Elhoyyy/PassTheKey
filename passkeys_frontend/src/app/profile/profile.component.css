@@ -335,6 +335,24 @@ h5 {
   font-size: 1.1em;
 }
 
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.alert-success i {
+  margin-right: 8px;
+  font-size: 1.1em;
+}
+
 .spinner-border {
   display: inline-block;
   width: 1rem;
@@ -674,4 +692,80 @@ button:disabled {
   border-color: #545b62;
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* Passkey recommendation styles */
+.passkey-recommendation {
+  background-color: #e1f5fe;
+  border-left: 4px solid #2196F3;
+  color: #01579b;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.passkey-recommendation:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(33, 150, 243, 0.15);
+}
+
+.passkey-recommendation strong {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  display: inline-block;
+  color: #0277bd;
+}
+
+.passkey-recommendation i {
+  margin-right: 10px;
+  color: #2196F3;
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+.passkey-recommendation button {
+  align-self: flex-start;
+  margin-top: 15px;
+  background-color: #2196F3;
+  border-color: #2196F3;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.passkey-recommendation button:hover {
+  background-color: #1976D2;
+  border-color: #1976D2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+}
+
+.passkey-recommendation button i {
+  margin-right: 0;
+  font-size: 0.9rem;
+}
+
+/* Make the recommendation responsive */
+@media (max-width: 768px) {
+  .passkey-recommendation {
+    padding: 15px;
+    text-align: center;
+  }
+  
+  .passkey-recommendation button {
+    align-self: center;
+    width: 100%;
+    max-width: 240px;
+  }
 }

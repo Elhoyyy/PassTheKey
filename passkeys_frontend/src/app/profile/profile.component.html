@@ -27,7 +27,7 @@
                 <div class="security-section mt-4">
                   <!-- Password Change Section -->
                   <div class="password-section">
-                    <h5>Change Password</h5>
+                    <h5>Change or Add a Password</h5>
                     <div class="form-group">
                       <input type="password" class="form-control" placeholder="New Password" [(ngModel)]="newPassword">
                       <input type="password" class="form-control mt-2" placeholder="Confirm Password" [(ngModel)]="confirmPassword">
@@ -45,6 +45,21 @@
                   <!-- Passkeys Management Section -->
                   <div class="devices-info mt-4">
                     <h5>Registered Passkeys</h5>
+                    
+                    <!-- Passkey recommendation message -->
+                    <div *ngIf="showPasskeyRecommendation" class="alert alert-info mt-2 passkey-recommendation">
+                      <div>
+                        <i class="bi bi-shield-lock me-2"></i>
+                        <strong>Enhance Your Security</strong>
+                      </div>
+                      <p>You currently don't have any passkeys registered. Adding a passkey will significantly improve your account security while making login faster and easier - no passwords to remember!</p>
+                      <button class="btn btn-primary btn-sm" (click)="addDevice()" [disabled]="isLoading">
+                        <i *ngIf="!isLoading" class="bi bi-shield-plus"></i>
+                        <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        {{ isLoading ? 'Adding...' : 'Add a Passkey Now' }}
+                      </button>
+                    </div>
+                    
                     <ul class="list-group">
                       <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let device of devices; let i = index">
                         <div class="device-info">
@@ -87,13 +102,15 @@
                       </ul>
                     </div>
                     <div class="passkey-action">
-                      <button class="btn btn-outline-primary px-4 add-passkey-btn" (click)="addDevice()" [disabled]="isLoading">
+                      <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="addDevice()" [disabled]="isLoading">
                         <i *ngIf="!isLoading"  class="bi bi-plus-circle"></i>
                         <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         {{ isLoading ? 'Adding...' : 'Add New Passkey' }}
                       </button>
-                      <div *ngIf="errorMessage && !isEditing" class="alert alert-danger mt-3"><i class="bi bi-exclamation-triangle"></i>
-                        {{ errorMessage }}<i class="bi bi-exclamation-triangle"></i></div>
+                      <div *ngIf="errorMessage && !isEditing" class="alert alert-danger mt-3">
+                        <i class="bi bi-exclamation-triangle"></i>{{ errorMessage }}<i class="bi bi-exclamation-triangle"></i></div>
+                        <div *ngIf="successMessage && !isEditing" class="alert alert-success mt-3">
+                          <i class="bi bi-exclamation-triangle"></i>{{ successMessage }}<i class="bi bi-exclamation-triangle"></i></div>
                     </div>
                   </div>
                 </div>
