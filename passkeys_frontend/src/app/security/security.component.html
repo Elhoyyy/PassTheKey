@@ -1,0 +1,201 @@
+<body>
+<div class="wrapper">
+    <div class="content">
+      <div class="container-fluid mt-5">
+        <div class="row d-flex justify-content-center">
+          <div class="col-md-7">
+            <div class="card p-3 py-4">
+              <div class="text-center mb-4">
+                <h3><i class="bi bi-shield-lock me-2"></i>Security Center</h3>
+                <p class="text-muted">Manage your account protection features</p>
+                
+                <!-- Security Status Indicator -->
+                <div class="security-score-container">
+                  <div class="security-score-wrapper">
+                    <div class="security-score" [ngStyle]="{'background': 'conic-gradient(#2196F3 0% ' + securityScore + '%, #e9ecef ' + securityScore + '% 100%)'}">
+                      <div class="security-score-value">{{ securityScore }}%</div>
+                    </div>
+                  </div>
+                  <div class="security-score-label">
+                    <p>Your Security Score</p>
+                    <span *ngIf="securityScore === 0">Extremely vulnerable - Add security measures</span>
+                    <span *ngIf="securityScore === 25">Very weak - Add passkeys for better security</span>
+                    <span *ngIf="securityScore === 50">Basic - Set a strong password</span>
+                    <span *ngIf="securityScore === 75">Good, but could be improved</span>
+                    <span *ngIf="securityScore === 100">Excellent security!</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Password Change Section -->
+              <div class="section">
+                <div class="section-header">
+                  <i class="bi bi-key-fill"></i>
+                  <h5 class="section-title">Password Management (Change or Add a Password)</h5>
+                </div>
+                <div class="password-section">
+                  <div class="password-strength-meter">
+                    <p>Password Strength:</p>
+                    <div class="strength-bar">
+                      <div class="strength-level" [ngClass]="passwordStrength"></div>
+                    </div>
+                    <span class="strength-text" [ngClass]="passwordStrength">{{ passwordStrength | titlecase }}</span>
+                    <p class="last-updated">
+                      <ng-container *ngIf="passwordCreationDate !== 'Not changed yet'">
+                        Last changed: {{ passwordCreationDate }}
+                      </ng-container>
+                      <ng-container *ngIf="passwordCreationDate === 'Not changed yet'">
+                        {{ passwordCreationDate }}
+                      </ng-container>
+                    </p>
+                  </div>
+                  
+                  <div class="form-group">
+                    <div class="password-field">
+                      <input type="password" id="newPassword" class="form-control" placeholder="New Password" 
+                        [(ngModel)]="newPassword" 
+                        (input)="evaluatePasswordStrength()">
+                      <span class="password-toggle" (click)="togglePasswordVisibility('newPassword')">
+                        <i class="bi bi-eye-slash"></i>
+                      </span>
+                    </div>
+                    <div class="password-field mt-2">
+                      <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm Password" 
+                        [(ngModel)]="confirmPassword">
+                      <span class="password-toggle" (click)="togglePasswordVisibility('confirmPassword')">
+                        <i class="bi bi-eye-slash"></i>
+                      </span>
+                    </div>
+                    <div class="password-requirements">
+                      <p>Password must contain:</p>
+                      <ul>
+                        <li class="requirement" [ngClass]="{'met': passwordRequirements.length}">
+                          <i class="bi" [ngClass]="passwordRequirements.length ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                          At least 8 characters
+                        </li>
+                        <li class="requirement" [ngClass]="{'met': passwordRequirements.uppercase}">
+                          <i class="bi" [ngClass]="passwordRequirements.uppercase ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                          Uppercase letter
+                        </li>
+                        <li class="requirement" [ngClass]="{'met': passwordRequirements.number}">
+                          <i class="bi" [ngClass]="passwordRequirements.number ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                          Number
+                        </li>
+                        <li class="requirement" [ngClass]="{'met': passwordRequirements.special}">
+                          <i class="bi" [ngClass]="passwordRequirements.special ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                          Special character
+                        </li>
+                      </ul>
+                    </div>
+                    <div class="text-center">
+                      <button class="btn btn-primary mt-3 centered-btn" (click)="updatePassword()" [disabled]="isPasswordLoading">
+                        <span *ngIf="isPasswordLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        {{ isPasswordLoading ? 'Updating...' : 'Update Password' }}
+                      </button>
+                    </div>
+                  </div>
+                  <div *ngIf="passwordError" class="alert alert-danger mt-2">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ passwordError }}
+                  </div>
+                  <div *ngIf="passwordSuccess" class="alert alert-success mt-2">
+                    <i class="bi bi-check-circle me-2"></i>{{ passwordSuccess }}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Passkeys Management Section -->
+              <div class="section mt-4">
+                <div class="section-header">
+                  <i class="bi bi-fingerprint"></i>
+                  <h5 class="section-title">Passkeys Management</h5>
+                </div>
+                
+                <!-- Passkey recommendation message -->
+                <div *ngIf="showPasskeyRecommendation" class="alert alert-info mt-2 passkey-recommendation">
+                  <div class="recommendation-header">
+                    <i class="bi bi-shield-lock"></i>
+                    <strong>Enhance Your Security</strong>
+                  </div>
+                  <p>You currently don't have any passkeys registered.</p>
+                  <p>Adding a passkey will significantly improve your account security.</p>
+                  <button class="btn btn-primary mt-3 centered-btn" (click)="addDevice()" [disabled]="isLoading">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? ' Adding...' : 'Add a Passkey Now' }}
+                  </button>
+                </div>
+                
+                <div class="device-list-container">
+                  <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let device of devices; let i = index">
+                      <div class="device-info">
+                        <div class="device-icon">
+                          <i class="bi bi-laptop"></i>
+                        </div>
+                        <!-- Show input field when editing this device -->
+                        <div class="device-details">
+                          <span class="device-name" *ngIf="editingDeviceIndex !== i">{{ device.name }}</span>
+                          <div *ngIf="editingDeviceIndex === i" class="edit-name-form">
+                            <input type="text" class="form-control device-edit-input" [(ngModel)]="newDeviceName">
+                            <div class="edit-buttons mt-2">
+                              <button class="btn btn-primary me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoading">
+                                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Save
+                              </button>
+                              <button class="btn btn-secondary" (click)="cancelEditingDevice()">Cancel</button>
+                            </div>
+                          </div>
+                          <div class="device-dates">
+                            <small class="text-muted">Created: {{ device.creationDate }}</small>
+                            <small class="text-muted">Last used: {{ device.lastUsed | date:'dd/MM/yyyy HH:mm' }}</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="device-actions">
+                        <!-- Edit button - only show when not currently editing this device -->
+                        <button class="btn btn-sm btn-outline-primary me-2" *ngIf="editingDeviceIndex !== i" (click)="startEditingDevice(i)">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <!-- Delete button - only show when not editing -->
+                        <button class="btn btn-sm btn-danger" *ngIf="editingDeviceIndex !== i" (click)="deleteDevice(i)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div class="passkey-info mt-4" *ngIf="devices.length > 0">
+                  <div class="passkey-info-header">
+                    <i class="bi bi-info-circle"></i>
+                    <h6>About Passkeys</h6>
+                  </div>
+                  <p>Passkeys offer a more secure alternative to traditional passwords. They:</p>
+                  <ul class="benefits-list">
+                    <li><i class="bi bi-check2-circle"></i> Cannot be phished or stolen</li>
+                    <li><i class="bi bi-check2-circle"></i> Are unique for each website</li>
+                    <li><i class="bi bi-check2-circle"></i> Use biometric authentication</li>
+                    <li><i class="bi bi-check2-circle"></i> Simplify the login process</li>
+                  </ul>
+                </div>
+                
+                <div class="passkey-action">
+                  <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="addDevice()" [disabled]="isLoading">
+                    <i *ngIf="!isLoading" class="bi bi-plus-circle"></i>
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? 'Adding...' : 'Add New Passkey' }}
+                  </button>
+                  <div *ngIf="errorMessage" class="alert alert-danger mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}
+                  </div>
+                  <div *ngIf="successMessage" class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>

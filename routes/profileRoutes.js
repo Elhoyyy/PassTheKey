@@ -10,18 +10,44 @@ const { users } = require('../data');
 router.post('/update-password', async (req, res) => {
     const { username, password } = req.body;
     
+    console.log('Received update password request for user:', username);
+    console.log('Validating password...');
+    
     if(!isValidPassword(password)){
-      console.log('password not valid');
-        return res.status(400).json({ message: 'La contraseña debe contener números, caracteres especiales y ser mayor de 4' });
+      console.log('Password validation failed:', password);
+      return res.status(400).json({ message: 'La contraseña debe cumplir los criterios de seguridad' });
     }
+    
     try {
+        console.log('Password validation passed, hashing password...');
         const hashedPassword = await bcrypt.hash(password, 10);
+        
+        if (!users[username]) {
+            console.log('User not found:', username);
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Get current date in DD/MM/YYYY format
+        const now = new Date();
+        const passwordCreationDate = now.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        
         users[username].password = hashedPassword;
-        console.log('password updated');
-        res.status(200).json({ message: 'Contraseña actualizada correctamente' });
+        users[username].passwordCreationDate = passwordCreationDate; // Update password creation date
+        
+        console.log('Password updated successfully for user:', username);
+        console.log('New password creation date:', passwordCreationDate);
+        
+        return res.status(200).json({ 
+            message: 'Contraseña actualizada correctamente',
+            passwordCreationDate: passwordCreationDate // Return the new date to client
+        });
     } catch (error) {
-        console.log('error updating password');
-        res.status(500).json({ message: 'Error al actualizar la contraseña' });
+        console.error('Error updating password:', error);
+        return res.status(500).json({ message: 'Error al actualizar la contraseña' });
     }
 });
 
@@ -72,16 +98,26 @@ router.post('/update-email', (req, res) => {
 */
 
 function isValidPassword(password) {
-  // Fix the logic - return false if any condition fails (invalid password)
-  if (password.length < 4) {
+  // Enhanced password validation
+  if (password.length < 8) {
     return false;
   }
-  if (!/\d/.test(password)) {  // no numbers
+  
+  // Check for uppercase letter
+  if (!/[A-Z]/.test(password)) {
     return false;
   }
-  if (!/[!@#$%^&*]/.test(password)) {  // no special characters
+  
+  // Check for numbers
+  if (!/\d/.test(password)) {
     return false;
   }
+  
+  // Check for special characters
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return false;
+  }
+  
   return true;  // All conditions passed, password is valid
 }
 

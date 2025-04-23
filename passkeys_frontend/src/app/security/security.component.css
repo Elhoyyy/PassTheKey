@@ -1,0 +1,765 @@
+/* Base Styles */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+  background: url("../../../../images/catedral-image.jpeg") center center fixed;
+  background-size: cover;
+}
+
+.wrapper {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  background: rgba(115, 180, 233, 0.85);
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 60px 10px 10px 10px;
+  box-sizing: border-box;
+}
+
+/* Card Styles */
+.card {
+  border: none;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 30px !important;
+}
+
+.card:before, .card:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  transition: all 0.5s;
+  transform-origin: bottom;
+}
+
+.card:before {
+  background-color: #a2d4f6;
+  transform: scaleY(1);
+}
+
+.card:after {
+  background-color: #2196F3;
+  transform: scaleY(0);
+}
+
+.card:hover::after {
+  transform: scaleY(1);
+}
+
+/* Section Styles */
+.section {
+  margin-bottom: 30px;
+  border-radius: 10px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.section-header i {
+  color: #2196F3;
+  font-size: 1.4rem;
+  margin-right: 10px;
+}
+
+.section-title {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Security Score */
+.security-score-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.security-score-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-right: 20px;
+}
+
+.security-score {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.security-score::before {
+  content: "";
+  position: absolute;
+  width: 70%;
+  height: 70%;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.security-score-value {
+  position: relative;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2196F3;
+  transition: all 0.3s ease;
+}
+
+.security-score-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.security-score-label p {
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.security-score-label span {
+  font-size: 0.85rem;
+  color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+/* Security Score Colors */
+.security-score-wrapper.score-0 .security-score-value,
+.security-score-wrapper.score-25 .security-score-value {
+  color: #dc3545;
+}
+
+.security-score-wrapper.score-50 .security-score-value {
+  color: #ffc107;
+}
+
+.security-score-wrapper.score-75 .security-score-value {
+  color: #2196F3;
+}
+
+.security-score-wrapper.score-100 .security-score-value {
+  color: #28a745;
+}
+
+/* Last updated text styles */
+.last-updated {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+/* Password Section */
+.password-section {
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 10px;
+  border-left: 4px solid #2196F3;
+}
+
+.password-strength-meter {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.password-strength-meter p {
+  margin-bottom: 8px;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.strength-bar {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.strength-level {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.strength-level.weak {
+  width: 30%;
+  background-color: #dc3545;
+}
+
+.strength-level.medium {
+  width: 60%;
+  background-color: #ffc107;
+}
+
+.strength-level.strong {
+  width: 100%;
+  background-color: #28a745;
+}
+
+.strength-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 5px;
+  display: inline-block;
+}
+
+.strength-text.weak {
+  color: #dc3545;
+}
+
+.strength-text.medium {
+  color: #ffc107;
+}
+
+.strength-text.strong {
+  color: #28a745;
+}
+
+.last-updated {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: #2196F3;
+}
+
+.password-requirements {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.password-requirements p {
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+
+.requirement i {
+  margin-right: 8px;
+  transition: all 0.3s ease;
+}
+
+.requirement.met {
+  color: #28a745;
+}
+
+.requirement.met i {
+  color: #28a745;
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Form Controls */
+.form-control {
+  display: block;
+  border: 1px solid #ddd;
+  padding: 0.8rem;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.form-control:focus {
+  border-color: #2196F3;
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+  outline: none;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #2196F3;
+  border-color: #2196F3;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1976D2;
+  border-color: #1976D2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+}
+
+.btn-outline-primary {
+  color: #2196F3;
+  border-color: #2196F3;
+}
+
+.btn-outline-primary:hover {
+  background-color: #2196F3;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+}
+
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
+}
+
+.centered-btn {
+  margin: 0 auto;
+  display: block;
+  min-width: 100px; /* Increased size */
+  padding: 5px 20px; /* Added more padding */
+  font-size: 1rem; /* Slightly larger font */
+}
+
+/* Passkey Management */
+.device-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 15px;
+}
+
+.list-group {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px !important;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+  background-color: #e9ecef;
+  transform: translateX(3px);
+}
+
+.device-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.device-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(33, 150, 243, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2196F3;
+  font-size: 1.2rem;
+}
+
+.device-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 3px;
+}
+
+.device-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.device-dates small {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.device-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.device-actions button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50% !important;
+}
+
+.edit-name-form {
+  width: 100%;
+}
+
+.device-edit-input {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  border: 2px solid #4a90e2;
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(74, 144, 226, 0.2);
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: center; /* Center the buttons */
+}
+
+.edit-buttons .btn {
+  min-width: 80px; /* Make buttons wider */
+  padding: 8px 15px; /* More padding */
+}
+
+.edit-buttons .btn-success {
+  background-color: #2196F3; /* Change to blue */
+  border-color: #2196F3;
+}
+
+.edit-buttons .btn-success:hover {
+  background-color: #1976D2;
+  border-color: #1976D2;
+}
+
+/* Passkey Info */
+.passkey-info {
+  background-color: #f1f8fe;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.passkey-info-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.passkey-info-header i {
+  color: #2196F3;
+  font-size: 1.2rem;
+}
+
+.passkey-info-header h6 {
+  margin: 0;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.passkey-info p {
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.benefits-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #495057;
+}
+
+.benefits-list li i {
+  color: #2196F3;
+  font-size: 1rem;
+}
+
+/* Passkey Recommendation */
+.passkey-recommendation {
+  background-color: #e1f5fe !important;
+  border-left: 4px solid #2196F3 !important;
+  color: #01579b !important;
+  padding: 20px !important;
+  border-radius: 10px !important;
+  margin-bottom: 25px !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1) !important;
+  text-align: left !important;
+  transition: all 0.3s ease !important;
+  width: auto !important; /* Change to auto */
+  box-sizing: border-box !important; /* Include padding in width calculation */
+  max-width: 100% !important; /* Prevent exceeding container width */
+  margin-left: 0 !important; /* Reset any default alert margins */
+  margin-right: 0 !important; /* Reset any default alert margins */
+  display: flex !important; /* Use flexbox */
+  flex-direction: column !important; /* Stack children vertically */
+  align-items: flex-start !important; /* Align items to the start */
+}
+
+.recommendation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%; /* Take full width */
+}
+
+.recommendation-header i {
+  color: #2196F3;
+  font-size: 1.2rem;
+}
+
+.recommendation-header strong {
+  font-size: 1.1rem;
+  color: #0277bd;
+}
+
+.passkey-recommendation p {
+  margin-bottom: 15px;
+  width: 100%; /* Take full width */
+}
+
+.passkey-recommendation button {
+  background-color: #2196F3;
+  border-color: #2196F3;
+  display: block; /* Make button a block element */
+  margin: 0 auto; /* Center the button */
+  min-width: 200px; /* Set minimum width */
+  align-self: center; /* Center within the flexbox */
+}
+
+/* Add Passkey Button */
+.add-passkey-btn {
+  margin: 15px auto 0; /* Center the button horizontally */
+  display: block; /* Make it a block element to center */
+  padding: 10px 25px;
+  min-width: 250px; /* Make it wider */
+}
+
+.passkey-action {
+  text-align: center; /* Center-align the content in passkey-action div */
+}
+
+/* Alerts */
+.alert {
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%; /* Make sure alerts take full width */
+  box-sizing: border-box; /* Include padding in width calculation */
+  margin-left: 0; /* Remove any default alert margins */
+  margin-right: 0; /* Remove any default alert margins */
+}
+
+.alert-danger {
+  background-color: #fee;
+  color: #dc3545;
+  border-left: 4px solid #dc3545;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #28a745;
+  border-left: 4px solid #28a745;
+}
+
+.alert i {
+  font-size: 1.1rem;
+}
+
+/* Loading Spinner */
+.spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 0.15em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  vertical-align: text-bottom;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .content {
+    padding: 70px 0 0 0;
+  }
+
+  .col-md-7 {
+    min-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    margin: 10px auto;
+    padding: 15px !important;
+    width: 90%;
+  }
+
+  .security-score-container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .security-score-wrapper {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+
+  .device-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .device-actions {
+    margin-top: 10px;
+  }
+
+  .list-group-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .device-actions {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    width: 95%;
+    padding: 10px !important;
+  }
+
+  .section {
+    padding: 10px;
+  }
+
+  .password-section {
+    padding: 15px;
+  }
+
+  .security-score-container {
+    padding: 10px;
+  }
+}

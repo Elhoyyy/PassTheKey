@@ -1,5 +1,5 @@
 <html>
-    <body>
+  <body>
     <div class="wrapper">
       <div class="content">
         <div class="container-fluid mt-5">
@@ -10,107 +10,108 @@
                   <img src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fdefinicion.de%2Fwp-content%2Fuploads%2F2019%2F07%2Fperfil-de-usuario.png&f=1&nofb=1&ipt=e34c3b998655298d36e17f0c0fcfbe5afbd2ed41f2bae4ed1c1b5ccfa088835f&ipo=images" class="profile-image">
                 </div>
                 <div class="text-center mt-3">  
-                  <div class="text-center">
-                    <h5 class="mt-2 mb-0">{{ username }}</h5>
+                  <h5 class="user-name">{{ username }}</h5>
+                  <span class="account-status premium">Standard Account</span>
+                </div>
+                
+                <!-- Account Summary Section -->
+                <div class="account-summary">
+                  <div class="balance-card">
+                    <div class="balance-label">Current Balance</div>
+                    <div class="balance-amount">€12,458.32</div>
+                    <div class="account-number">**** **** **** 3482</div>
                   </div>
-                  <div class="user-info mt-3">
-                    <div class="recovery-items">
-                      <h5>Why do you need a recovery item?</h5>
-                      <label>In case you lose your device with the associated passkey we need to ensure you can access your profile with 
-                        another method like a code sent to your email address
-                      </label>
-                    </div>
+                  
+                  <div class="account-actions">
+                    <button class="action-btn">
+                      <i class="bi bi-send"></i>
+                      Transfer
+                    </button>
+                    <button class="action-btn">
+                      <i class="bi bi-cash-stack"></i>
+                      Deposit
+                    </button>
+                    <button class="action-btn">
+                      <i class="bi bi-credit-card"></i>
+                      Cards
+                    </button>
                   </div>
                 </div>
                 
-                <!-- Collapsible Security Section -->
-                <div class="security-section mt-4">
-                  <!-- Password Change Section -->
-                  <div class="password-section">
-                    <h5>Change or Add a Password</h5>
-                    <div class="form-group">
-                      <input type="password" class="form-control" placeholder="New Password" [(ngModel)]="newPassword">
-                      <input type="password" class="form-control mt-2" placeholder="Confirm Password" [(ngModel)]="confirmPassword">
-                      <div class="text-center">
-                        <button class="btn btn-primary mt-3 centered-btn" (click)="updatePassword()" [disabled]="isPasswordLoading">
-                          <span *ngIf="isPasswordLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          {{ isPasswordLoading ? 'Updating...' : 'Update Password' }}
-                        </button>
+                <!-- Transaction History Section -->
+                <div class="transaction-section">
+                  <h5 class="section-title">
+                    <i class="bi bi-clock-history"></i>
+                    Recent Transactions
+                  </h5>
+                  
+                  <div class="transaction-list">
+                    <!-- Transaction Items -->
+                    <div class="transaction-item">
+                      <div class="transaction-icon income">
+                        <i class="bi bi-arrow-down-left"></i>
                       </div>
+                      <div class="transaction-details">
+                        <div class="transaction-title">Salary Deposit</div>
+                        <div class="transaction-date">Today, 09:15 AM</div>
+                      </div>
+                      <div class="transaction-amount income">+€2,450.00</div>
                     </div>
-                    <div *ngIf="passwordError" class="alert alert-danger mt-2">{{ passwordError }}</div>
-                    <div *ngIf="passwordSuccess" class="alert alert-success mt-2">{{ passwordSuccess }}</div>
+                    
+                    <div class="transaction-item">
+                      <div class="transaction-icon expense">
+                        <i class="bi bi-arrow-up-right"></i>
+                      </div>
+                      <div class="transaction-details">
+                        <div class="transaction-title">Amazon Purchase</div>
+                        <div class="transaction-date">Yesterday, 4:30 PM</div>
+                      </div>
+                      <div class="transaction-amount expense">-€129.99</div>
+                    </div>
+                    
+                    <div class="transaction-item">
+                      <div class="transaction-icon expense">
+                        <i class="bi bi-arrow-up-right"></i>
+                      </div>
+                      <div class="transaction-details">
+                        <div class="transaction-title">Netflix Subscription</div>
+                        <div class="transaction-date">23 May, 11:45 AM</div>
+                      </div>
+                      <div class="transaction-amount expense">-€15.99</div>
+                    </div>
+                    
+                    <div class="transaction-item">
+                      <div class="transaction-icon income">
+                        <i class="bi bi-arrow-down-left"></i>
+                      </div>
+                      <div class="transaction-details">
+                        <div class="transaction-title">Transfer from John</div>
+                        <div class="transaction-date">21 May, 2:20 PM</div>
+                      </div>
+                      <div class="transaction-amount income">+€350.00</div>
+                    </div>
                   </div>
                   
-                  <!-- Passkeys Management Section -->
-                  <div class="devices-info mt-4">
-                    <h5>Registered Passkeys</h5>
-                    
-                    <!-- Passkey recommendation message -->
-                    <div *ngIf="showPasskeyRecommendation" class="alert alert-info mt-2 passkey-recommendation">
-                      <div>
-                        <i class="bi bi-shield-lock me-2"></i>
-                        <strong>Enhance Your Security</strong>
+                  <div class="view-all-link">
+                    <a >... <i class="bi bi-chevron-right"></i></a>
+                  </div>
+                </div>
+                
+                <!-- Financial Summary Section -->
+                <div class="financial-summary">
+                  <h5 class="section-title">
+                    <i class="bi bi-graph-up"></i>
+                    Financial Summary
+                  </h5>
+                  
+                  <div class="summary-charts">
+                    <div class="chart-container">
+                      <div class="chart-label">Monthly Spending</div>
+                      <div class="chart-placeholder"></div>
+                      <div class="chart-info">
+                        <span class="info-stat">€3,240.85</span>
+                        <span class="info-trend positive">+12% from last month</span>
                       </div>
-                      <p>You currently don't have any passkeys registered. Adding a passkey will significantly improve your account security while making login faster and easier - no passwords to remember!</p>
-                      <button class="btn btn-primary btn-sm" (click)="addDevice()" [disabled]="isLoading">
-                        <i *ngIf="!isLoading" class="bi bi-shield-plus"></i>
-                        <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        {{ isLoading ? 'Adding...' : 'Add a Passkey Now' }}
-                      </button>
-                    </div>
-                    
-                    <ul class="list-group">
-                      <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let device of devices; let i = index">
-                        <div class="device-info">
-                          <!-- Show input field when editing this device -->
-                          <span class="device-name" *ngIf="editingDeviceIndex !== i">{{ device.name }}</span>
-                          <div *ngIf="editingDeviceIndex === i" class="edit-name-form">
-                            <input type="text" class="form-control device-edit-input" [(ngModel)]="newDeviceName">
-                            <div class="edit-buttons mt-2">
-                              <button class="btn btn-sm btn-success me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoading">
-                                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                Save
-                              </button>
-                              <button class="btn btn-sm btn-secondary" (click)="cancelEditingDevice()">Cancel</button>
-                            </div>
-                          </div>
-                          <div class="device-dates">
-                            <small class="text-muted">Created: {{ device.creationDate }}</small>
-                            <small class="text-muted">Last used: {{ device.lastUsed | date:'dd/MM/yyyy HH:mm' }}</small>
-                          </div>
-                        </div>
-                        <div class="device-actions">
-                          <!-- Edit button - only show when not currently editing this device -->
-                          <button class="btn btn-sm btn-outline-primary me-2" *ngIf="editingDeviceIndex !== i" (click)="startEditingDevice(i)">
-                            <i class="bi bi-pencil"></i>
-                          </button>
-                          <!-- Delete button - only show when not editing -->
-                          <button class="deleter" *ngIf="editingDeviceIndex !== i" (click)="deleteDevice(i)">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      </li>
-                    </ul>
-                    <div class="passkey-info mt-4">
-                      <p>Passkeys offer a more secure alternative to traditional passwords. They:</p>
-                      <ul class="benefits-list">
-                        <li>Cannot be phished or stolen</li>
-                        <li>Are unique for each website</li>
-                        <li>Use biometric authentication</li>
-                        <li>Simplify the login process</li>
-                      </ul>
-                    </div>
-                    <div class="passkey-action">
-                      <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="addDevice()" [disabled]="isLoading">
-                        <i *ngIf="!isLoading"  class="bi bi-plus-circle"></i>
-                        <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        {{ isLoading ? 'Adding...' : 'Add New Passkey' }}
-                      </button>
-                      <div *ngIf="errorMessage && !isEditing" class="alert alert-danger mt-3">
-                        <i class="bi bi-exclamation-triangle"></i>{{ errorMessage }}<i class="bi bi-exclamation-triangle"></i></div>
-                        <div *ngIf="successMessage && !isEditing" class="alert alert-success mt-3">
-                          <i class="bi bi-exclamation-triangle"></i>{{ successMessage }}<i class="bi bi-exclamation-triangle"></i></div>
                     </div>
                   </div>
                 </div>
@@ -118,7 +119,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </div>           
     </div>
   </body>
 </html>

@@ -9,8 +9,21 @@
         Home</button>
       <button *ngIf="!isLoggedIn" (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'"><i class="bi bi-person-plus-fill"></i>
         Sign in/Up</button>
-      <button *ngIf="isLoggedIn" (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'"><i class="bi bi-person"></i>
-        Profile</button>
+      <!-- Dropdown menu for Profile -->
+      <div *ngIf="isLoggedIn" class="dropdown">
+        <button class="dropdown-toggle" (click)="toggleDropdown()" 
+                [class.active]="currentRoute === '/profile' || currentRoute === '/security'">
+          <i class="bi bi-person"></i> Profile <i class="bi bi-caret-down-fill"></i>
+        </button>
+        <div class="dropdown-menu" [class.show]="isDropdownOpen">
+          <button (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'">
+            <i class="bi bi-person-badge"></i> Profile
+          </button>
+          <button (click)="navigateTo('security')" [class.active]="currentRoute === '/security'">
+            <i class="bi bi-shield-lock"></i> Security
+          </button>
+        </div>
+      </div>
       <button *ngIf="isLoggedIn" (click)="logout()"><i class="bi bi-person-x-fill"></i>
         Logout</button>
     </div>

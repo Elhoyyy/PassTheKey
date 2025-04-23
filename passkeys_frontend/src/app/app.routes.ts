@@ -4,9 +4,13 @@ import { ProfileComponent } from './profile/profile.component';
 import { AuthComponent } from './auth/auth.component';
 import { HomeComponent } from './home/home.component';
 import { authGuard } from './auth.guard';
+import { SecurityComponent } from './security/security.component';
 
 export const routes: Routes = [
   { path: 'profile', component: ProfileComponent,
+    canActivate: [authGuard]
+   },
+  { path: 'security', component: SecurityComponent,
     canActivate: [authGuard]
    },
   { path: 'auth', component: AuthComponent },

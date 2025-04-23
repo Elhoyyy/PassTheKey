@@ -691,6 +691,11 @@ export class AuthComponent {
       }).toPromise();
       
       if (response && response.success) {
+        // Save password creation date to localStorage
+        if (response.passwordCreationDate) {
+          localStorage.setItem(`${this.username}_passwordDate`, response.passwordCreationDate);
+        }
+        
         // Modificamos esta parte para autenticar directamente sin mensaje intermedio
         console.log('Registro exitoso, iniciando sesión automáticamente');
         
@@ -716,7 +721,8 @@ export class AuthComponent {
               this.appComponent.isLoggedIn = true;
               const userProfile = {
                 ...loginResponse.userProfile,
-                plainPassword: savedPassword // Añadimos la contraseña sin hashear
+                plainPassword: savedPassword, // Añadimos la contraseña sin hashear
+                passwordCreationDate: response.passwordCreationDate // Add password creation date to profile
               };
               this.profileService.setProfile(userProfile);
               this.router.navigate(['/profile'], { state: { userProfile } });

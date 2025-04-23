@@ -1,31 +1,21 @@
-// Importa el decorador Component para definir el componente
 import { Component, OnInit } from '@angular/core';
-// Importa el módulo FormsModule para poder usar formularios en Angular
-import { FormsModule } from '@angular/forms';
-// Importa el módulo CommonModule, que proporciona directivas comunes como ngIf y ngFor
 import { CommonModule } from '@angular/common';
-// Importa el servicio Router para gestionar la navegación dentro de la aplicación
+import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-// Importa el servicio HttpClient para realizar peticiones HTTP al servidor
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { AppComponent } from '../app.component';
-import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
+import { AuthService } from '../services/auth.service';
+import { AppComponent } from '../app.component';
 
-// Decorador que define las configuraciones del componente
 @Component({
-  // Define el nombre de la etiqueta HTML que representará a este componente
-  selector: 'app-profile',
-  // Ruta del archivo de plantilla (HTML) que se usará para renderizar la vista
-  templateUrl: './profile.component.html',
-  // Ruta del archivo CSS que se aplicará a este componente
-  styleUrls: ['./profile.component.css'],
-  // Indica que el componente es independiente y no necesita ser parte de un módulo
+  selector: 'app-security',
+  templateUrl: './security.component.html',
+  styleUrls: ['./security.component.css'],
   standalone: true,
-  // Importa los módulos FormsModule y CommonModule para que estén disponibles en este componente
   imports: [FormsModule, CommonModule, HttpClientModule, RouterModule]
 })
-export class ProfileComponent implements OnInit {
+
+export class SecurityComponent implements OnInit {
   // Propiedades que almacenan la información del perfil del usuario
   username: string = '';  // Nombre de usuario
   email: string = '';     // Correo electrónico
@@ -44,10 +34,20 @@ export class ProfileComponent implements OnInit {
   isPasswordLoading: boolean = false;
   passwordError: string | null = null;
   passwordSuccess: string | null = null;
+  passwordCreationDate: string = 'Unknown'; // Date when password was last changed
+  securityScore: number = 0; // Security score percentage
 
   newDeviceName: string = '';
   editingDeviceIndex: number = -1; // Track which device is being edited
-  
+
+  // New properties for password strength
+  passwordStrength: string = 'weak';
+  passwordRequirements = {
+    length: false,
+    uppercase: false,
+    number: false,
+    special: false
+  };
 
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
   constructor(
@@ -79,6 +79,12 @@ export class ProfileComponent implements OnInit {
   ngOnInit() {
     // Check if user has no passkeys and update UI accordingly
     this.updatePasskeyUIState();
+    
+    // Initialize password creation date from localStorage or set to today if not available
+    this.loadPasswordCreationDate();
+    
+    // Calculate initial security score
+    this.calculateSecurityScore();
   }
 
   // Update UI state based on passkeys availability
@@ -93,6 +99,105 @@ export class ProfileComponent implements OnInit {
     this.confirmPassword = '';
     this.passwordError = null;
     this.passwordSuccess = null;
+  }
+
+  // Evaluate password strength in real-time
+  evaluatePasswordStrength() {
+    const password = this.newPassword;
+    
+    // Reset requirements
+    this.passwordRequirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    
+    // Count met requirements
+    const metRequirements = Object.values(this.passwordRequirements).filter(value => value).length;
+    
+    // Set strength based on met requirements
+    if (password.length === 0) {
+      this.passwordStrength = 'weak';
+    } else if (metRequirements <= 1) {
+      this.passwordStrength = 'weak';
+    } else if (metRequirements === 2) {
+      this.passwordStrength = 'medium';
+    } else if (metRequirements >= 3) {
+      this.passwordStrength = 'strong';
+    }
+  }
+
+  // Toggle password visibility
+  togglePasswordVisibility(fieldId: string) {
+    const field = document.getElementById(fieldId) as HTMLInputElement;
+    if (field) {
+      field.type = field.type === 'password' ? 'text' : 'password';
+      // Toggle eye icon
+      const icon = field.nextElementSibling?.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('bi-eye-slash');
+        icon.classList.toggle('bi-eye');
+      }
+    }
+  }
+
+  // Load password creation date from localStorage 
+  loadPasswordCreationDate() {
+    // First try to get from localStorage (most up-to-date)
+    const savedDate = localStorage.getItem(`${this.username}_passwordDate`);
+    
+    if (savedDate) {
+      this.passwordCreationDate = savedDate;
+      return;
+    }
+    
+    // If no date is saved anywhere, set it to "Not changed yet"
+    this.passwordCreationDate = "Not changed yet";
+  }
+
+  // Save password creation date to localStorage
+  savePasswordCreationDate(date?: string) {
+    let dateToSave: string;
+    
+    if (date) {
+      // Use provided date if available
+      dateToSave = date;
+    } else {
+      // Otherwise generate current date
+      const now = new Date();
+      dateToSave = now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+    
+    localStorage.setItem(`${this.username}_passwordDate`, dateToSave);
+    this.passwordCreationDate = dateToSave;
+  }
+
+  // Calculate security score based on passkeys and password
+  calculateSecurityScore() {
+    const hasPassword = this.passwordCreationDate !== "Not changed yet";
+    const passkeysCount = this.devices.length;
+    
+    if (hasPassword && passkeysCount > 1) {
+      // Has password and multiple passkeys: 100%
+      this.securityScore = 100;
+    } else if (hasPassword && passkeysCount === 1) {
+      // Has password and one passkey: 75%
+      this.securityScore = 75;
+    } else if (!hasPassword && passkeysCount >= 1) {
+      // Has passkey(s) but no password: 50%
+      this.securityScore = 50;
+    } else if (hasPassword && passkeysCount === 0) {
+      // Has password but no passkeys: 25%
+      this.securityScore = 25;
+    } else {
+      // New account with no security features: 0%
+      this.securityScore = 0;
+    }
   }
 
   // Update user password
@@ -114,24 +219,54 @@ export class ProfileComponent implements OnInit {
       return;
     }
     
-  
+    // Validate password strength
+    if (this.passwordStrength === 'weak') {
+      this.passwordError = 'Password is too weak. Please improve it.';
+      setTimeout(() => this.passwordError = null, 3000);
+      return;
+    }
+
     this.isPasswordLoading = true;
     
     try {
-      await this.http.post('/profile/update-password', {
+      console.log('Starting password update, spinner should be visible');
+      
+      // Simulate a delay to ensure spinner is visible (can be removed in production)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const response = await this.http.post<{message: string, passwordCreationDate: string}>('/profile/update-password', {
         username: this.username,
         password: this.newPassword
       }).toPromise();
       
+      console.log('Password update response:', response);
+      
+      // Save the password creation date if returned from server
+      if (response && response.passwordCreationDate) {
+        this.savePasswordCreationDate(response.passwordCreationDate);
+      } else {
+        // Fallback to current date if server doesn't return a date
+        this.savePasswordCreationDate();
+      }
+      
+      // Recalculate security score
+      this.calculateSecurityScore();
+      
       this.passwordSuccess = 'Password updated successfully';
-      this.resetPasswordFields();
-      setTimeout(() => this.passwordSuccess = null, 3000);
+      this.newPassword = '';
+      this.confirmPassword = '';
+      
+      // Keep success message visible for 3 seconds
+      setTimeout(() => {
+        this.passwordSuccess = null;
+      }, 3000);
     } catch (error: any) {
       console.error('Error updating password:', error);
       this.passwordError = error.error?.message || 'Error updating password';
       setTimeout(() => this.passwordError = null, 3000);
     } finally {
       this.isPasswordLoading = false;
+      console.log('Password update complete, spinner should be hidden');
     }
   }
 
@@ -284,11 +419,14 @@ export class ProfileComponent implements OnInit {
           this.profileService.setProfile(currentProfile);
         }
         
+        // Recalculate security score after adding a passkey
+        this.calculateSecurityScore();
+        
         // Update UI state based on new passkey data
         this.updatePasskeyUIState();
         
         this.successMessage = 'New passkey added successfully!';
-        setTimeout(() => this.errorMessage = null, 3000);
+        setTimeout(() => this.successMessage= null, 3000);
       }
     } catch (error: any) {
       console.error('[ADD-DEVICE] Error:', error);
@@ -339,6 +477,9 @@ export class ProfileComponent implements OnInit {
               currentProfile.devices = this.devices;
               this.profileService.setProfile(currentProfile);
             }
+            
+            // Recalculate security score after removing a passkey
+            this.calculateSecurityScore();
             
             // Update UI state after deletion
             this.updatePasskeyUIState();

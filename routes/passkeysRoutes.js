@@ -142,17 +142,31 @@ router.post('/registro/usuario', (req, res) => {
         if (err) {
             return res.status(500).json({ message: 'Error al encriptar la contraseña' });
         }
-        // Guardar usuario con contraseña
+        
+        // Get current date in DD/MM/YYYY format
+        const now = new Date();
+        const passwordCreationDate = now.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        
+        // Guardar usuario con contraseña y fecha de creación
         users[username] = { 
             password: hash,
             email: username,
             devices: [],
-            credential: [] // Añadimos un array vacío para evitar errores
+            credential: [], // Añadimos un array vacío para evitar errores
+            passwordCreationDate: passwordCreationDate // Añadimos la fecha de creación de la contraseña
         };
-        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA`);
+        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate})`);
         
         // Ya estamos preparados para la verificación OTP cuando el usuario inicie sesión
-        res.status(200).json({ success: true, message: 'Usuario registrado correctamente' });
+        res.status(200).json({ 
+            success: true, 
+            message: 'Usuario registrado correctamente',
+            passwordCreationDate: passwordCreationDate // Return the creation date to the client
+        });
     });
 });
 
