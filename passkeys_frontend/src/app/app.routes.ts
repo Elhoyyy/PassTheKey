@@ -5,6 +5,7 @@ import { AuthComponent } from './auth/auth.component';
 import { HomeComponent } from './home/home.component';
 import { authGuard } from './auth.guard';
 import { SecurityComponent } from './security/security.component';
+import { RecoveryComponent } from './recovery/recovery.component';
 
 export const routes: Routes = [
   { path: 'profile', component: ProfileComponent,
@@ -16,5 +17,6 @@ export const routes: Routes = [
   { path: 'auth', component: AuthComponent },
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: '', component: AppComponent },
-  { path: 'home', component: HomeComponent }
+  { path: 'home', component: HomeComponent },
+  { path: 'recovery', component: RecoveryComponent}
 ];

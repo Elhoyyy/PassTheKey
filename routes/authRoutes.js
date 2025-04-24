@@ -190,7 +190,7 @@ router.post('/login/passkey/fin', async (req, res) => {
 
 // Endpoint for password login
 router.post('/login/password', (req, res) => {
-    let { username, password } = req.body;
+    let { username, password, recov } = req.body;
     if (!users[username]) {
         console.log('user not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
@@ -202,27 +202,58 @@ router.post('/login/password', (req, res) => {
         }
         
         // Password is correct - require OTP verification
-        console.log(`${username} - PASSWORD CORRECT, REQUIRING OTP VERIFICATION`);
-        
-        // Store the verification code (in a real app, this would be sent to the user via email/SMS)
-        // For this demo, we're using a fixed code 123456
-        if (!challenges.otp) {
-            challenges.otp = {};
+        console.log(`${username} - PASSWORD CORRECT`);
+    
+        if (!recov){
+            console.log('REQUIRING OTP VERIFICATION')
+            // Store the verification code (in a real app, this would be sent to the user via email/SMS)
+            // For this demo, we're using a fixed code 123456
+            if (!challenges.otp) {
+                challenges.otp = {};
+            }
+            challenges.otp[username] = {
+                code: '123456', // Fixed code for demo purposes
+                timestamp: Date.now(),
+                attempts: 0
+            };
+            
+            res.status(200).send({
+                res: true,
+                requireOtp: true,
+                userProfile: { username, ...users[username] }
+            });
+        } else {
+            console.log('NO OTP VERIFICATION REQUIRED - RECOVERY MODE')
+            // Skip OTP verification for recovery flow
+            res.status(200).send({
+                res: true,
+                requireOtp: false,
+                userProfile: { username, ...users[username] }
+            });
         }
-        challenges.otp[username] = {
-            code: '123456', // Fixed code for demo purposes
-            timestamp: Date.now(),
-            attempts: 0
-        };
-        
-        res.status(200).send({
-            res: true,
-            requireOtp: true,
-            userProfile: { username, ...users[username] }
-        });
     });
 });
 
+router.post('/asign-otp', (req, res) => {
+    let { username } = req.body;
+    if (!users[username]) {
+        console.log('user not found');
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    if (!challenges.otp) {
+        challenges.otp = {};
+    }
+    challenges.otp[username] = {
+        code: '123456', // Fixed code for demo purposes
+        timestamp: Date.now(),
+        attempts: 0
+    };
+    res.status(200).send({
+        res: true,
+        requireOtp: true,
+        userProfile: { username, ...users[username] }
+    });
+});
 
 // Endpoint to check if user exists and has passkeys
 router.post('/check-user-passkey', (req, res) => {
@@ -240,6 +271,22 @@ router.post('/check-user-passkey', (req, res) => {
     
     res.status(200).json({ exists, hasPasskey });
 });
+
+router.post('/check-user', (req, res) => {
+    const { username } = req.body;
+    console.log(`[CHECK] Checking if user ${username} exists`);
+    
+    if (!username) { 
+        return res.status(400).json({ message: 'Usuario requerido' });
+    }
+    
+    const exists = !!users[username];
+    
+    console.log(`[CHECK] User exists: ${exists}`);
+    
+    res.status(200).json({ exists });
+}
+);
 
 // Endpoint for login with passkey by email
 router.post('/login/passkey/by-email', (req, res) => {

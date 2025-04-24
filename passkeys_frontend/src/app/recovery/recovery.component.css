@@ -1,0 +1,268 @@
+/* Styles based on auth.component.css */
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+  color: #333;
+  height: 100vh;
+  background: url("../../../../images/catedral-image.jpeg") center center fixed;
+  background-size: cover;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column; 
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  background: rgba(115, 180, 233, 0.85);
+}
+
+.login {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login a {
+  font-size: 0.8em;   
+  color: #2196F3;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.login a:hover {
+  text-decoration: underline;
+}
+
+.login .title {
+  color: #444;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin: 10px 0 30px 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+  text-align: center;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px 12px 45px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+  border-color: #2196F3;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.btn-auth, .btn-verify, .btn-cancel, .btn-option {
+  width: 100%;
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  border: none;
+}
+
+.btn-auth {
+  background: #2196F3;
+  color: white;
+}
+
+.btn-auth:hover {
+  background: #1976D2;
+}
+
+.btn-verify {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-verify:hover {
+  background: #45a049;
+}
+
+.btn-cancel {
+  background: #f44336;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #d32f2f;
+}
+
+.btn-option {
+  background: #2196F3;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.btn-option:hover {
+  background: #1976D2;
+}
+
+.btn-option:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-auth:disabled, .btn-verify:disabled, .btn-cancel:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner-border {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.error-message {
+  background: #fee;
+  color: #e74c3c;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.error-message {
+    background: #fee;
+    color: #318831;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+
+.links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.otp-description {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.otp-description p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.otp-description p small {
+  color: #999;
+  font-style: italic;
+}
+
+.recovery-options {
+  margin: 20px 0;
+}
+
+.recovery-options p {
+  text-align: center;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: 10px;
+    height: 100vh;
+    margin: 0;
+  }
+
+  .login {
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 15px 15px 70px 15px;
+  }
+
+  .login input {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  .input-group i {
+    width: 10px;
+    text-align: center;
+  }
+  
+  .email-input {
+    padding-left: 30px !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .login {
+    width: 100%;
+    padding: 10px 10px 60px 10px;
+  }
+}

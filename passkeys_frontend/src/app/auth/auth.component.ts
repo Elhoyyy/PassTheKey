@@ -301,27 +301,16 @@ export class AuthComponent {
     this.errorMessage = null;
     
     try {
-      const response = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
+      const response = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
         username: this.username, 
-        password: this.password 
+        password: this.password,
+        recovery: false
       }).toPromise();
       
       if (response && response.res) {
-        // Si se requiere verificación OTP
-        if (response.requireOtp) {
-          this.pendingUserProfile = response.userProfile;
-          this.showOtpVerification = true;
-        } else {
-          // Si no se requiere OTP, proceder normalmente
-          this.authService.login();
-          this.appComponent.isLoggedIn = true;
-          const userProfile = {
-            ...response.userProfile,
-            plainPassword: this.password // Añadimos la contraseña sin hashear
-          };
-          this.profileService.setProfile(userProfile);
-          this.router.navigate(['/profile'], { state: { userProfile } });
-        }
+        // Always show OTP verification after successful password authentication
+        this.pendingUserProfile = response.userProfile;
+        this.showOtpVerification = true;
       } else {
         this.errorMessage = 'Invalid credentials.';
       }
@@ -704,29 +693,20 @@ export class AuthComponent {
         
         // Iniciar sesión directamente sin mostrar mensaje
         try {
-          const loginResponse = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
+          const loginResponse = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
             username: this.username, 
-            password: savedPassword
+            password: savedPassword,
+            recovery: false
           }).toPromise();
           
           if (loginResponse && loginResponse.res) {
-            // Si se requiere verificación OTP
-            if (loginResponse.requireOtp) {
-              this.pendingUserProfile = loginResponse.userProfile;
-              this.showOtpVerification = true;
-              this.isRegistering = false;
-            } else {
-              // Si no se requiere OTP, proceder normalmente
-              this.authService.login();
-              this.appComponent.isLoggedIn = true;
-              const userProfile = {
-                ...loginResponse.userProfile,
-                plainPassword: savedPassword, // Añadimos la contraseña sin hashear
-                passwordCreationDate: response.passwordCreationDate // Add password creation date to profile
-              };
-              this.profileService.setProfile(userProfile);
-              this.router.navigate(['/profile'], { state: { userProfile } });
-            }
+            // Always require OTP verification after successful password authentication
+            this.pendingUserProfile = {
+              ...loginResponse.userProfile,
+              passwordCreationDate: response.passwordCreationDate
+            };
+            this.showOtpVerification = true;
+            this.isRegistering = false;
           } else {
             throw new Error('Error en el inicio de sesión automático');
           }
@@ -828,5 +808,10 @@ export class AuthComponent {
     } finally {
       this.isCheckingPasskeys = false;
     }
+  }
+
+  // Método para navegar a la página de recuperación
+  goToRecovery() {
+    this.router.navigate(['/recovery']);
   }
 }

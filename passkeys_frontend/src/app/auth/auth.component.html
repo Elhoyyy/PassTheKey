@@ -97,7 +97,7 @@
               {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
             </a>
             <hr>
-            <a *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
+            <a (click)="goToRecovery()" *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
           </div>
         </div>
 

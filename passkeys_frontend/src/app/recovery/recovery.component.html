@@ -1,0 +1,162 @@
+<body>
+ <div class="wrapper">
+  <form class="login">
+    <p class="title">
+      <i class="bi bi-shield-lock"></i>
+      {{ 
+        stage === 'initial' ? 'Recuperación de Cuenta' : 
+        stage === 'otp-verification' ? 'Verificación de Código' :
+        stage === 'reset-options' ? 'Opciones de Recuperación' :
+        'Restablecimiento de Contraseña'
+      }}
+    </p>
+
+    <!-- Pantalla inicial -->
+    <div *ngIf="stage === 'initial'">
+      <div class="input-group">
+        <i class="bi bi-envelope"></i>
+        <input 
+          type="email" 
+          [(ngModel)]="username" 
+          name="username" 
+          placeholder="Email" 
+          class="email-input"/>
+      </div>
+
+      <div class="buttons-container">
+        <button 
+          class="btn-auth" 
+          (click)="requestRecovery()"
+          [disabled]="isProcessing">
+          <i *ngIf="!isProcessing" class="bi bi-send"></i>
+          <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isProcessing ? 'Enviando...' : 'Enviar código de recuperación' }}</span>
+        </button>
+      </div>
+
+      <div class="links-container">
+        <a (click)="goToLogin()">Volver al inicio de sesión</a>
+      </div>
+    </div>
+
+    <!-- Pantalla de verificación OTP -->
+    <div *ngIf="stage === 'otp-verification'">
+      <div class="input-group">
+        <i class="bi bi-shield-lock"></i>
+        <input 
+          type="text" 
+          [(ngModel)]="otpCode" 
+          name="otpCode" 
+          placeholder="Código de verificación" 
+          maxlength="6"
+          autocomplete="one-time-code" />
+      </div>
+
+      <div class="otp-description">
+        <p>Se ha enviado un código de verificación a tu correo.</p>
+        <p>Por favor, ingrésalo para continuar.</p>
+        <p><small>Código de prueba: 123456</small></p>
+      </div>
+
+      <div class="buttons-container">
+        <button 
+          class="btn-verify" 
+          (click)="verifyOtp()"
+          [disabled]="isProcessing">
+          <i *ngIf="!isProcessing" class="bi bi-check-circle"></i>
+          <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isProcessing ? 'Verificando...' : 'Verificar' }}</span>
+        </button>
+        
+        <button 
+          class="btn-cancel" 
+          (click)="cancelAndGoBack()"
+          [disabled]="isProcessing">
+          <i class="bi bi-x-circle"></i>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pantalla de opciones de recuperación -->
+    <div *ngIf="stage === 'reset-options'">
+      <div class="recovery-options">
+        <p>Elige una opción para recuperar tu cuenta:</p>
+
+        <!-- Esta opción se implementará después -->
+        <button 
+          class="btn-option" 
+          disabled>
+          <i class="bi bi-key"></i>
+          <span>Crear nueva passkey</span>
+        </button>
+
+        <button 
+          class="btn-option" 
+          (click)="choosePasswordReset()">
+          <i class="bi bi-lock"></i>
+          <span>Restablecer contraseña</span>
+        </button>
+        
+      </div>
+
+      <div class="buttons-container">
+        <button 
+          class="btn-cancel" 
+          (click)="cancelAndGoBack()">
+          <i class="bi bi-arrow-left-circle"></i>
+          <span>Volver</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pantalla de restablecimiento de contraseña -->
+    <div *ngIf="stage === 'password-reset'">
+      <div class="input-group">
+        <i class="bi bi-lock"></i>
+        <input 
+          type="password" 
+          [(ngModel)]="newPassword" 
+          name="newPassword" 
+          placeholder="Nueva contraseña" />
+      </div>
+      
+      <div class="input-group">
+        <i class="bi bi-lock-fill"></i>
+        <input 
+          type="password" 
+          [(ngModel)]="confirmPassword" 
+          name="confirmPassword" 
+          placeholder="Confirmar contraseña" />
+      </div>
+
+      <div class="buttons-container">
+        <button 
+          class="btn-auth" 
+          (click)="resetPassword()"
+          [disabled]="isProcessing">
+          <i *ngIf="!isProcessing" class="bi bi-check-circle"></i>
+          <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isProcessing ? 'Restableciendo...' : 'Restablecer contraseña' }}</span>
+        </button>
+        
+        <button 
+          class="btn-cancel" 
+          (click)="cancelAndGoBack()"
+          [disabled]="isProcessing">
+          <i class="bi bi-x-circle"></i>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
+    
+    <div *ngIf="errorMessage" class="error-message">
+      <i class="bi bi-exclamation-triangle"></i>
+      {{ errorMessage }}
+    </div>
+    <div *ngIf="successMessage" class="success-message">
+        <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
+    </div>
+  </form>
+ </div>
+</body>

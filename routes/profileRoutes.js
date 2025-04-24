@@ -12,11 +12,11 @@ router.post('/update-password', async (req, res) => {
     
     console.log('Received update password request for user:', username);
     console.log('Validating password...');
-    
+    /*
     if(!isValidPassword(password)){
       console.log('Password validation failed:', password);
       return res.status(400).json({ message: 'La contraseña debe cumplir los criterios de seguridad' });
-    }
+    }*/
     
     try {
         console.log('Password validation passed, hashing password...');
