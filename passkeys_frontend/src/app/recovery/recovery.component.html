@@ -83,16 +83,21 @@
       <div class="recovery-options">
         <p>Elige una opción para recuperar tu cuenta:</p>
 
-        <!-- Esta opción se implementará después -->
+        <!-- Opción de passkey destacada -->
         <button 
-          class="btn-option" 
+          class="btn-option btn-option-primary"
           disabled>
           <i class="bi bi-key"></i>
           <span>Crear nueva passkey</span>
+          <small class="option-description">Opción recomendada - más segura y conveniente</small>
         </button>
 
+        <div class="option-separator">
+          <span>o</span>
+        </div>
+
         <button 
-          class="btn-option" 
+          class="btn-option btn-option-secondary" 
           (click)="choosePasswordReset()">
           <i class="bi bi-lock"></i>
           <span>Restablecer contraseña</span>

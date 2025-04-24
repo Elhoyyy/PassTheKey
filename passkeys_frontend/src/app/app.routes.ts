@@ -6,6 +6,7 @@ import { HomeComponent } from './home/home.component';
 import { authGuard } from './auth.guard';
 import { SecurityComponent } from './security/security.component';
 import { RecoveryComponent } from './recovery/recovery.component';
+import { RegisterComponent } from './register/register.component';
 
 export const routes: Routes = [
   { path: 'profile', component: ProfileComponent,
@@ -18,5 +19,6 @@ export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: '', component: AppComponent },
   { path: 'home', component: HomeComponent },
-  { path: 'recovery', component: RecoveryComponent}
+  { path: 'recovery', component: RecoveryComponent},
+  { path: 'register', component: RegisterComponent}
 ];

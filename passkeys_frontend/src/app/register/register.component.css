@@ -1,0 +1,348 @@
+/* Reset basic styles */
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+  color: #333;
+  height: 100vh;
+  background: url("../../../../images/catedral-image.jpeg") center center fixed;
+  background-size: cover;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column; 
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  background: rgba(115, 180, 233, 0.85);
+}
+
+.login {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login a {
+  font-size: 0.8em;   
+  color: #2196F3;
+  text-decoration: none;
+}
+
+.login a:hover {
+  text-decoration: underline;
+}
+
+.login .title {
+  color: #444;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin: 10px 0 30px 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px 12px 45px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+  border-color: #2196F3;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+a, p{
+  margin-top: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-direction: column; 
+  justify-content: center;
+}
+
+.spinner-border {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  border: 2px solid #2914eb;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.error-message {
+  background: #fee;
+  color: #e74c3c;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.error-message.success {
+  background: #e6ffe6;
+  color: #2ecc71;
+}
+
+.links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.links-container a {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
+.links-container a:hover {
+  text-decoration: underline;
+}
+
+/* Estilos para el toggle de contraseña/passkey */
+.password-toggle {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-top: 10px;
+  padding: 0 10px;
+  gap: 12px;
+}
+
+.password-toggle span {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Estilo para el botón toggle */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #2196F3;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 27px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #ccc;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #ccc;
+}
+
+input:checked + .slider:before {
+  transform: translateX(-24px);
+}
+
+/* Estilo para el botón de registro unificado */
+.btn-register {
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-register:hover {
+  background: #1976D2;
+}
+
+.btn-register:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+.btn-verify {
+  flex: 1;
+  padding: 10px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-verify:hover {
+  background: #45a049;
+}
+
+.btn-verify:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 10px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-cancel:hover {
+  background: #d32f2f;
+}
+
+.btn-cancel:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+.otp-description {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.otp-description p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.otp-description p small {
+  color: #999;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: 10px;
+    height: 100vh;
+    margin: 0;
+  }
+
+  .login {
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 15px 15px 70px 15px;
+  }
+
+  .login input {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  .login button {
+    height: 45px;
+  }
+  
+  .input-group i {
+    width: 10px;
+    text-align: center;
+  }
+  
+  .email-input {
+    padding-left: 30px !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .login {
+    width: 100%;
+    padding: 10px 10px 60px 10px;
+  }
+}

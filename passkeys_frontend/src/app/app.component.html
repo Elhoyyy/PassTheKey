@@ -7,8 +7,21 @@
     <div class="nav-buttons">
       <button (click)="navigateTo('home')" [class.active]="currentRoute === '/home'"><i class="bi bi-house"></i>
         Home</button>
-      <button *ngIf="!isLoggedIn" (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'"><i class="bi bi-person-plus-fill"></i>
-        Sign in/Up</button>
+
+      <div *ngIf="!isLoggedIn" class="dropdown">
+        <button class="dropdown-toggle" (click)="toggleDropdown()" 
+                [class.active]="currentRoute === '/auth' || currentRoute === '/register'">
+          <i class="bi bi-person"></i> Sign in/Up <i class="bi bi-caret-down-fill"></i>
+        </button>
+        <div class="dropdown-menu" [class.show]="isDropdownOpen">
+          <button (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'">
+            <i class="bi bi-box-arrow-in-right"></i> Sign In
+          </button>
+          <button (click)="navigateTo('register')" [class.active]="currentRoute === '/register'">
+            <i class="bi bi-person-plus"></i> Sign Up
+          </button>
+        </div>
+      </div>
       <!-- Dropdown menu for Profile -->
       <div *ngIf="isLoggedIn" class="dropdown">
         <button class="dropdown-toggle" (click)="toggleDropdown()" 

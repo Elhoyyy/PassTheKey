@@ -1,13 +1,13 @@
 <html> 
   <body>   
-    <div class="wrapper" >
+    <div class="wrapper">
       <form class="login">
         <p class="title">
           <i class="bi bi-key-fill"></i>
-          {{ isInRegistrationMode ? 'Registro de Usuario' : showOtpVerification ? 'Verificación de código' : 'Passkeys Login' }}
+          {{ showOtpVerification ? 'Verificación de código' : 'Passkeys Login' }}
         </p>
 
-        <!-- Campos normales de login/registro (ocultos durante verificación OTP) -->
+        <!-- Campos normales de login (ocultos durante verificación OTP) -->
         <div *ngIf="!showOtpVerification">
           <div class="input-group">
             <i class="bi bi-person"></i>
@@ -22,28 +22,9 @@
               (focus)="onUsernameFieldFocus()"
               (click)="onUsernameFieldFocus()"/>
           </div>
-
-          <!-- Campo de contraseña para registro (solo visible si se activa) -->
-          <div class="input-group" *ngIf="isInRegistrationMode && showPasswordForRegistration">
-            <i class="bi bi-lock"></i>
-            <input 
-              type="password" 
-              [(ngModel)]="password" 
-              name="password" 
-              placeholder="Password" />
-          </div>
-          
-          <!-- Toggle para mostrar/ocultar contraseña en registro -->
-          <div class="password-toggle" *ngIf="isInRegistrationMode">
-            <label class="toggle">
-              <input type="checkbox" [(ngModel)]="showPasswordForRegistration" name="showPassword" >
-              <span class="slider"></span>
-            </label>
-            <span>Usar passkey</span>
-          </div>
           
           <!-- Campo de contraseña para login (solo visible si se activa) -->
-          <div class="input-group" *ngIf="!isInRegistrationMode && showLoginPasswordField">
+          <div class="input-group" *ngIf="showLoginPasswordField">
             <i class="bi bi-lock"></i>
             <input 
               type="password" 
@@ -53,20 +34,8 @@
           </div>
 
           <div class="buttons-container">
-            <!-- Si estamos en modo registro - Botón unificado para registro -->
+            <!-- Botón para login adaptativo -->
             <button 
-              *ngIf="isInRegistrationMode"
-              class="btn-register" 
-              (click)="handleRegistration()"
-              [disabled]="isRegistering">
-              <i *ngIf="!isRegistering" class="bi" [ngClass]="showPasswordForRegistration ? 'bi-person-plus' : 'bi-key'"></i>
-              <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
-              <span>{{ isRegistering ? 'Registrando...' : showPasswordForRegistration ? 'Registrar con contraseña' : 'Registrar con passkey' }}</span>
-            </button>
-             
-            <!-- Si NO estamos en modo registro - Botón para login adaptativo -->
-            <button 
-              *ngIf="!isInRegistrationMode"
               class="btn-auth" 
               (click)="loginConContra()"
               [disabled]="isAuthenticating || isCheckingPasskeys">
@@ -81,9 +50,8 @@
             </button>
           </div>
 
-          <!-- Si NO estamos en modo registro - Botón para passkey directo -->
+          <!-- Botón para passkey directo -->
           <button 
-            *ngIf="!isInRegistrationMode"
             class="btn-direct-auth" 
             (click)="directAuthentication()"
             [disabled]="isAuthenticating || isCheckingPasskeys">
@@ -93,11 +61,11 @@
           </button>
           
           <div class="links-container">
-            <a (click)="toggleRegistrationMode()">
-              {{ isInRegistrationMode ? 'Ya dispones de una cuenta? Logueate' : 'No tienes cuenta? REGISTRATE' }}
+            <a (click)="goToRegister()">
+              No tienes cuenta? REGISTRATE
             </a>
             <hr>
-            <a (click)="goToRecovery()" *ngIf="!isInRegistrationMode" >Perdiste la cuenta? Recupérala</a>
+            <a (click)="goToRecovery()">Perdiste la cuenta? Recupérala</a>
           </div>
         </div>
 

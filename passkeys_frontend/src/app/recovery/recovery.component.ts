@@ -20,7 +20,7 @@ export class RecoveryComponent {
   errorMessage: string | null = null;
   successMessage: string | null = null; // Message to show to the user
   isProcessing: boolean = false;
-  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' = 'initial';
+  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' = 'initial'; // Current stage of the recovery process
   otpCode: string = '';
   newPassword: string = '';
   confirmPassword: string = '';
@@ -173,10 +173,10 @@ export class RecoveryComponent {
   }
   
   cancelAndGoBack() {
-    if (this.stage === 'otp-verification') {
+    if (this.stage === 'otp-verification' || this.stage === 'reset-options') {
       this.stage = 'initial';
-    } else if (this.stage === 'reset-options' || this.stage === 'password-reset') {
-      this.stage = 'otp-verification';
+    } else if (this.stage === 'password-reset') {
+      this.stage = 'reset-options';
     }
   }
   

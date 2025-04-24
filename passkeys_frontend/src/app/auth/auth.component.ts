@@ -1,47 +1,47 @@
-import { Component, ElementRef, ViewChild } from '@angular/core'; //simplemente definimos los componentes angular
-import { HttpClient, HttpClientModule } from '@angular/common/http';//importamos el modulo httpclient y httpclientmodule para interactuar con el backend
-import { FormsModule } from '@angular/forms'; //importamos el modulo forms para trabajar con formularios en angular y enlacar datos de manera bidireccional entre el componente y la vista
-import { CommonModule } from '@angular/common'; //importamos el modulo common para trabajar con directivas estructurales y de atributos
-import { Router, RouterModule } from '@angular/router'; //importamos el modulo router y routermodule para trabajar con las rutas de la aplicacion
+import { Component, ElementRef, ViewChild } from '@angular/core';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 import { AppComponent } from '../app.component';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
 
 @Component({
   selector: 'app-auth',
-  templateUrl: './auth.component.html', //ruta del html para este componente
-  styleUrls: ['./auth.component.css'], // lo mismo con el css
-  standalone: true,//no necesita mas componentes para funcionar
-  imports: [FormsModule, CommonModule, HttpClientModule, RouterModule] //importamos los modulos necesarios para el componente
+  templateUrl: './auth.component.html',
+  styleUrls: ['./auth.component.css'],
+  standalone: true,
+  imports: [FormsModule, CommonModule, HttpClientModule, RouterModule]
 })
 export class AuthComponent {
-  username: string = ''; //variable para almacenar el nombre de usuario
-  password: string = ''; // variable para almacenar la contraseña
-  email: string = ''; //variable para almacenar el correo electronico
-  errorMessage: string | null = null; //almacenar mensajes de error que vengan del backend para imprimirlos en la vista. Inicialmente es null
-  showPasswordField: boolean = false; // añadimos una bandera para mostrar/ocultar el campo de contraseña
-  showRegisterField: boolean = false; // añadimos una bandera para mostrar/ocultar el campo de registro
-  hasPasskey: boolean = false; // añadimos una bandera para saber si el usuario tiene un passkey registrado
-  isAuthenticating: boolean = false; // añadimos una bandera para saber si la aplicación está cargando algo
-  isRegistering: boolean = false; // añadimos una bandera para saber si el usuario está registrando un dispositivo
-  devices: { name: string, creationDate: string, lastUsed: string }[] = []; // añadimos un array para almacenar los dispositivos registrados
-  forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
-  isRegistrationIntent: boolean = false; // añadimos una bandera para saber si estamos en proceso de registro
-  isInRegistrationMode: boolean = false; // Nueva propiedad para controlar el modo de registro
-  isAutofillInProgress = false; // Nueva variable para controlar el estado del autofill
-  private pendingAutofill: Promise<void> | null = null; // Para rastrear la operación de autofill en curso
-  private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
-  showPasswordForRegistration: boolean = false; // Already false by default, which is what we want
-  // OTP verification properties
-  showOtpVerification: boolean = false; // Para mostrar el campo de verificación OTP
-  otpCode: string = ''; // Almacena el código OTP ingresado por el usuario
-  isVerifyingOtp: boolean = false; // Indica si estamos procesando la verificación
-  pendingUserProfile: any = null; // Almacena temporalmente el perfil de usuario hasta que se verifique el OTP
-  // Nueva propiedad para controlar la visibilidad del campo de contraseña
-  showLoginPasswordField: boolean = false;
-  // Nueva propiedad para controlar el estado del flujo de autenticación
+  username: string = '';
+  password: string = '';
+  errorMessage: string | null = null;
+  showPasswordField: boolean = false;
+  hasPasskey: boolean = false;
+  isAuthenticating: boolean = false;
   isCheckingPasskeys: boolean = false;
-  constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
+  devices: { name: string, creationDate: string, lastUsed: string }[] = [];
+  forgotDevice: boolean = false;
+  isAutofillInProgress = false;
+  private pendingAutofill: Promise<void> | null = null;
+  private autofillAbortController: AbortController | null = null;
+  // OTP verification properties
+  showOtpVerification: boolean = false;
+  otpCode: string = '';
+  isVerifyingOtp: boolean = false;
+  pendingUserProfile: any = null;
+  // Propiedad para controlar la visibilidad del campo de contraseña
+  showLoginPasswordField: boolean = false;
+
+  constructor(
+    private http: HttpClient, 
+    private router: Router, 
+    private appComponent: AppComponent, 
+    private authService: AuthService, 
+    private profileService: ProfileService
+  ) {}
   
   // Método para manejar el evento de focus en el campo de username
   async onUsernameFieldFocus() {
@@ -494,6 +494,7 @@ export class AuthComponent {
       userVerification: options.userVerification
     };
   }
+  
   // Método para cancelar la verificación OTP
   cancelOtpVerification() {
     this.showOtpVerification = false;
@@ -501,235 +502,18 @@ export class AuthComponent {
     this.pendingUserProfile = null;
   }
 
-  async register() {
-    // Cancel any active autofill before proceeding with registration
-    this.cancelActiveAutofill();
-    
-    let deviceName = 'Passkey_Device';
-    const userAgent = navigator.userAgent;
-      console.log('User Agent:', userAgent);
-      if (userAgent.includes('Windows')) {
-        const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-        deviceName = version ? `Windows ${version[1]}` : 'Windows';
-      } else if (userAgent.includes('iPhone')) {
-        const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-        deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-      } else if (userAgent.includes('Android')) {
-        const version = userAgent.match(/Android (\d+\.\d+)/);
-        deviceName = version ? `Android ${version[1]}` : 'Android';
-      } else if (userAgent.includes('Linux')) {
-        deviceName = 'Linux';
-    }
-
-    const device_creationDate = new Date().toLocaleString('en-GB', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
-
-    console.log('[REGISTRATION] Starting registration process');
-    this.isRegistrationIntent = true;
-    this.errorMessage = null;
-    this.isRegistering = true;
-    try {
-        console.log('[REGISTRATION] Requesting creation options for user:', this.username);
-        const options = await this.http.post<PublicKeyCredentialCreationOptions>(
-            '/passkey/registro/passkey', 
-            { username: this.username }
-        ).toPromise();
-        
-        console.log('[REGISTRATION] Received options:', options);
-        if (!options) {
-            throw new Error('Failed to get credential creation options');
-        }
-
-        // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
-        const publicKeyCredentialCreationOptions = {
-            ...options,
-            challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-            user: {
-                ...options.user,
-                id: this.base64URLToBuffer(options.user.id as unknown as string),
-            }
-        };
-
-        console.log('[REGISTRATION] Processed options:', publicKeyCredentialCreationOptions);
-
-        console.log('[REGISTRATION] Calling navigator.credentials.create');
-        const credential = await navigator.credentials.create({
-            publicKey: publicKeyCredentialCreationOptions
-        }) as PublicKeyCredential;
-        console.log('[REGISTRATION] Created credential:', credential);
-
-        // Convert credential for sending to server
-        const attestationResponse = {
-            data: {  // Wrap in data object to match SimpleWebAuthn expectations
-                id: credential.id,
-                rawId: this.bufferToBase64URL(credential.rawId),
-                response: {
-                    attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
-                    clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
-                },
-                type: credential.type
-            },
-            username: this.username,
-            deviceName,
-            device_creationDate
-        };
-
-        console.log('[REGISTRATION] Sending attestation response:', attestationResponse);
-
-        const response = await this.http.post<any>(
-            '/passkey/registro/passkey/fin', 
-            attestationResponse
-        ).toPromise();
-        
-        if (response && response.res) {
-            this.authService.login(); // Añadir esta línea
-            // Redirect to profile after successful registration
-            this.appComponent.isLoggedIn = true;
-            this.profileService.setProfile(response.userProfile);
-            this.router.navigate(['/profile'], { 
-                state: { userProfile: response.userProfile }
-            });
-        }
-    } catch (error: any) {
-       if (error.status === 400 || error.status === 409 || error.status === 401) {
-            this.errorMessage = error.error.message || 'Error registrando dispositivo';
-            this.hideError();
-        }
-        else{
-            this.errorMessage = 'Error en el registro, intente de nuevo';
-            this.hideError();
-        }
-    } finally {
-        this.isRegistering = false;
-        this.isRegistrationIntent = false; // Reseteamos la bandera al finalizar
-    }
+  // Método para ir a la página de registro
+  goToRegister() {
+    this.router.navigate(['/register']);
   }
 
-  auth() { //metodo para navegar a la vista de autenticacion
-    this.router.navigate(['/auth']);
+  // Método para ir a la página de recuperación
+  goToRecovery() {
+    this.router.navigate(['/recovery']);
   }
 
-  togglePasswordField() {
-    this.showPasswordField = !this.showPasswordField;
-  }
-
-  toggleRegistrationMode() {
-    // Cancel any active autofill when switching modes
-    this.cancelActiveAutofill();
-    
-    this.isInRegistrationMode = !this.isInRegistrationMode;
-    this.errorMessage = null;
-    // Resetear varios campos al cambiar de modo
-    this.password = '';
-    this.showPasswordForRegistration = false;
-    this.showLoginPasswordField = false; // Resetear la visibilidad del campo de contraseña para login
-  }
-
-  // Nuevo método para alternar la visibilidad del campo de contraseña en registro
-  togglePasswordForRegistration() {
-    this.showPasswordForRegistration = !this.showPasswordForRegistration;
-  }
-
-  // Método para manejar el registro unificado
-  async handleRegistration() {
-    // Si el campo de contraseña está visible, registrar con contraseña
-    if (this.showPasswordForRegistration) {
-      await this.registerWithPassword();
-    } else {
-      // De lo contrario, registrar con passkey
-      await this.register();
-    }
-  }
-
-  async continueRegistration() {
-    // Cancel any active autofill before proceeding with registration
-    this.cancelActiveAutofill();
-    
-    if (!this.username || !this.validateEmail(this.username)) {
-      this.errorMessage = "Por favor, introduce un correo electrónico válido";
-      this.hideError();
-      return;
-    }
-    
-    // Ahora no mostramos automáticamente el campo de contraseña para el registro
-    // El usuario debe elegir explícitamente usar contraseña o passkey
-  }
-  
-  async registerWithPassword() {
-    // Cancel any active autofill before proceeding with registration
-    this.cancelActiveAutofill();
-    
-    this.isRegistering = true;
-    this.errorMessage = null;
-    
-    try {
-      // Validar la contraseña
-      if (!this.password || this.password.length < 4) {
-        throw new Error('La contraseña debe tener al menos 4 caracteres');
-      }
-      
-      const response = await this.http.post<any>('/passkey/registro/usuario', {
-        username: this.username,
-        password: this.password
-      }).toPromise();
-      
-      if (response && response.success) {
-        // Save password creation date to localStorage
-        if (response.passwordCreationDate) {
-          localStorage.setItem(`${this.username}_passwordDate`, response.passwordCreationDate);
-        }
-        
-        // Modificamos esta parte para autenticar directamente sin mensaje intermedio
-        console.log('Registro exitoso, iniciando sesión automáticamente');
-        
-        // Guardar la contraseña para usarla en la autenticación
-        const savedPassword = this.password;
-        
-        // Iniciar sesión directamente sin mostrar mensaje
-        try {
-          const loginResponse = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
-            username: this.username, 
-            password: savedPassword,
-            recovery: false
-          }).toPromise();
-          
-          if (loginResponse && loginResponse.res) {
-            // Always require OTP verification after successful password authentication
-            this.pendingUserProfile = {
-              ...loginResponse.userProfile,
-              passwordCreationDate: response.passwordCreationDate
-            };
-            this.showOtpVerification = true;
-            this.isRegistering = false;
-          } else {
-            throw new Error('Error en el inicio de sesión automático');
-          }
-        } catch (loginError) {
-          console.error('Error en el inicio de sesión automático:', loginError);
-          this.errorMessage = 'Registro exitoso, pero no se pudo iniciar sesión automáticamente. Por favor, inicie sesión manualmente.';
-          this.hideError();
-          this.isRegistering = false;
-          this.toggleRegistrationMode(); // Cambiar a modo login
-        }
-      } else {
-        throw new Error('Error en el registro');
-      }
-    } catch (error: any) {
-      console.error('Error en el registro con contraseña:', error);
-      this.errorMessage = error.error?.message || error.message || 'Error en el registro';
-      this.hideError();
-      this.isRegistering = false;
-    }
-  }
-
-  hideError(){
-    setTimeout(()=> this.errorMessage=null, 3000);
+  hideError() {
+    setTimeout(() => this.errorMessage = null, 3000);
   }
 
   // Validador simple de email
@@ -752,7 +536,7 @@ export class AuthComponent {
     const buffer = new ArrayBuffer(binary.length);
     const bytes = new Uint8Array(buffer);
     for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
+      bytes[i] = binary.charCodeAt(i);
     }
     return buffer;
   }
@@ -808,10 +592,5 @@ export class AuthComponent {
     } finally {
       this.isCheckingPasskeys = false;
     }
-  }
-
-  // Método para navegar a la página de recuperación
-  goToRecovery() {
-    this.router.navigate(['/recovery']);
   }
 }
