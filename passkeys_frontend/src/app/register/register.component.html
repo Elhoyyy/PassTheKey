@@ -7,7 +7,7 @@
         </p>
 
         <!-- Campos para registro (ocultos durante verificación OTP) -->
-        <div *ngIf="!showOtpVerification">
+        <div *ngIf="!showOtpVerification && !showPasskeyNameDialog">
         <div class="input-group">
             <i class="bi bi-person"></i>
             <input 
@@ -59,7 +59,7 @@
         </div>
 
         <!-- Pantalla de verificación OTP -->
-        <div *ngIf="showOtpVerification">
+        <div *ngIf="showOtpVerification && !showPasskeyNameDialog">
         <div class="input-group">
             <i class="bi bi-shield-lock"></i>
             <input 
@@ -95,6 +95,30 @@
             <span>Cancelar</span>
             </button>
         </div>
+        </div>
+        
+        <!-- Improved Passkey naming dialog -->
+        <div *ngIf="showPasskeyNameDialog" class="passkey-name-dialog">
+          <div class="dialog-content">
+            <div class="dialog-header">
+              <h5><i class="bi bi-shield-lock"></i>Name Your Passkey</h5>
+            </div>
+            <div class="dialog-body">
+              <p>A passkey helps you sign in quickly and securely without using a password.</p>
+              <div class="input-group">
+                <input type="text" class="form-control" [(ngModel)]="passkeyName" name="passkeyName" placeholder="Enter a name for this passkey">
+              </div>
+
+            </div>
+            <div class="dialog-footer">
+              <button class="btn btn-secondary" (click)="cancelPasskeyName()">
+                <i class="bi bi-x-circle"></i>Cancel
+              </button>
+              <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!passkeyName.trim()">
+                <i class="bi bi-check-circle"></i>Continue
+              </button>
+            </div>
+          </div>
         </div>
         
         <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">

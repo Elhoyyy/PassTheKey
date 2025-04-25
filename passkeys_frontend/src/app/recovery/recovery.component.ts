@@ -17,6 +17,8 @@ import { AppComponent } from '../app.component';
 export class RecoveryComponent {
   
   username: string = ''; // Email for account recovery
+  devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
+  device_creationDate: string = ''; // Fecha de creación del dispositivo
   errorMessage: string | null = null;
   successMessage: string | null = null; // Message to show to the user
   isProcessing: boolean = false;
@@ -25,6 +27,12 @@ export class RecoveryComponent {
   newPassword: string = '';
   confirmPassword: string = '';
   passwordCreationDate: string = 'Unknown'; // Date when password was last changed
+
+  // Add these properties for passkey naming dialog
+  showPasskeyNameDialog: boolean = false;
+  passkeyName: string = '';
+  detectedDeviceName: string = 'Passkey_Device';
+
   constructor(
     private http: HttpClient, 
     private router: Router, 
@@ -104,7 +112,235 @@ export class RecoveryComponent {
   choosePasswordReset() {
     this.stage = 'password-reset';
   }
+
+  async passkeyRecovery() {
+    this.detectDeviceName();
+    this.passkeyName = this.detectedDeviceName;
+    this.showPasskeyNameDialog = true;
+  }
+
+  // Method to detect device name based on user agent
+  detectDeviceName() {
+    const userAgent = navigator.userAgent;
+    console.log('User Agent:', userAgent);
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Linux')) {
+      this.detectedDeviceName = 'Linux';
+    } else if (userAgent.includes('Mac')) {
+      const version = userAgent.match(/Mac OS X (\d+[._]\d+)/);
+      this.detectedDeviceName = version ? `MacOS ${version[1].replace('_', '.')}` : 'MacOS';
+    }
+  }
+
+  // Method to continue with passkey creation after naming
+  confirmPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.createRecoveryPasskey();
+  }
+
+  // Method to cancel passkey naming
+  cancelPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.stage = 'reset-options';
+  }
+
+  // Renamed the actual passkey creation logic
+  async createRecoveryPasskey() {
+    this.isProcessing = true;
+    this.errorMessage = null;
+    
+    let deviceName = this.passkeyName;
+    const userAgent = navigator.userAgent;
+    
+    const device_creationDate = new Date().toLocaleString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   
+    try {
+      console.log('[RECOVER-DEVICE] Requesting recover options for user:', this.username);
+      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
+        '/passkey/registro/passkey/additional', 
+        { username: this.username }
+      ).toPromise();
+      
+      console.log('[RECOVER-DEVICE] Received options:', options);
+      if (!options) {
+        throw new Error('Failed to get credential creation options');
+      }
+  
+      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+      const publicKeyCredentialCreationOptions = {
+        ...options,
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        user: {
+          ...options.user,
+          id: this.base64URLToBuffer(options.user.id as unknown as string),
+        },
+        // Critical fix: Convert each excludeCredential.id to ArrayBuffer
+        excludeCredentials: options.excludeCredentials ? 
+          options.excludeCredentials.map(credential => ({
+            ...credential,
+            id: this.base64URLToBuffer(credential.id as unknown as string)
+          })) : []
+      };
+  
+      console.log('[RECOVER-DEVICE] Processed options:', publicKeyCredentialCreationOptions);
+  
+      console.log('[RECOVER-DEVICE] Calling navigator.credentials.create');
+      const credential = await navigator.credentials.create({
+        publicKey: publicKeyCredentialCreationOptions
+      }) as PublicKeyCredential;
+      console.log('[RECOVER-DEVICE] Created credential:', credential);
+  
+      // Convert credential for sending to server
+      const attestationResponse = {
+        data: {  // Wrap in data object to match SimpleWebAuthn expectations
+          id: credential.id,
+          rawId: this.bufferToBase64URL(credential.rawId),
+          response: {
+            attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
+          },
+          type: credential.type
+        },
+        username: this.username,
+        deviceName,
+        device_creationDate
+      };
+  
+      console.log('[RECOVER-DEVICE] Sending attestation response:', attestationResponse);
+  
+      const response = await this.http.post<any>(
+        '/passkey/registro/passkey/additional/fin', 
+        attestationResponse
+      ).toPromise();
+      
+      if (response && response.res) {
+        // Update the devices list with the newly added device
+        this.devices = response.userProfile.devices;
+        // Update profile service with new data
+        const currentProfile = this.profileService.getProfile();
+        if (currentProfile) {
+          currentProfile.devices = this.devices;
+          this.profileService.setProfile(currentProfile);
+        }
+        
+        
+        this.successMessage = 'New passkey added successfully!';
+        setTimeout(() => this.successMessage= null, 3000);
+      }
+      const loginOptions = await this.http.post<PublicKeyCredentialRequestOptions>(
+        '/auth/login/passkey/by-email',
+        { username: this.username }
+      ).toPromise();
+      
+      console.log(`[RECOVER-DEVICE] Received options:`, loginOptions);
+      
+      if (!loginOptions || !loginOptions.allowCredentials || loginOptions.allowCredentials.length === 0) {
+        throw new Error('No credentials available');
+      }
+      
+      // Convert challenge and credential IDs to ArrayBuffer
+      // Instead of repeating the same conversion logic
+      const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(loginOptions);
+      const getCredentialOptions: CredentialRequestOptions = {
+        publicKey: publicKeyCredentialRequestOptions
+      };
+      const assertion = await navigator.credentials.get(getCredentialOptions) as PublicKeyCredential;
+
+      // Convertir respuesta para enviar al servidor
+      const authData = {
+        id: assertion.id,
+        rawId: this.bufferToBase64URL(assertion.rawId),
+        response: {
+          authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+          clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+          signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+          userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+            this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+            null
+        },
+        type: assertion.type
+      };
+      
+      // Enviar al servidor para verificación
+      const loginResponse = await this.http.post<{
+        res: boolean,
+        redirectUrl?: string,
+        userProfile?: any
+      }>('/auth/login/passkey/fin', {
+        data: authData,
+        username: this.username,
+        isConditional: false
+      }).toPromise();
+      
+      if (loginResponse?.res) {
+        console.log(`[RECOVER-DEVICE] Success:`, loginResponse);
+        this.authService.login();
+        this.appComponent.isLoggedIn = true;
+        this.profileService.setProfile(loginResponse.userProfile);
+        this.router.navigate(['/security'], { 
+          state: { userProfile: loginResponse.userProfile }
+        });
+      }
+    } catch (error: any) {
+      console.error('[RECOVER-DEVICE] Error:', error);
+      if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error adding new passkey';
+      } else {
+        this.errorMessage = 'Error adding new passkey. Please try again.';
+      }
+      this.hideError();
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  // Add utility methods for buffer conversions if they don't exist
+  private bufferToBase64URL(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+  
+  private base64URLToBuffer(base64URL: string): ArrayBuffer {
+    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const binary = atob(padded);
+    const buffer = new ArrayBuffer(binary.length);
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return buffer;
+  }
+    
+  private processCredentialRequestOptions(options: any): PublicKeyCredentialRequestOptions {
+    return {
+      challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+      rpId: options.rpId,
+      allowCredentials: options.allowCredentials.map((credential: any) => ({
+        type: 'public-key',
+        id: this.base64URLToBuffer(credential.id as unknown as string),
+        transports: credential.transports
+      })),
+      timeout: options.timeout,
+      userVerification: options.userVerification
+    };
+  }
   async resetPassword() {
     if (!this.newPassword) {
       this.errorMessage = "Por favor, ingresa una nueva contraseña";
@@ -145,7 +381,7 @@ export class RecoveryComponent {
         if (loginResponse && loginResponse.res) {
           this.appComponent.isLoggedIn = true;
           this.profileService.setProfile(loginResponse.userProfile);
-          this.router.navigate(['/profile'], {
+          this.router.navigate(['/security'], {
             state: { userProfile: loginResponse.userProfile }
           });
         }

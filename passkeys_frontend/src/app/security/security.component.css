@@ -511,6 +511,7 @@ body {
   display: flex;
   gap: 10px;
   margin-top: 10px;
+  margin-bottom: 10px;
   justify-content: center; /* Center the buttons */
 }
 
@@ -695,6 +696,151 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Last Used Device Styling */
+.last-used-device {
+  border-left: 4px solid #2196F3 !important;
+  background-color: rgba(33, 150, 243, 0.05) !important;
+  transition: all 0.3s ease;
+}
+
+.last-used-device:hover {
+  background-color: rgba(33, 150, 243, 0.1) !important;
+}
+
+.last-used-icon {
+  background-color: rgba(33, 150, 243, 0.2) !important;
+  color: #1976D2 !important;
+}
+
+.last-used-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: #2196F3;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* User Agent Information */
+.device-agent {
+  font-size: 0.7rem !important;
+  color: #999 !important;
+  font-style: italic;
+  margin-top: 3px;
+}
+
+/* Simplified passkey naming dialog */
+.passkey-name-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog-content {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(0);
+  animation: slideUp 0.3s ease;
+  border-top: 4px solid #2196F3;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.dialog-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.dialog-header h5 {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog-header h5 i {
+  color: #2196F3;
+  font-size: 1.4rem;
+}
+
+.dialog-body {
+  margin-bottom: 24px;
+}
+
+.dialog-body p {
+  margin-bottom: 16px;
+  color: #495057;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+
+.dialog-body input.form-control {
+  border: 1px solid #c8e1ff;
+  padding: 12px 15px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: none;
+  border: 1px solid #c8e1ff;
+  border-right: none;
+}
+
+.dialog-body input.form-control:focus {
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.dialog-footer button {
+  padding: 10px 20px;
+  min-width: 120px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.dialog-footer button i {
+  margin-right: 6px;
+}
+
+.dialog-footer button:hover {
+  transform: translateY(-2px);
 }
 
 /* Responsive Styles */

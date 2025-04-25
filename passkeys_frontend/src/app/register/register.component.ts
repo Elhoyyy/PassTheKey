@@ -25,6 +25,10 @@ export class RegisterComponent {
   otpCode: string = '';
   isVerifyingOtp: boolean = false;
   pendingUserProfile: any = null;
+  // Passkey name properties
+  showPasskeyNameDialog: boolean = false;
+  passkeyName: string = '';
+  detectedDeviceName: string = 'Passkey_Device';
 
   constructor(
     private http: HttpClient, 
@@ -40,9 +44,47 @@ export class RegisterComponent {
     if (this.showPasswordForRegistration) {
       await this.registerWithPassword();
     } else {
-      // Otherwise, register with passkey
-      await this.registerWithPasskey();
+      if (!this.username || !this.validateEmail(this.username)) {
+        this.errorMessage = 'Por favor, introduce un correo electrónico válido';
+        this.hideError();
+        return;
+      }
+      // For passkey, first show the dialog to set a name
+      this.detectDeviceName();
+      this.passkeyName = this.detectedDeviceName;
+      this.showPasskeyNameDialog = true;
     }
+  }
+
+  // Method to detect device name from user agent
+  detectDeviceName() {
+    const userAgent = navigator.userAgent;
+    console.log('User Agent:', userAgent);
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Linux')) {
+      this.detectedDeviceName = 'Linux';
+    } else if (userAgent.includes('Mac')) {
+      this.detectedDeviceName = 'Mac';
+    }
+  }
+
+  // Method to confirm passkey name and start registration
+  confirmPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.registerWithPasskey();
+  }
+
+  // Method to cancel passkey registration
+  cancelPasskeyName() {
+    this.showPasskeyNameDialog = false;
   }
 
   async registerWithPassword() {
@@ -108,22 +150,10 @@ export class RegisterComponent {
   }
   
   async registerWithPasskey() {
-    let deviceName = 'Passkey_Device';
+    // We'll use the custom name provided by the user
+    let deviceName = this.passkeyName;
     const userAgent = navigator.userAgent;
-    console.log('User Agent:', userAgent);
-    if (userAgent.includes('Windows')) {
-      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-      deviceName = version ? `Windows ${version[1]}` : 'Windows';
-    } else if (userAgent.includes('iPhone')) {
-      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-      deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-    } else if (userAgent.includes('Android')) {
-      const version = userAgent.match(/Android (\d+\.\d+)/);
-      deviceName = version ? `Android ${version[1]}` : 'Android';
-    } else if (userAgent.includes('Linux')) {
-      deviceName = 'Linux';
-    }
-
+    
     const device_creationDate = new Date().toLocaleString('en-GB', {
       year: 'numeric',
       month: '2-digit',

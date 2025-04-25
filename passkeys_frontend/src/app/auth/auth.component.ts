@@ -252,7 +252,6 @@ export class AuthComponent {
         this.authService.login();
         this.appComponent.isLoggedIn = true;
         this.profileService.setProfile(loginResponse.userProfile);
-        
         // Limpiar cualquier estado de autofill pendiente
         this.isAutofillInProgress = false;
         this.pendingAutofill = null;

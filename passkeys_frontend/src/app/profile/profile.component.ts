@@ -29,30 +29,12 @@ export class ProfileComponent implements OnInit {
   // Propiedades que almacenan la información del perfil del usuario
   username: string = '';  // Nombre de usuario
   email: string = '';     // Correo electrónico
-  devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
-  device_creationDate: string = ''; // Fecha de creación del dispositivo
-  isEditing: boolean = false; // Bandera para saber si está en modo de edición
   errorMessage: string | null = null;
   successMessage: string | null = null; // Mensaje de éxito para mostrar al usuario
-  isLoading: boolean = false; // Comprobar si hay algo cargando para activar el spinner. 
-  showPasskeyRecommendation: boolean = false; // Flag to control the passkey recommendation
-  showAddDeviceButton: boolean = true; // Flag to control the visibility of the add device button
-
-  // New properties for security section
-  newPassword: string = '';
-  confirmPassword: string = '';
-  isPasswordLoading: boolean = false;
-  passwordError: string | null = null;
-  passwordSuccess: string | null = null;
-
-  newDeviceName: string = '';
-  editingDeviceIndex: number = -1; // Track which device is being edited
-  
 
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
   constructor(
     private router: Router, 
-    private http: HttpClient, 
     private appComponent: AppComponent,
     private authService: AuthService,
     private profileService: ProfileService

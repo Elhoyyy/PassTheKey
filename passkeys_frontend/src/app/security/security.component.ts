@@ -7,6 +7,14 @@ import { ProfileService } from '../services/profile.service';
 import { AuthService } from '../services/auth.service';
 import { AppComponent } from '../app.component';
 
+// Add an interface for the device type
+interface Device {
+  name: string;
+  creationDate: string;
+  lastUsed: string;
+  userAgent?: string; // Make userAgent optional since some older entries might not have it
+}
+
 @Component({
   selector: 'app-security',
   templateUrl: './security.component.html',
@@ -19,7 +27,7 @@ export class SecurityComponent implements OnInit {
   // Propiedades que almacenan la información del perfil del usuario
   username: string = '';  // Nombre de usuario
   email: string = '';     // Correo electrónico
-  devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
+  devices: Device[] = []; // Update to use the Device interface
   device_creationDate: string = ''; // Fecha de creación del dispositivo
   isEditing: boolean = false; // Bandera para saber si está en modo de edición
   errorMessage: string | null = null;
@@ -48,6 +56,13 @@ export class SecurityComponent implements OnInit {
     number: false,
     special: false
   };
+
+  lastUsedDeviceIndex: number = -1; // Track which device was last used
+
+  // Add state variables for passkey naming dialog
+  showPasskeyNameDialog: boolean = false;
+  newPasskeyName: string = '';
+  detectedDeviceName: string = '';
 
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
   constructor(
@@ -85,6 +100,9 @@ export class SecurityComponent implements OnInit {
     
     // Calculate initial security score
     this.calculateSecurityScore();
+    
+    // Identify the last used device
+    this.identifyLastUsedDevice();
   }
 
   // Update UI state based on passkeys availability
@@ -316,31 +334,51 @@ export class SecurityComponent implements OnInit {
     this.router.navigate(['/auth']);
   }
 
-  async addDevice() {
+  addDevice() {
+    // First detect the device type to provide a good default name
+    this.detectDeviceName();
+    this.newPasskeyName = this.detectedDeviceName;
+    this.showPasskeyNameDialog = true;
+  }
+
+  // Method to detect device name
+  detectDeviceName() {
+    const userAgent = navigator.userAgent;
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Linux')) {
+      this.detectedDeviceName = 'Linux';
+    } else if (userAgent.includes('Mac')) {
+      this.detectedDeviceName = 'Mac';
+    } else {
+      this.detectedDeviceName = 'My Device';
+    }
+  }
+
+  // Method to start passkey registration with the chosen name
+  confirmPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.startPasskeyRegistration(this.newPasskeyName);
+  }
+
+  // Method to cancel passkey registration
+  cancelPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.newPasskeyName = '';
+  }
+
+  // Actual method to start registration with the chosen name
+  async startPasskeyRegistration(deviceName: string) {
     this.isLoading = true;
     this.errorMessage = null;
     
-    let deviceName = 'Passkey_Device';
-    const userAgent = navigator.userAgent;
-    console.log('User Agent:', userAgent);
-    
-    // Determine device name based on user agent
-    if (userAgent.includes('Windows')) {
-      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-      deviceName = version ? `Windows ${version[1]}` : 'Windows';
-    } else if (userAgent.includes('iPhone')) {
-      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-      deviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-    } else if (userAgent.includes('Android')) {
-      const version = userAgent.match(/Android (\d+\.\d+)/);
-      deviceName = version ? `Android ${version[1]}` : 'Android';
-    } else if (userAgent.includes('Linux')) {
-      deviceName = 'Linux';
-    } else if (userAgent.includes('Mac')) {
-      const version = userAgent.match(/Mac OS X (\d+[._]\d+)/);
-      deviceName = version ? `MacOS ${version[1].replace('_', '.')}` : 'MacOS';
-    }
-  
     const device_creationDate = new Date().toLocaleString('en-GB', {
       year: 'numeric',
       month: '2-digit',
@@ -349,20 +387,21 @@ export class SecurityComponent implements OnInit {
       minute: '2-digit',
       hour12: false
     });
-  
+    
+    const userAgent = navigator.userAgent;
+    
     try {
-      console.log('[ADD-DEVICE] Requesting creation options for user:', this.username);
+      // Get registration options for additional passkey
       const options = await this.http.post<PublicKeyCredentialCreationOptions>(
         '/passkey/registro/passkey/additional', 
         { username: this.username }
       ).toPromise();
       
-      console.log('[ADD-DEVICE] Received options:', options);
       if (!options) {
         throw new Error('Failed to get credential creation options');
       }
-  
-      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+      
+      // Convert base64URL to ArrayBuffer for challenge and user.id
       const publicKeyCredentialCreationOptions = {
         ...options,
         challenge: this.base64URLToBuffer(options.challenge as unknown as string),
@@ -370,25 +409,20 @@ export class SecurityComponent implements OnInit {
           ...options.user,
           id: this.base64URLToBuffer(options.user.id as unknown as string),
         },
-        // Critical fix: Convert each excludeCredential.id to ArrayBuffer
-        excludeCredentials: options.excludeCredentials ? 
-          options.excludeCredentials.map(credential => ({
-            ...credential,
-            id: this.base64URLToBuffer(credential.id as unknown as string)
-          })) : []
+        excludeCredentials: options.excludeCredentials?.map(cred => ({
+          ...cred,
+          id: this.base64URLToBuffer(cred.id as unknown as string),
+        })),
       };
-  
-      console.log('[ADD-DEVICE] Processed options:', publicKeyCredentialCreationOptions);
-  
-      console.log('[ADD-DEVICE] Calling navigator.credentials.create');
+      
+      // Create credential
       const credential = await navigator.credentials.create({
         publicKey: publicKeyCredentialCreationOptions
       }) as PublicKeyCredential;
-      console.log('[ADD-DEVICE] Created credential:', credential);
-  
-      // Convert credential for sending to server
+      
+      // Prepare response for server
       const attestationResponse = {
-        data: {  // Wrap in data object to match SimpleWebAuthn expectations
+        data: {
           id: credential.id,
           rawId: this.bufferToBase64URL(credential.rawId),
           response: {
@@ -401,17 +435,17 @@ export class SecurityComponent implements OnInit {
         deviceName,
         device_creationDate
       };
-  
-      console.log('[ADD-DEVICE] Sending attestation response:', attestationResponse);
-  
+      
+      // Send to server
       const response = await this.http.post<any>(
         '/passkey/registro/passkey/additional/fin', 
         attestationResponse
       ).toPromise();
       
       if (response && response.res) {
-        // Update the devices list with the newly added device
+        // Update local devices list
         this.devices = response.userProfile.devices;
+        
         // Update profile service with new data
         const currentProfile = this.profileService.getProfile();
         if (currentProfile) {
@@ -419,35 +453,32 @@ export class SecurityComponent implements OnInit {
           this.profileService.setProfile(currentProfile);
         }
         
-        // Recalculate security score after adding a passkey
+        // Recalculate security score after adding a new passkey
         this.calculateSecurityScore();
         
-        // Update UI state based on new passkey data
-        this.updatePasskeyUIState();
+        // Show success message
+        this.successMessage = 'Passkey added successfully';
+        setTimeout(() => this.successMessage = null, 3000);
         
-        this.successMessage = 'New passkey added successfully!';
-        setTimeout(() => this.successMessage= null, 3000);
+        // Identify the last used device
+        this.identifyLastUsedDevice();
       }
     } catch (error: any) {
-      console.error('[ADD-DEVICE] Error:', error);
-      if (error.status === 400 || error.status === 409 || error.status === 401) {
-        this.errorMessage = error.error.message || 'Error adding new passkey';
-      } else {
-        this.errorMessage = 'Error adding new passkey. Please try again.';
-      }
-      this.hideError();
+      console.error('Error registering passkey:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error registering passkey';
+      setTimeout(() => this.errorMessage = null, 3000);
     } finally {
       this.isLoading = false;
     }
   }
   
-  // Add utility methods for buffer conversions if they don't exist
+  // Utility methods for converting between ArrayBuffer and Base64URL
   private bufferToBase64URL(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
     const base64 = btoa(String.fromCharCode(...bytes));
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
-  
+
   private base64URLToBuffer(base64URL: string): ArrayBuffer {
     const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
@@ -470,6 +501,9 @@ export class SecurityComponent implements OnInit {
         
         if (response) {
             this.devices.splice(index, 1); // Eliminar el dispositivo específico
+            
+            // Identify the last used device after removing one
+            this.identifyLastUsedDevice();
             
             // Update profile service with new data
             const currentProfile = this.profileService.getProfile();
@@ -498,5 +532,66 @@ export class SecurityComponent implements OnInit {
 
   async hideError(){
     setTimeout(()=> this.errorMessage=null, 3000);
+  }
+
+  // Add this new method to identify which device was last used
+  identifyLastUsedDevice() {
+    if (this.devices.length === 0) {
+      this.lastUsedDeviceIndex = -1;
+      return;
+    }
+    
+    let lastUsedIndex = 0;
+    let latestDate = new Date(this.devices[0].lastUsed);
+    
+    this.devices.forEach((device, index) => {
+      const deviceDate = new Date(device.lastUsed);
+      if (deviceDate > latestDate) {
+        latestDate = deviceDate;
+        lastUsedIndex = index;
+      }
+    });
+    
+    this.lastUsedDeviceIndex = lastUsedIndex;
+    console.log('Last used device index:', this.lastUsedDeviceIndex);
+  }
+
+  // Add this method to display user agent information
+  formatUserAgent(userAgent: string): string {
+    // Extract the browser and OS information
+    let browserInfo = 'Unknown Browser';
+    let osInfo = 'Unknown OS';
+    
+    // Detect browser
+    if (userAgent.includes('Firefox')) {
+      browserInfo = 'Firefox';
+    } else if (userAgent.includes('Edge')) {
+      browserInfo = 'Edge';
+    } else if (userAgent.includes('Chrome')) {
+      browserInfo = 'Chrome';
+    } else if (userAgent.includes('Safari')) {
+      browserInfo = 'Safari';
+    }
+    
+    // Detect OS
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      osInfo = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      osInfo = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('iPad')) {
+      const version = userAgent.match(/CPU OS (\d+_\d+)/);
+      osInfo = version ? `iPad iOS ${version[1].replace('_', '.')}` : 'iPad';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      osInfo = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Mac')) {
+      osInfo = 'macOS';
+    } else if (userAgent.includes('Linux')) {
+      osInfo = 'Linux';
+    }
+    
+    return `${browserInfo} on ${osInfo}`;
   }
 }
