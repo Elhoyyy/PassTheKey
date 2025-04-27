@@ -1,47 +1,42 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Component, ElementRef, ViewChild } from '@angular/core'; //simplemente definimos los componentes angular
+import { HttpClient, HttpClientModule } from '@angular/common/http';//importamos el modulo httpclient y httpclientmodule para interactuar con el backend
+import { FormsModule } from '@angular/forms'; //importamos el modulo forms para trabajar con formularios en angular y enlacar datos de manera bidireccional entre el componente y la vista
+import { CommonModule } from '@angular/common'; //importamos el modulo common para trabajar con directivas estructurales y de atributos
+import { Router, RouterModule } from '@angular/router'; //importamos el modulo router y routermodule para trabajar con las rutas de la aplicacion
 import { AppComponent } from '../app.component';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
 
 @Component({
   selector: 'app-auth',
-  templateUrl: './auth.component.html',
-  styleUrls: ['./auth.component.css'],
-  standalone: true,
-  imports: [FormsModule, CommonModule, HttpClientModule, RouterModule]
+  templateUrl: './auth.component.html', //ruta del html para este componente
+  styleUrls: ['./auth.component.css'], // lo mismo con el css
+  standalone: true,//no necesita mas componentes para funcionar
+  imports: [FormsModule, CommonModule, HttpClientModule, RouterModule] //importamos los modulos necesarios para el componente
 })
 export class AuthComponent {
-  username: string = '';
-  password: string = '';
-  errorMessage: string | null = null;
-  showPasswordField: boolean = false;
-  hasPasskey: boolean = false;
-  isAuthenticating: boolean = false;
-  isCheckingPasskeys: boolean = false;
-  devices: { name: string, creationDate: string, lastUsed: string }[] = [];
-  forgotDevice: boolean = false;
-  isAutofillInProgress = false;
-  private pendingAutofill: Promise<void> | null = null;
-  private autofillAbortController: AbortController | null = null;
+  username: string = ''; //variable para almacenar el nombre de usuario
+  password: string = ''; // variable para almacenar la contraseña
+  email: string = ''; //variable para almacenar el correo electronico
+  errorMessage: string | null = null; //almacenar mensajes de error que vengan del backend para imprimirlos en la vista. Inicialmente es null
+  showPasswordField: boolean = false; // añadimos una bandera para mostrar/ocultar el campo de contraseña
+  hasPasskey: boolean = false; // añadimos una bandera para saber si el usuario tiene un passkey registrado
+  isAuthenticating: boolean = false; // añadimos una bandera para saber si la aplicación está cargando algo
+  isAuthenticating_direct: boolean = false; // añadimos una bandera para saber si la aplicación está cargando algo
+  devices: { name: string, creationDate: string, lastUsed: string }[] = []; // añadimos un array para almacenar los dispositivos registrados
+  forgotDevice: boolean = false; // añadimos una bandera para saber si el usuario olvidó un dispositivo
+  isAutofillInProgress = false; // Nueva variable para controlar el estado del autofill
+  private autofillAbortController: AbortController | null = null; // Para cancelar la operación de autofill
   // OTP verification properties
-  showOtpVerification: boolean = false;
-  otpCode: string = '';
-  isVerifyingOtp: boolean = false;
-  pendingUserProfile: any = null;
-  // Propiedad para controlar la visibilidad del campo de contraseña
+  showOtpVerification: boolean = false; // Para mostrar el campo de verificación OTP
+  otpCode: string = ''; // Almacena el código OTP ingresado por el usuario
+  isVerifyingOtp: boolean = false; // Indica si estamos procesando la verificación
+  pendingUserProfile: any = null; // Almacena temporalmente el perfil de usuario hasta que se verifique el OTP
+  // Nueva propiedad para controlar la visibilidad del campo de contraseña
   showLoginPasswordField: boolean = false;
-
-  constructor(
-    private http: HttpClient, 
-    private router: Router, 
-    private appComponent: AppComponent, 
-    private authService: AuthService, 
-    private profileService: ProfileService
-  ) {}
+  // Nueva propiedad para controlar el estado del flujo de autenticación
+  isCheckingPasskeys: boolean = false;
+  constructor(private http: HttpClient, private router: Router, private appComponent: AppComponent, private authService: AuthService, private profileService: ProfileService) { } //inyectamos el modulo httpclient y router para interactuar con el backend y navegar entre rutas
   
   // Método para manejar el evento de focus en el campo de username
   async onUsernameFieldFocus() {
@@ -181,7 +176,7 @@ export class AuthComponent {
     if (!isConditionalMedation) {
       // Solo actualizamos UI si no es autofill
       this.errorMessage = null;
-      this.isAuthenticating = true;
+      this.isAuthenticating_direct = true;
     }
   
     try {
@@ -252,9 +247,9 @@ export class AuthComponent {
         this.authService.login();
         this.appComponent.isLoggedIn = true;
         this.profileService.setProfile(loginResponse.userProfile);
+        
         // Limpiar cualquier estado de autofill pendiente
         this.isAutofillInProgress = false;
-        this.pendingAutofill = null;
         
         this.router.navigate(['/profile'], { 
           state: { userProfile: loginResponse.userProfile }
@@ -283,7 +278,7 @@ export class AuthComponent {
     } finally {
       // Restaurar UI si no es autofill
       if (!isConditionalMedation) {
-        this.isAuthenticating = false;
+        this.isAuthenticating_direct = false;
       }
     }
   }
@@ -300,16 +295,27 @@ export class AuthComponent {
     this.errorMessage = null;
     
     try {
-      const response = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
+      const response = await this.http.post<{ res: boolean, userProfile?: any, requireOtp?: boolean }>('/auth/login/password', { 
         username: this.username, 
-        password: this.password,
-        recovery: false
+        password: this.password 
       }).toPromise();
       
       if (response && response.res) {
-        // Always show OTP verification after successful password authentication
-        this.pendingUserProfile = response.userProfile;
-        this.showOtpVerification = true;
+        // Si se requiere verificación OTP
+        if (response.requireOtp) {
+          this.pendingUserProfile = response.userProfile;
+          this.showOtpVerification = true;
+        } else {
+          // Si no se requiere OTP, proceder normalmente
+          this.authService.login();
+          this.appComponent.isLoggedIn = true;
+          const userProfile = {
+            ...response.userProfile,
+            plainPassword: this.password // Añadimos la contraseña sin hashear
+          };
+          this.profileService.setProfile(userProfile);
+          this.router.navigate(['/profile'], { state: { userProfile } });
+        }
       } else {
         this.errorMessage = 'Invalid credentials.';
       }
@@ -493,7 +499,6 @@ export class AuthComponent {
       userVerification: options.userVerification
     };
   }
-  
   // Método para cancelar la verificación OTP
   cancelOtpVerification() {
     this.showOtpVerification = false;
@@ -501,18 +506,25 @@ export class AuthComponent {
     this.pendingUserProfile = null;
   }
 
-  // Método para ir a la página de registro
-  goToRegister() {
-    this.router.navigate(['/register']);
+  auth() { //metodo para navegar a la vista de autenticacion
+    this.router.navigate(['/auth']);
   }
 
-  // Método para ir a la página de recuperación
-  goToRecovery() {
+  togglePasswordField() {
+    this.showPasswordField = !this.showPasswordField;
+  }
+
+  goToRegister() { //metodo para navegar a la vista de registro
+    this.router.navigate(['/register']);
+  }
+  goToRecovery() { //metodo para navegar a la vista de recuperacion de contraseña
     this.router.navigate(['/recovery']);
   }
 
-  hideError() {
-    setTimeout(() => this.errorMessage = null, 3000);
+
+
+  hideError(){
+    setTimeout(()=> this.errorMessage=null, 3000);
   }
 
   // Validador simple de email
@@ -535,7 +547,7 @@ export class AuthComponent {
     const buffer = new ArrayBuffer(binary.length);
     const bytes = new Uint8Array(buffer);
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+        bytes[i] = binary.charCodeAt(i);
     }
     return buffer;
   }

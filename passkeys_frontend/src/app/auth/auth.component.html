@@ -55,17 +55,17 @@
             class="btn-direct-auth" 
             (click)="directAuthentication()"
             [disabled]="isAuthenticating || isCheckingPasskeys">
+            <span *ngIf="isAuthenticating_direct" class="spinner-border spinner-border-sm"></span>
             <i *ngIf="!isAuthenticating" class="bi bi-key"></i>
-            <span *ngIf="isAuthenticating" class="spinner-border spinner-border-sm"></span>
             <span>{{ isAuthenticating ? 'Autenticando...' : 'Usar cualquier passkey' }}</span>
           </button>
           
           <div class="links-container">
             <a (click)="goToRegister()">
-              No tienes cuenta? REGISTRATE
+              ¿NO TIENES CUENTA? REGISTRATE
             </a>
             <hr>
-            <a (click)="goToRecovery()">Perdiste la cuenta? Recupérala</a>
+            <a (click)="goToRecovery()">RECUPERA TU CUENTA</a>
           </div>
         </div>
 

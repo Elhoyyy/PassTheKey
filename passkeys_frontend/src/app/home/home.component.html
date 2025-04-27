@@ -1,7 +1,102 @@
-<html>
-  <body>
-    <div>
-      <h1>Trabajando en esta vista..............</h1>
+<body>
+  <div class="wrapper">
+  <div class="content">
+    <div class="container-fluid">
+      <div class="row d-flex justify-content-center">
+        <div class="col-md-8">
+          <!-- Card principal -->
+          <div class="card main-card">
+            <!-- Logo y botones de autenticación -->
+            <div class="card-header">
+              <div class="logo">
+                <h1>PassTheKey Bank</h1>
+                <p>Autenticación avanzada con passkeys</p>
+              </div>
+            </div>
+            
+            <!-- Hero Section -->
+            <div class="hero-content">
+              <div class="hero-text">
+                <h2>Banca segura al alcance de tu mano</h2>
+                <p>Sistema revolucionario de autenticación con Passkeys para proteger tu dinero</p>
+                <button class="btn btn-primary" (click)="navigateToRegister()">Comenzar Ahora</button>
+              </div>
+              <div class="hero-image">
+                <img src="https://img.freepik.com/free-vector/secure-data-concept-illustration_114360-1088.jpg" alt="Banca Segura">
+              </div>
+            </div>
+            
+            <!-- Features Section -->
+            <div class="section">
+              <h3 class="section-title">Nuestros Servicios</h3>
+              <div class="features-grid">
+                <div class="feature-card" *ngFor="let feature of features">
+                  <div class="feature-icon">
+                    <span class="material-icons">{{feature.icon}}</span>
+                  </div>
+                  <h4>{{feature.title}}</h4>
+                  <p>{{feature.description}}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Security Section -->
+            <div class="section security-section">
+              <div class="section-header">
+                <i class="material-icons">security</i>
+                <h3 class="section-title">Seguridad de última generación</h3>
+              </div>
+              <div class="security-content">
+                <p>Nuestro sistema de passkeys elimina la necesidad de contraseñas, ofreciéndote:</p>
+                <ul class="security-list">
+                  <li><span class="material-icons">security</span> Protección biométrica avanzada</li>
+                  <li><span class="material-icons">lock</span> Autenticación sin contraseñas</li>
+                  <li><span class="material-icons">gpp_good</span> Prevención de phishing y suplantación</li>
+                  <li><span class="material-icons">language</span> Acceso desde cualquier dispositivo</li>
+                </ul>
+                <div class="security-image">
+                  <img src="https://img.freepik.com/free-vector/biometric-security-concept-illustration_114360-7329.jpg" alt="Seguridad Passkeys">
+                </div>
+              </div>
+            </div>
+            
+            <!-- CTA Section -->
+            <div class="section cta-section">
+              <div class="cta-card">
+                <h3>¿Listo para una banca más segura?</h3>
+                <p>Únete a miles de usuarios que ya disfrutan de nuestra tecnología de passkeys</p>
+                <div class="cta-buttons">
+                  <button class="btn btn-primary" (click)="navigateToRegister()">Crear Cuenta</button>
+                  <button class="btn btn-secondary" (click)="navigateToLogin()">Acceder</button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="card-footer">
+              <div class="footer-content">
+                <div class="footer-info">
+                  <h4>PassTheKey Bank</h4>
+                  <p>Tu seguridad es nuestra prioridad</p>
+                </div>
+                <div class="footer-links">
+                  <div class="links-group">
+                    <h5>Contacto</h5>
+                    <ul>
+                      <li><span class="material-icons">email</span> eloy.sastre&#64;udc.es</li>
+                      <li><i class="bi bi-github"></i> Elhoyyy</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="footer-bottom">
+                <p>&copy; {{currentYear}} PassTheKey Bank. Todos los derechos reservados.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </body>
-</html>
+  </div>
+</div>
+</body>

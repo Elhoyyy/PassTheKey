@@ -12,7 +12,7 @@
                 <!-- Security Status Indicator -->
                 <div class="security-score-container">
                   <div class="security-score-wrapper">
-                    <div class="security-score" [ngStyle]="{'background': 'conic-gradient(#2196F3 0% ' + securityScore + '%, #e9ecef ' + securityScore + '% 100%)'}">
+                    <div class="security-score" [ngStyle]="{'background': 'conic-gradient(' + getSecurityScoreColor() + ' 0% ' + securityScore + '%, #e9ecef ' + securityScore + '% 100%)'}">
                       <div class="security-score-value">{{ securityScore }}%</div>
                     </div>
                   </div>

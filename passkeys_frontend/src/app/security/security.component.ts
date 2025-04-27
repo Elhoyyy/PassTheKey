@@ -49,7 +49,7 @@ export class SecurityComponent implements OnInit {
   editingDeviceIndex: number = -1; // Track which device is being edited
 
   // New properties for password strength
-  passwordStrength: string = 'weak';
+  passwordStrength: string = 'none'; // Password strength indicator
   passwordRequirements = {
     length: false,
     uppercase: false,
@@ -136,7 +136,7 @@ export class SecurityComponent implements OnInit {
     
     // Set strength based on met requirements
     if (password.length === 0) {
-      this.passwordStrength = 'weak';
+      this.passwordStrength = 'none';
     } else if (metRequirements <= 1) {
       this.passwordStrength = 'weak';
     } else if (metRequirements === 2) {
@@ -216,6 +216,22 @@ export class SecurityComponent implements OnInit {
       // New account with no security features: 0%
       this.securityScore = 0;
     }
+  }
+
+  // Add this method to determine the color based on security score
+  getSecurityScoreColor(): string {
+    if (this.securityScore === 0) {
+      return '#dc3545'; // Red for extremely vulnerable
+    } else if (this.securityScore === 25) {
+      return '#dc3545'; // Yellow/amber for very weak
+    } else if (this.securityScore === 50) {
+      return '#fd7e14'; // Orange for basic
+    } else if (this.securityScore === 75) {
+      return '#0d6efd'; // Blue for good
+    } else if (this.securityScore === 100) {
+      return '#198754'; // Green for excellent
+    }
+    return '#2196F3'; // Default blue if no match
   }
 
   // Update user password
@@ -455,6 +471,7 @@ export class SecurityComponent implements OnInit {
         
         // Recalculate security score after adding a new passkey
         this.calculateSecurityScore();
+        this.updatePasskeyUIState();
         
         // Show success message
         this.successMessage = 'Passkey added successfully';

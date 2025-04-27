@@ -152,23 +152,6 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Security Score Colors */
-.security-score-wrapper.score-0 .security-score-value,
-.security-score-wrapper.score-25 .security-score-value {
-  color: #dc3545;
-}
-
-.security-score-wrapper.score-50 .security-score-value {
-  color: #ffc107;
-}
-
-.security-score-wrapper.score-75 .security-score-value {
-  color: #2196F3;
-}
-
-.security-score-wrapper.score-100 .security-score-value {
-  color: #28a745;
-}
 
 /* Last updated text styles */
 .last-updated {
@@ -212,6 +195,11 @@ body {
   transition: width 0.3s ease;
 }
 
+
+.strength-level.none {
+  width: 0%;
+  background-color: #e9ecef;
+} 
 .strength-level.weak {
   width: 30%;
   background-color: #dc3545;
