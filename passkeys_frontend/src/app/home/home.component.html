@@ -22,7 +22,7 @@
                 <button class="btn btn-primary" (click)="navigateToRegister()">Comenzar Ahora</button>
               </div>
               <div class="hero-image">
-                <img src="https://img.freepik.com/free-vector/secure-data-concept-illustration_114360-1088.jpg" alt="Banca Segura">
+                <img src="https://img.freepik.com/free-vector/people-taking-out-money-from-bank-concept-illustration_114360-17351.jpg?t=st=1746445740~exp=1746449340~hmac=eddd2ac3ab340b125992d77b65c30c9b4a1242fb6a099b8cffeccf3932864fa2&w=826" alt="Banca Segura">
               </div>
             </div>
             
@@ -32,7 +32,7 @@
               <div class="features-grid">
                 <div class="feature-card" *ngFor="let feature of features">
                   <div class="feature-icon">
-                    <span class="material-icons">{{feature.icon}}</span>
+                    <i [class]="feature.iconClass"></i>
                   </div>
                   <h4>{{feature.title}}</h4>
                   <p>{{feature.description}}</p>
@@ -43,19 +43,18 @@
             <!-- Security Section -->
             <div class="section security-section">
               <div class="section-header">
-                <i class="material-icons">security</i>
                 <h3 class="section-title">Seguridad de última generación</h3>
               </div>
               <div class="security-content">
                 <p>Nuestro sistema de passkeys elimina la necesidad de contraseñas, ofreciéndote:</p>
                 <ul class="security-list">
-                  <li><span class="material-icons">security</span> Protección biométrica avanzada</li>
-                  <li><span class="material-icons">lock</span> Autenticación sin contraseñas</li>
-                  <li><span class="material-icons">gpp_good</span> Prevención de phishing y suplantación</li>
-                  <li><span class="material-icons">language</span> Acceso desde cualquier dispositivo</li>
+                  <li><i class="bi bi-shield-shaded"></i> Protección biométrica avanzada</li>
+                  <li><i class="bi bi-lock-fill"></i> Autenticación sin contraseñas</li>
+                  <li><i class="bi bi-shield-fill-check"></i> Prevención de phishing y suplantación</li>
+                  <li><i class="bi bi-globe"></i> Acceso desde cualquier dispositivo</li>
                 </ul>
                 <div class="security-image">
-                  <img src="https://img.freepik.com/free-vector/biometric-security-concept-illustration_114360-7329.jpg" alt="Seguridad Passkeys">
+                  <img src="https://img.freepik.com/free-vector/privacy-policy-concept-illustration_114360-7853.jpg?t=st=1746445637~exp=1746449237~hmac=24e56225bbd231d76b17e7e06447fb5dd334e780ae6caf15023d364493480948&w=826" alt="Seguridad Passkeys">
                 </div>
               </div>
             </div>
@@ -83,7 +82,7 @@
                   <div class="links-group">
                     <h5>Contacto</h5>
                     <ul>
-                      <li><span class="material-icons">email</span> eloy.sastre&#64;udc.es</li>
+                      <li><i class="bi bi-envelope-at-fill"></i> eloy.sastre&#64;udc.es</li>
                       <li><i class="bi bi-github"></i> Elhoyyy</li>
                     </ul>
                   </div>

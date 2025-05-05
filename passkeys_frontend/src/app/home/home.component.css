@@ -160,7 +160,7 @@ body {
 }
 
 .hero-image img {
-  max-width: 100%;
+  max-width: 60%;
   height: auto;
   border-radius: 10px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -199,11 +199,6 @@ body {
   justify-content: center;
 }
 
-.section-header i {
-  font-size: 1.8rem;
-  color: #2196F3;
-  margin-right: 15px;
-}
 
 /* Features Grid */
 .features-grid {
@@ -231,7 +226,7 @@ body {
   margin-bottom: 15px;
 }
 
-.feature-icon .material-icons {
+.feature-icon .bi {
   font-size: 2.5rem;
   color: #2196F3;
 }
@@ -283,7 +278,7 @@ body {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.security-list li .material-icons {
+.security-list li .material-icons, i.bi {
   color: #00a86b;
   margin-right: 15px;
   font-size: 1.5rem;
@@ -412,11 +407,6 @@ body {
   color: #d0e6ff;
 }
 
-.links-group ul li .material-icons {
-  font-size: 1.1rem;
-  margin-right: 10px;
-  color: #a2d4f6;
-}
 
 .links-group ul li i.bi {
   font-size: 1.1rem;

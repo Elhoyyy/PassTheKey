@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 
 interface Feature {
-  icon: string;
+  iconClass: string;
   title: string;
   description: string;
 }
@@ -20,36 +20,36 @@ export class HomeComponent implements OnInit {
   
   features: Feature[] = [
     {
-      icon: 'sync_alt',
+      iconClass: 'bi bi-arrow-left-right',
       title: 'Transferencias Seguras',
       description: 'Realiza transferencias nacionales e internacionales con la máxima seguridad y velocidad.'
     },
     {
-      icon: 'trending_up',
+      iconClass: 'bi bi-graph-up',
       title: 'Inversiones',
       description: 'Accede a nuestras herramientas de inversión y crece tu patrimonio con asesoría personalizada.'
     },
     {
-      icon: 'credit_card',
+      iconClass: 'bi bi-credit-card',
       title: 'Tarjetas Digitales',
       description: 'Gestiona tus tarjetas virtuales para compras online más seguras y controladas.'
     },
     {
-      icon: 'savings',
+      iconClass: 'bi bi-piggy-bank',
       title: 'Ahorro Inteligente',
       description: 'Crea metas de ahorro y alcánzalas con nuestras herramientas de planificación financiera.'
     },
     {
-      icon: 'phone_iphone',
+      iconClass: 'bi bi-phone',
       title: 'Banca Móvil',
       description: 'Accede a todos nuestros servicios desde cualquier dispositivo con nuestra app móvil.'
     },
     {
-      icon: 'fingerprint',
+      iconClass: 'bi bi-fingerprint',
       title: 'Autenticación Biométrica',
       description: 'Olvídate de las contraseñas complejas y utiliza tu huella o rostro para acceder.'
     }
-  ];
+  ]
 
   constructor(private router: Router) {}
 

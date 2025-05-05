@@ -6,6 +6,21 @@ body {
   font-family: 'Arial', sans-serif;
   background: url("../../../../images/catedral-image.jpeg") center center fixed;
   background-size: cover;
+  overflow-y: hidden; /* Prevent duplicate scrollbar */
+}
+
+
+.bi-person-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: #87c6f9;
+  color: rgb(52, 56, 60);
+  display: flex;
+  font-size: 100px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto; /* Center the circle */
 }
 
 .wrapper {
@@ -14,15 +29,18 @@ body {
   margin: 0;
   padding: 20px;
   background: rgba(115, 180, 233, 0.85);
+  overflow-y: auto; /* Allow scrolling in this container */
+  height: 100vh; /* Make it take the full viewport height */
+  box-sizing: border-box; /* Include padding in height calculation */
 }
 
 .content {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* Changed from center to prevent content squishing */
   width: 100%;
   min-height: 100vh;
-  padding: 60px 10px 10px 10px;
+  padding: 60px 10px 80px 10px; /* Added more bottom padding (80px) */
   box-sizing: border-box;
 }
 
@@ -35,6 +53,7 @@ body {
   background: #fff;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   padding: 30px !important;
+  margin-bottom: 20px; /* Adds space at the bottom of the card */
 }
 
 .card:before, .card:after {
@@ -352,7 +371,7 @@ body {
 /* Responsive styles */
 @media (max-width: 768px) {
   .content {
-    padding: 70px 0 0 0;
+    padding: 70px 0 50px 0; /* Added bottom padding */
   }
 
   .col-md-7 {
@@ -398,4 +417,9 @@ body {
   .transaction-amount {
     align-self: flex-start;
   }
+}
+
+/* Add this at the end of your file */
+.container-fluid {
+  margin-bottom: 40px; /* Adds space at the bottom of the container */
 }

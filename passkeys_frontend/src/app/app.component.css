@@ -57,7 +57,21 @@
 
 body {
   padding-top: 50px; /* Add padding to prevent content from being hidden behind the nav bar */
+  overflow-y: hidden; /* Prevent duplicate scrollbars */
 }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.content-wrapper {
+  height: calc(100vh - 50px); /* Account for nav bar height */
+  overflow-y: auto; /* Allow scrolling within components */
+  position: relative;
+  top: 50px; /* Match the padding-top of body */
+}
+
 .dropdown {
   position: relative;
   display: inline-block;
