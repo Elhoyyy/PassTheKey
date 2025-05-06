@@ -83,9 +83,13 @@
           </div>
 
           <div class="otp-description">
-            <p>Se ha enviado un código de verificación a tu correo/dispositivo.</p>
-            <p>Por favor, ingrésalo para continuar.</p>
-            <p><small>Código de prueba: 123456</small></p>
+            <p>Introduce el código de verificación de 6 dígitos.</p>
+            <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+            
+            <!-- Demo token always displayed for convenience during development -->
+            <div class="demo-token-container">
+              <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
+            </div>
           </div>
 
           <div class="buttons-container">

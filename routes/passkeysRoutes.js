@@ -1,8 +1,17 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const router = express.Router();
-const { users, challenges, getNewChallenge, convertChallenge, expectedOrigin } = require('../data');
-const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
+const { users, challenges, getNewChallenge, expectedOrigin } = require('../data');
+const SimpleWebAuthnServer = require('@simplewebauthn/server');
+const { authenticator } = require('otplib');
+const qrcode = require('qrcode'); // Add QR code library
+
+// Configure otplib
+authenticator.options = {
+    window: 1, // Allow 1 step before/after for clock skew
+    digits: 6,  // 6-digit OTP code
+    step: 30    // 30 seconds validity period (default)
+};
 
 router.post('/registro/passkey/delete', (req, res) => {
     const { username, deviceIndex } = req.body;
@@ -151,13 +160,17 @@ router.post('/registro/usuario', (req, res) => {
             year: 'numeric'
         });
         
-        // Guardar usuario con contraseña y fecha de creación
+        // Generate a secret key for TOTP
+        const otpSecret = authenticator.generateSecret();
+        
+        // Guardar usuario con contraseña, fecha de creación y secreto OTP
         users[username] = { 
             password: hash,
             email: username,
             devices: [],
             credential: [], // Añadimos un array vacío para evitar errores
-            passwordCreationDate: passwordCreationDate // Añadimos la fecha de creación de la contraseña
+            passwordCreationDate: passwordCreationDate, // Añadimos la fecha de creación de la contraseña
+            otpSecret: otpSecret // Store the OTP secret
         };
         console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate})`);
         
@@ -165,9 +178,55 @@ router.post('/registro/usuario', (req, res) => {
         res.status(200).json({ 
             success: true, 
             message: 'Usuario registrado correctamente',
-            passwordCreationDate: passwordCreationDate // Return the creation date to the client
+            passwordCreationDate: passwordCreationDate, // Return the creation date to the client
+            otpSecret: otpSecret // Send secret for immediate QR code generation
         });
     });
+});
+
+// New endpoint to generate QR code for authenticator app setup
+router.post('/generate-totp-qr', async (req, res) => {
+    const { username } = req.body;
+    console.log(`[TOTP-QR] Generating QR code for user: ${username}`);
+    
+    if (!users[username]) {
+        console.log('[TOTP-QR] User not found');
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Check if user has an OTP secret, if not generate one
+    if (!users[username].otpSecret) {
+        users[username].otpSecret = authenticator.generateSecret();
+        console.log(`[TOTP-QR] Generated new OTP secret for ${username}`);
+    }
+    
+    try {
+        // Generate OTP Auth URI for QR code
+        const otpAuth = authenticator.keyuri(
+            username,               // User name/email
+            'PasskeyApp',           // Service name
+            users[username].otpSecret   // Secret key
+        );
+        
+        // Generate QR code as data URL
+        const qrCodeUrl = await qrcode.toDataURL(otpAuth);
+        
+        // Generate current token for display
+        const currentToken = authenticator.generate(users[username].otpSecret);
+        
+        console.log(`[TOTP-QR] QR code generated for ${username}`);
+        
+        res.status(200).json({
+            success: true,
+            qrCodeUrl: qrCodeUrl,
+            secret: users[username].otpSecret,  // For manual entry
+            currentToken: currentToken,          // Current valid token
+            expirySeconds: 30 - (Math.floor(Date.now() / 1000) % 30) // Seconds until expiry
+        });
+    } catch (error) {
+        console.error('[TOTP-QR] Error generating QR code:', error);
+        return res.status(500).json({ message: 'Error generando código QR' });
+    }
 });
 
 router.post('/registro/passkey/fin', async (req, res) => {
@@ -386,12 +445,7 @@ router.post('/registro/passkey/additional/fin', async (req, res) => {
     res.status(500).send(false);
 });
 
-function isValidEmail(email){
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-
-// New endpoint to verify OTP
+// Updated endpoint to verify OTP using proper TOTP verification
 router.post('/verify-otp', (req, res) => {
     const { username, otpCode } = req.body;
     console.log(`[OTP-VERIFY] Starting verification for user: ${username}`);
@@ -401,47 +455,42 @@ router.post('/verify-otp', (req, res) => {
         return res.status(400).json({ message: 'Usuario no encontrado' });
     }
     
-    // Check if there's a pending OTP verification for this user
-    if (!challenges.otp || !challenges.otp[username]) {
-        console.log('[OTP-VERIFY] No pending OTP verification');
-        return res.status(400).json({ message: 'No hay verificación pendiente' });
+    // Check if the user has an OTP secret
+    if (!users[username].otpSecret) {
+        console.log('[OTP-VERIFY] User does not have an OTP secret');
+        return res.status(400).json({ message: 'Usuario no tiene configuración OTP' });
     }
     
-    const otpData = challenges.otp[username];
-    
-    // Check if OTP has expired (15 minutes)
-    const now = Date.now();
-    if (now - otpData.timestamp > 15 * 60 * 1000) {
-        console.log('[OTP-VERIFY] OTP expired');
-        delete challenges.otp[username];
-        return res.status(400).json({ message: 'El código de verificación ha expirado' });
-    }
-    
-    // Increment attempts counter
-    otpData.attempts++;
-    
-    // Check if too many attempts (max 3)
-    if (otpData.attempts > 3) {
-        console.log('[OTP-VERIFY] Too many attempts');
-        delete challenges.otp[username];
-        return res.status(400).json({ message: 'Demasiados intentos. Inicia sesión nuevamente.' });
-    }
-    
-    // Verify OTP code
-    if (otpCode === otpData.code) {
-        console.log('[OTP-VERIFY] OTP verification successful');
-        // Delete the OTP challenge after successful verification
-        delete challenges.otp[username];
+    try {
+        // Verify the OTP code using otplib's authenticator
+        const isValid = authenticator.verify({
+            token: otpCode,
+            secret: users[username].otpSecret
+        });
         
-        return res.status(200).json({
-            success: true,
-            userProfile: { username, ...users[username] }
-        });
-    } else {
-        console.log('[OTP-VERIFY] Incorrect OTP');
-        return res.status(400).json({ 
-            message: `Código incorrecto. Intentos restantes: ${3 - otpData.attempts}`
-        });
+        if (isValid) {
+            console.log('[OTP-VERIFY] TOTP verification successful');
+            return res.status(200).json({
+                success: true,
+                userProfile: { username, ...users[username] }
+            });
+        } else {
+            // Calculate seconds until next code
+            const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+            console.log(`[OTP-VERIFY] Incorrect TOTP code. Next code in: ${secondsRemaining}s`);
+            
+            return res.status(400).json({ 
+                message: `Código incorrecto. Inténtalo de nuevo. El código cambia en ${secondsRemaining} segundos.`
+            });
+        }
+    } catch (error) {
+        console.error('[OTP-VERIFY] Error verifying TOTP:', error);
+        return res.status(500).json({ message: 'Error al verificar el código TOTP' });
     }
 });
+
+function isValidEmail(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 module.exports = router;

@@ -61,41 +61,66 @@
 
         <!-- Pantalla de verificación OTP -->
         <div *ngIf="showOtpVerification && !showPasskeyNameDialog">
-        <div class="input-group">
+          <div class="input-group">
             <i class="bi bi-shield-lock"></i>
             <input 
-            type="text" 
-            [(ngModel)]="otpCode" 
-            name="otpCode" 
-            placeholder="Código de verificación" 
-            maxlength="6"
-            autocomplete="one-time-code" />
-        </div>
+              type="text" 
+              [(ngModel)]="otpCode" 
+              name="otpCode" 
+              placeholder="Código de verificación" 
+              maxlength="6"
+              autocomplete="one-time-code" />
+          </div>
 
-        <div class="otp-description">
-            <p>Se ha enviado un código de verificación a tu correo/dispositivo.</p>
-            <p>Por favor, ingrésalo para continuar.</p>
-            <p><small>Código de prueba: 123456</small></p>
-        </div>
+          <div class="otp-description">
+            <p>Introduce el código de verificación de 6 dígitos.</p>
+            <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+            <!-- QR code section -->
+            <div *ngIf="showQrSetup" class="qr-setup">
+              <h4>Configurar Autenticador</h4>
+              <p>Escanea este código QR con tu aplicación de autenticación:</p>
+              <img *ngIf="qrCodeUrl" [src]="qrCodeUrl" alt="QR Code" class="qr-code">
+              
+              <div class="manual-setup">
+                <p>O ingresa manualmente este código:</p>
+                <div class="secret-code">{{ otpSecret }}</div>
+              </div>
+              
+              <div class="setup-warning">
+                <p class="warning"><i class="bi bi-exclamation-triangle"></i> IMPORTANTE: Esta información solo se mostrará una vez.</p>
+              </div>
+              
+              <button class="btn-secondary mt-2" (click)="confirmAuthenticatorSetup()">
+                <i class="bi bi-check-circle"></i> Listo
+              </button>
+            </div>
+            <!-- Show demo code and setup option -->
+            <div *ngIf="!showQrSetup" class="demo-token-container">
+              <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
+              <button *ngIf="!showQrSetup && !authenticatorConfigured" class="btn-link small" (click)="setupAuthenticator()">
+                <i class="bi bi-qr-code"></i> Configurar aplicación de autenticación
+              </button>
+            </div>
+          </div>
 
-        <div class="buttons-container">
+          <div class="buttons-container">
             <button 
-            class="btn-verify" 
-            (click)="verifyAccount()"
-            [disabled]="isVerifyingOtp">
-            <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
-            <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
+              class="btn-verify" 
+              (click)="verifyAccount()"
+              [disabled]="isVerifyingOtp">
+              <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
+              <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
+              <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
             </button>
             
             <button 
-            class="btn-cancel" 
-            (click)="cancelOtpVerification()"
-            [disabled]="isVerifyingOtp">
-            <i class="bi bi-x-circle"></i>
-            <span>Cancelar</span>
+              class="btn-cancel" 
+              (click)="cancelOtpVerification()"
+              [disabled]="isVerifyingOtp">
+              <i class="bi bi-x-circle"></i>
+              <span>Cancelar</span>
             </button>
-        </div>
+          </div>
         </div>
         
         <!-- Improved Passkey naming dialog -->
@@ -122,10 +147,14 @@
           </div>
         </div>
         
-        <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">
-        <i class="bi" [ngClass]="errorMessage.includes('exitoso') ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
+        <div *ngIf="errorMessage" class="error-message" >
+        <i class="bi bi-exclamation-triangle"></i>
         {{ errorMessage }}
         </div>
+        <div *ngIf="successMessage" class="success-message">
+          <i class="bi bi-check-circle"></i>
+          {{ successMessage }}
+          </div>
     </form>
     </div>
 </body>

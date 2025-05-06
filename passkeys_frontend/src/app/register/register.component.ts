@@ -18,6 +18,7 @@ export class RegisterComponent {
   username: string = '';
   password: string = '';
   errorMessage: string | null = null;
+  successMessage: string | null = null;
   isRegistering: boolean = false;
   showPasswordForRegistration: boolean = false;
   // OTP verification properties
@@ -25,10 +26,19 @@ export class RegisterComponent {
   otpCode: string = '';
   isVerifyingOtp: boolean = false;
   pendingUserProfile: any = null;
+  demoOtpCode: string = ''; // To display demo OTP code
+  expirySeconds: number = 0;
+  timerInterval: any;
+  showQrSetup: boolean = false;
+  qrCodeUrl: string = '';
+  otpSecret: string = '';
+  
   // Passkey name properties
   showPasskeyNameDialog: boolean = false;
   passkeyName: string = '';
   detectedDeviceName: string = 'Passkey_Device';
+  // Add flag to track if authenticator has been configured
+  authenticatorConfigured: boolean = false;
 
   constructor(
     private http: HttpClient, 
@@ -114,20 +124,38 @@ export class RegisterComponent {
         
         // Try to login automatically
         try {
-          const loginResponse = await this.http.post<{ res: boolean, userProfile?: any }>('/auth/login/password', { 
+          const loginResponse = await this.http.post<{ 
+            res: boolean, 
+            userProfile?: any, 
+            requireOtp?: boolean,
+            demoToken?: string,
+            expirySeconds?: number,
+            needsQrSetup?: boolean
+          }>('/auth/login/password', { 
             username: this.username, 
             password: this.password,
             recovery: false
           }).toPromise();
           
-          if (loginResponse && loginResponse.res) {
-            // Always require OTP verification after successful password authentication
+          if (loginResponse && loginResponse.res && loginResponse.requireOtp) {
+            // Store demo token and start countdown timer
+            this.demoOtpCode = loginResponse.demoToken || '';
+            this.expirySeconds = loginResponse.expirySeconds || 30;
+            this.startExpiryTimer();
+            
+            // Store pending user profile
             this.pendingUserProfile = {
               ...loginResponse.userProfile,
               passwordCreationDate: response.passwordCreationDate
             };
             this.showOtpVerification = true;
             this.isRegistering = false;
+          } else if (loginResponse && loginResponse.res) {
+            // Direct login without OTP
+            this.authService.login();
+            this.appComponent.isLoggedIn = true;
+            this.profileService.setProfile(loginResponse.userProfile);
+            this.router.navigate(['/profile']);
           } else {
             throw new Error('Error en el inicio de sesión automático');
           }
@@ -247,8 +275,8 @@ export class RegisterComponent {
   }
 
   async verifyAccount() {
-    if (!this.otpCode) {
-      this.errorMessage = "Por favor, ingresa el código de verificación";
+    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+      this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
       this.hideError();
       return;
     }
@@ -263,6 +291,15 @@ export class RegisterComponent {
       }).toPromise();
       
       if (response && response.success) {
+        // Mark authenticator as configured when verification succeeds
+        this.authenticatorConfigured = true;
+        localStorage.setItem(`${this.username}_authenticatorConfigured`, 'true');
+        
+        // Stop the timer when verification is successful
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
         this.showOtpVerification = false;
         this.authService.login();
         this.appComponent.isLoggedIn = true;
@@ -281,7 +318,7 @@ export class RegisterComponent {
       }
     } catch (error: any) {
       console.error('Error en la verificación:', error);
-      this.errorMessage = error.error?.message || error.message || 'Error en la verificación';
+      this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
       this.hideError();
     } finally {
       this.isVerifyingOtp = false;
@@ -290,7 +327,13 @@ export class RegisterComponent {
   
   // Método para cancelar la verificación OTP
   cancelOtpVerification() {
+    // Stop the timer when canceling
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
     this.showOtpVerification = false;
+    this.showQrSetup = false;
     this.otpCode = '';
     this.pendingUserProfile = null;
   }
@@ -327,5 +370,107 @@ export class RegisterComponent {
       bytes[i] = binary.charCodeAt(i);
     }
     return buffer;
+  }
+
+  // Start countdown timer for TOTP expiry
+  startExpiryTimer() {
+    // Clear any existing timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Start new interval timer
+    this.timerInterval = setInterval(() => {
+      if (this.expirySeconds > 0) {
+        this.expirySeconds--;
+      } else {
+        // When time runs out, generate a new code
+        if (this.showOtpVerification) {
+          this.refreshOtpCode();
+        } else {
+          clearInterval(this.timerInterval);
+        }
+      }
+    }, 1000);
+  }
+  
+  // Refresh the OTP code when it expires
+  async refreshOtpCode() {
+    try {
+      const response = await this.http.post<{
+        res: boolean,
+        demoToken: string,
+        expirySeconds: number
+      }>('/auth/asign-otp', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.res) {
+        this.demoOtpCode = response.demoToken;
+        this.expirySeconds = response.expirySeconds;
+      }
+    } catch (error) {
+      console.error('Error refreshing OTP code:', error);
+    }
+  }
+  
+  // Method to set up authenticator app
+  async setupAuthenticator() {
+    try {
+      // Only allow setup if not already configured
+      if (this.authenticatorConfigured) {
+        this.errorMessage = 'El autenticador ya ha sido configurado';
+        this.hideError();
+        return;
+      }
+      
+      const response = await this.http.post<{
+        success: boolean,
+        qrCodeUrl: string,
+        secret: string,
+        currentToken: string,
+        expirySeconds: number
+      }>('/passkey/generate-totp-qr', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.success) {
+        this.qrCodeUrl = response.qrCodeUrl;
+        this.otpSecret = response.secret;
+        this.demoOtpCode = response.currentToken;
+        this.expirySeconds = response.expirySeconds;
+        this.showQrSetup = true;
+        
+        // Update the timer
+        this.startExpiryTimer();
+      }
+    } catch (error) {
+      console.error('Error setting up authenticator:', error);
+      this.errorMessage = 'Error al configurar el autenticador';
+      this.hideError();
+    }
+  }
+  
+  // Add method to confirm authenticator setup
+  confirmAuthenticatorSetup() {
+    this.authenticatorConfigured = true;
+    this.showQrSetup = false;
+    
+    // Store this setting for this user
+    localStorage.setItem(`${this.username}_authenticatorConfigured`, 'true');
+    
+    this.successMessage = 'Autenticador configurado exitosamente';
+    
+    setTimeout(() => {
+      this.successMessage = null;
+    }, 3000);
+    this.hideError();
+  }
+
+  // Cleanup method to clear timers when component is destroyed
+  ngOnDestroy() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
   }
 }

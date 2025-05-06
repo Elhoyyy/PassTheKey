@@ -5,8 +5,7 @@ let challenges = {};//creamos un objeto para almacenar desafios
 const expectedOrigin = ['http://localhost:3000', 'https://tide-treasures-appearing-universal.trycloudflare.com'];//origen esperado
 
 
-/*getNewChallenge: Genera un string único aleatorio como desafío.
-convertChallenge: Codifica el desafío en Base64 URL-safe.*/
+/*getNewChallenge: Genera un string único aleatorio como desafío.*/
 function getNewChallenge() {
     // Generate a random challenge and return it in Base64URL format
     const randomBytes = crypto.randomBytes(32);
@@ -16,16 +15,9 @@ function getNewChallenge() {
         .replace(/=/g, '');
 }
 
-// Remove convertChallenge as it's no longer needed
-function convertChallenge(challenge) {
-    return challenge; // Just return the challenge as-is since it's already in Base64URL format
-}
-
-
 module.exports = {
     users,
     challenges,
     expectedOrigin,
-    getNewChallenge,
-    convertChallenge
+    getNewChallenge
 };

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { Router, RouterModule } from '@angular/router';
@@ -14,7 +14,7 @@ import { AppComponent } from '../app.component';
   templateUrl: './recovery.component.html',
   styleUrl: './recovery.component.css'
 })
-export class RecoveryComponent {
+export class RecoveryComponent implements OnDestroy {
   
   username: string = ''; // Email for account recovery
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
@@ -32,6 +32,12 @@ export class RecoveryComponent {
   showPasskeyNameDialog: boolean = false;
   passkeyName: string = '';
   detectedDeviceName: string = 'Passkey_Device';
+  
+  // Add TOTP related properties
+  demoOtpCode: string = '';
+  expirySeconds: number = 0;
+  timerInterval: any;
+  otpSecret: string = '';
 
   constructor(
     private http: HttpClient, 
@@ -62,13 +68,25 @@ export class RecoveryComponent {
         this.hideError();
         return;
       }
-      //Aquí se haría una llamada al backend enviandole el correo electrónico pero como no se implementa el envío
-      // de correos, se simula un OTP de 6 dígitos.
-      this.stage = 'otp-verification';
-      const asignOtp = await this.http.post<{ otp: string }>('/auth/asign-otp', {
+      
+      // Get the OTP and setup TOTP timer
+      const response = await this.http.post<{ 
+        res: boolean, 
+        demoToken: string, 
+        expirySeconds: number 
+      }>('/auth/asign-otp', {
         username: this.username
       }).toPromise();
-
+      
+      if (response && response.res) {
+        this.demoOtpCode = response.demoToken || '';
+        this.expirySeconds = response.expirySeconds || 30;
+        this.startExpiryTimer();
+        this.stage = 'otp-verification';
+        
+      } else {
+        throw new Error('No se pudo enviar el código de verificación');
+      }
     } catch (error: any) {
       console.error('Error en la solicitud de recuperación:', error);
       this.errorMessage = error.error?.message || error.message || 'Error en la solicitud de recuperación';
@@ -79,8 +97,8 @@ export class RecoveryComponent {
   }
   
   async verifyOtp() {
-    if (!this.otpCode) {
-      this.errorMessage = "Por favor, ingresa el código de verificación";
+    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+      this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
       this.hideError();
       return;
     }
@@ -95,6 +113,12 @@ export class RecoveryComponent {
       }).toPromise();
       
       if (response && response.success) {
+      
+        // Clear the timer when verification is successful
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
         this.stage = 'reset-options';
       } else {
         this.errorMessage = "Código de verificación incorrecto";
@@ -106,6 +130,56 @@ export class RecoveryComponent {
       this.hideError();
     } finally {
       this.isProcessing = false;
+    }
+  }
+  
+  // Start countdown timer for TOTP expiry
+  startExpiryTimer() {
+    // Clear any existing timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Start new interval timer
+    this.timerInterval = setInterval(() => {
+      if (this.expirySeconds > 0) {
+        this.expirySeconds--;
+      } else {
+        // When time runs out, generate a new code
+        if (this.stage === 'otp-verification') {
+          this.refreshOtpCode();
+        } else {
+          clearInterval(this.timerInterval);
+        }
+      }
+    }, 1000);
+  }
+  
+  // Refresh the OTP code when it expires
+  async refreshOtpCode() {
+    try {
+      const response = await this.http.post<{
+        res: boolean,
+        demoToken: string,
+        expirySeconds: number
+      }>('/auth/asign-otp', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.res) {
+        this.demoOtpCode = response.demoToken;
+        this.expirySeconds = response.expirySeconds;
+      }
+    } catch (error) {
+      console.error('Error refreshing OTP code:', error);
+    }
+  }
+ 
+  
+  // Method to clean up on component destruction
+  ngOnDestroy() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
     }
   }
   
@@ -410,6 +484,11 @@ export class RecoveryComponent {
   
   cancelAndGoBack() {
     if (this.stage === 'otp-verification' || this.stage === 'reset-options') {
+      // Stop timer if we're going back from OTP verification
+      if (this.stage === 'otp-verification' && this.timerInterval) {
+        clearInterval(this.timerInterval);
+      }
+      
       this.stage = 'initial';
     } else if (this.stage === 'password-reset') {
       this.stage = 'reset-options';

@@ -387,6 +387,99 @@ input:checked + .slider:before {
   font-style: italic;
 }
 
+/* QR code styles */
+.qr-setup {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.qr-setup h4 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  margin: 10px auto;
+  display: block;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 5px;
+  background: white;
+}
+
+.manual-setup {
+  margin-top: 10px;
+}
+
+.secret-code {
+  background: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  margin: 5px 0;
+  word-break: break-all;
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: #2196F3;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9em;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-link:hover {
+  color: #0d6efd;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.demo-token-container {
+  margin-top: 10px;
+}
+
+.demo-token {
+  font-family: monospace;
+  font-size: 1.2em;
+  letter-spacing: 1px;
+  background: #e2e8f0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.mt-2 {
+  margin-top: 10px;
+}
+
+.small {
+  font-size: 0.85rem;
+}
 
 /* Ajustes para dispositivos móviles */
 @media (max-width: 768px) {
@@ -398,4 +491,27 @@ input:checked + .slider:before {
   .email-input {
     padding-left: 30px !important; /* Ajustar según el ancho del icono */
   }
+}
+
+/* Styles for the warning message */
+.setup-warning {
+  margin-top: 15px;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.setup-warning .warning {
+  color: #856404;
+  margin: 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.setup-warning i {
+  font-size: 1.1rem;
+  margin-right: 8px;
+  color: #ffc107;
 }

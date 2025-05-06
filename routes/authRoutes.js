@@ -3,8 +3,13 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const { users, challenges, getNewChallenge, expectedOrigin } = require('../data');
 const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
+const { authenticator } = require('otplib'); // Import otplib authenticator
 
-
+// Configure otplib
+authenticator.options = {
+    window: 1, // Allow 1 step before/after for clock skew
+    digits: 6  // 6-digit OTP code
+};
 
 // Endpoint unificado para direct passkey login y autofill
 router.post('/login/passkey/direct', (req, res) => {
@@ -188,13 +193,14 @@ router.post('/login/passkey/fin', async (req, res) => {
     }
 });
 
-// Endpoint for password login
+// Endpoint for password login with TOTP verification
 router.post('/login/password', (req, res) => {
     let { username, password, recov } = req.body;
     if (!users[username]) {
         console.log('user not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
     }
+    
     bcrypt.compare(password, users[username].password, (err, result) => {
         if (err || !result) {
             console.log('incorrect password');
@@ -206,24 +212,32 @@ router.post('/login/password', (req, res) => {
     
         if (!recov){
             console.log('REQUIRING OTP VERIFICATION')
-            // Store the verification code (in a real app, this would be sent to the user via email/SMS)
-            // For this demo, we're using a fixed code 123456
-            if (!challenges.otp) {
-                challenges.otp = {};
+            
+            // Check if user has OTP secret; if not, generate one
+            if (!users[username].otpSecret) {
+                users[username].otpSecret = authenticator.generateSecret();
+                console.log(`Generated new OTP secret for ${username}`);
             }
-            challenges.otp[username] = {
-                code: '123456', // Fixed code for demo purposes
-                timestamp: Date.now(),
-                attempts: 0
-            };
+            
+            // Generate current TOTP code using otplib
+            const currentToken = authenticator.generate(users[username].otpSecret);
+            
+            // Calculate seconds until this token expires
+            const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+            
+            console.log(`Current TOTP for ${username}: ${currentToken} (expires in ${secondsRemaining}s)`);
             
             res.status(200).send({
                 res: true,
                 requireOtp: true,
-                userProfile: { username, ...users[username] }
+                userProfile: { username, ...users[username] },
+                // For demo purposes, send the current token and expiry
+                demoToken: currentToken,
+                expirySeconds: secondsRemaining,
+                needsQrSetup: true // Indicate that the user might need to set up QR code
             });
         } else {
-            console.log('NO OTP VERIFICATION REQUIRED - RECOVERY MODE')
+            console.log('NO OTP VERIFICATION REQUIRED - RECOVERY MODE');
             // Skip OTP verification for recovery flow
             res.status(200).send({
                 res: true,
@@ -240,18 +254,26 @@ router.post('/asign-otp', (req, res) => {
         console.log('user not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
     }
-    if (!challenges.otp) {
-        challenges.otp = {};
+    
+    // Generate or reuse the OTP secret
+    if (!users[username].otpSecret) {
+        users[username].otpSecret = authenticator.generateSecret();
+        console.log(`Generated new OTP secret for ${username}`);
     }
-    challenges.otp[username] = {
-        code: '123456', // Fixed code for demo purposes
-        timestamp: Date.now(),
-        attempts: 0
-    };
+    
+    // Generate current TOTP code and calculate expiry time
+    const currentToken = authenticator.generate(users[username].otpSecret);
+    const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+    
+    console.log(`Current TOTP for ${username}: ${currentToken} (expires in ${secondsRemaining}s)`);
+    
     res.status(200).send({
         res: true,
         requireOtp: true,
-        userProfile: { username, ...users[username] }
+        userProfile: { username, ...users[username] },
+        demoToken: currentToken,
+        expirySeconds: secondsRemaining,
+        needsQrSetup: true // Indicate that the user might need to set up QR code
     });
 });
 
@@ -331,31 +353,5 @@ router.post('/login/passkey/by-email', (req, res) => {
     console.log(`[EMAIL-PASSKEY] ✅ Challenge generation complete`);
     console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
 });
-
-// Limpiar desafíos antiguos periódicamente para evitar acumulación de memoria
-setInterval(() => {
-    const now = Date.now();
-    const threshold = 15 * 60 * 1000; // 15 minutos
-    
-    // Existing challenge cleanup
-    if (challenges['_direct']) {
-        const age = now - (challenges['_direct_timestamp'] || 0);
-        if (age > threshold) {
-            delete challenges['_direct'];
-            delete challenges['_direct_timestamp'];
-            console.log(`[CLEANUP] Removed stale direct challenge`);
-        }
-    }
-    
-    // OTP cleanup
-    if (challenges.otp) {
-        for (const [username, otpData] of Object.entries(challenges.otp)) {
-            if (now - otpData.timestamp > threshold) {
-                delete challenges.otp[username];
-                console.log(`[CLEANUP] Removed stale OTP for ${username}`);
-            }
-        }
-    }
-}, 5 * 60 * 1000); // Ejecutar cada 5 minutos
 
 module.exports = router;
