@@ -6,7 +6,7 @@ body {
   font-family: 'Arial', sans-serif;
   color: #333;
   height: 100vh;
-  background: url("../../../../images/catedral-image.jpeg") center center fixed;
+  background: url("../assets/images/catedral-image.jpeg") center center fixed;
   background-size: cover;
 }
 
