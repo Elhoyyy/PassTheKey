@@ -62,9 +62,9 @@
         </div>
       </div>
 
-      <div class="buttons-container">
+      <div class="dialog-footer">
         <button 
-          class="btn-verify" 
+        class="btn btn-primary" 
           (click)="verifyOtp()"
           [disabled]="isProcessing">
           <i *ngIf="!isProcessing" class="bi bi-check-circle"></i>
@@ -73,15 +73,14 @@
         </button>
         
         <button 
-          class="btn-cancel" 
-          (click)="cancelAndGoBack()"
+        class="btn btn-secondary" 
+        (click)="cancelAndGoBack()"
           [disabled]="isProcessing">
           <i class="bi bi-x-circle"></i>
           <span>Cancelar</span>
         </button>
       </div>
     </div>
-
     <!-- Pantalla de opciones de recuperación -->
     <div *ngIf="stage === 'reset-options'">
       <div class="recovery-options">
@@ -127,8 +126,11 @@
           type="password" 
           [(ngModel)]="newPassword" 
           name="newPassword" 
-          placeholder="Nueva contraseña" />
+          placeholder="Nueva contraseña" 
+          (input)="evaluatePasswordStrength()"/>
       </div>
+
+          
       
       <div class="input-group">
         <i class="bi bi-lock-fill"></i>
@@ -138,6 +140,29 @@
           name="confirmPassword" 
           placeholder="Confirmar contraseña" />
       </div>
+
+      <div class="password-requirements">
+        <p>La contraseña debe contener:</p>
+        <ul>
+          <li class="requirement" [ngClass]="{'met': passwordRequirements.length}">
+            <i class="bi" [ngClass]="passwordRequirements.length ? 'bi-check-circle' : 'bi-x-circle'"></i>
+            Mínimo 8 caracteres
+          </li>
+          <li class="requirement" [ngClass]="{'met': passwordRequirements.uppercase}">
+            <i class="bi" [ngClass]="passwordRequirements.uppercase ? 'bi-check-circle' : 'bi-x-circle'"></i>
+            Letra mayúscula
+          </li>
+          <li class="requirement" [ngClass]="{'met': passwordRequirements.number}">
+            <i class="bi" [ngClass]="passwordRequirements.number ? 'bi-check-circle' : 'bi-x-circle'"></i>
+            Número
+          </li>
+          <li class="requirement" [ngClass]="{'met': passwordRequirements.special}">
+            <i class="bi" [ngClass]="passwordRequirements.special ? 'bi-check-circle' : 'bi-x-circle'"></i>
+            Caracter Especial
+          </li>
+        </ul>
+      </div>
+      
 
       <div class="buttons-container">
         <button 
@@ -163,10 +188,10 @@
     <div *ngIf="showPasskeyNameDialog" class="passkey-name-dialog">
       <div class="dialog-content">
         <div class="dialog-header">
-          <h5><i class="bi bi-shield-lock"></i>Name Your Recovery Passkey</h5>
+          <h5><i class="bi bi-shield-lock"></i>Nombra tu Llave de Acceso</h5>
         </div>
         <div class="dialog-body">
-          <p>This passkey will help you sign in securely to your recovered account.</p>
+          <p>La llave de acceso te ayuda a iniciar sesión de forma rápida y segura sin contraseñas.</p>
           <div class="input-group">
             <span class="input-group-text"></span>
             <input type="text" class="form-control" [(ngModel)]="passkeyName" placeholder="Enter a name for this passkey">
@@ -175,19 +200,20 @@
         </div>
         <div class="dialog-footer">
           <button class="btn btn-secondary" (click)="cancelPasskeyName()">
-            <i class="bi bi-x-circle"></i>Cancel
+            <i class="bi bi-x-circle"></i>Cancelar
           </button>
           <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!passkeyName.trim()">
-            <i class="bi bi-check-circle"></i>Continue
+            <i class="bi bi-check-circle"></i>Continuar
           </button>
         </div>
       </div>
     </div>
 
     <div *ngIf="errorMessage" class="error-message">
-      <i class="bi bi-exclamation-triangle"></i>
+      <i class="bi bi-exclamation-triangle me-2"></i>
       {{ errorMessage }}
     </div>
+
     <div *ngIf="successMessage" class="success-message">
         <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
     </div>

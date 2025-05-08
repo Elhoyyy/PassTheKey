@@ -64,6 +64,11 @@ export class SecurityComponent implements OnInit {
   newPasskeyName: string = '';
   detectedDeviceName: string = '';
 
+  // Añadir variable para almacenar credencial temporal
+  tempCredential: any = null;
+  // Variable para opciones de creación de credenciales
+  publicKeyCredentialCreationOptions: any = null;
+
   // Constructor que inicializa el componente y obtiene el perfil del usuario desde el estado de navegación
   constructor(
     private router: Router, 
@@ -350,61 +355,11 @@ export class SecurityComponent implements OnInit {
     this.router.navigate(['/auth']);
   }
 
-  addDevice() {
-    // First detect the device type to provide a good default name
-    this.detectDeviceName();
-    this.newPasskeyName = this.detectedDeviceName;
-    this.showPasskeyNameDialog = true;
-  }
 
-  // Method to detect device name
-  detectDeviceName() {
-    const userAgent = navigator.userAgent;
-    if (userAgent.includes('Windows')) {
-      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
-    } else if (userAgent.includes('iPhone')) {
-      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-    } else if (userAgent.includes('Android')) {
-      const version = userAgent.match(/Android (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
-    } else if (userAgent.includes('Linux')) {
-      this.detectedDeviceName = 'Linux';
-    } else if (userAgent.includes('Mac')) {
-      this.detectedDeviceName = 'Mac';
-    } else {
-      this.detectedDeviceName = 'Dispositivo';
-    }
-  }
-
-  // Method to start passkey registration with the chosen name
-  confirmPasskeyName() {
-    this.showPasskeyNameDialog = false;
-    this.startPasskeyRegistration(this.newPasskeyName);
-  }
-
-  // Method to cancel passkey registration
-  cancelPasskeyName() {
-    this.showPasskeyNameDialog = false;
-    this.newPasskeyName = '';
-  }
-
-  // Actual method to start registration with the chosen name
-  async startPasskeyRegistration(deviceName: string) {
+  // Método modificado para crear credencial primero y después solicitar el nombre
+  async startPasskeyRegistration() {
     this.isLoading = true;
     this.errorMessage = null;
-    
-    const device_creationDate = new Date().toLocaleString('en-GB', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    
-    const userAgent = navigator.userAgent;
     
     try {
       // Get registration options for additional passkey
@@ -418,7 +373,7 @@ export class SecurityComponent implements OnInit {
       }
       
       // Convert base64URL to ArrayBuffer for challenge and user.id
-      const publicKeyCredentialCreationOptions = {
+      this.publicKeyCredentialCreationOptions = {
         ...options,
         challenge: this.base64URLToBuffer(options.challenge as unknown as string),
         user: {
@@ -433,19 +388,75 @@ export class SecurityComponent implements OnInit {
       
       // Create credential
       const credential = await navigator.credentials.create({
-        publicKey: publicKeyCredentialCreationOptions
+        publicKey: this.publicKeyCredentialCreationOptions
       }) as PublicKeyCredential;
       
+      // Guardar la credencial temporalmente
+      this.tempCredential = credential;
+      
+      // Ahora que tenemos la credencial, detectar y solicitar el nombre del dispositivo
+      this.detectDeviceName();
+      this.newPasskeyName = this.detectedDeviceName;
+      this.showPasskeyNameDialog = true;
+    } catch (error: any) {
+      console.error('Error registering passkey:', error);
+      if (error.name === 'NotAllowedError') {
+        this.errorMessage = 'Operación cancelada por el usuario o no permitida';
+      } else if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error registrando dispositivo';
+      } else {
+        this.errorMessage = 'Error en el registro, intente de nuevo';
+      }
+      setTimeout(() => this.errorMessage = null, 3000);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // Method to confirm passkey name and complete registration
+  confirmPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.completePasskeyRegistration(this.newPasskeyName);
+  }
+
+  // Method to cancel passkey registration
+  cancelPasskeyName() {
+    this.showPasskeyNameDialog = false;
+    this.tempCredential = null;
+    this.publicKeyCredentialCreationOptions = null;
+    this.newPasskeyName = '';
+  }
+
+  // Nuevo método para completar el registro después de obtener el nombre
+  async completePasskeyRegistration(deviceName: string) {
+    if (!this.tempCredential) {
+      this.errorMessage = 'Error en el proceso de registro. Por favor, intente de nuevo.';
+      setTimeout(() => this.errorMessage = null, 3000);
+      return;
+    }
+    
+    this.isLoading = true;
+    
+    const device_creationDate = new Date().toLocaleString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    try {
       // Prepare response for server
       const attestationResponse = {
         data: {
-          id: credential.id,
-          rawId: this.bufferToBase64URL(credential.rawId),
+          id: this.tempCredential.id,
+          rawId: this.bufferToBase64URL(this.tempCredential.rawId),
           response: {
-            attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
-            clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
+            attestationObject: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).clientDataJSON),
           },
-          type: credential.type
+          type: this.tempCredential.type
         },
         username: this.username,
         deviceName,
@@ -486,26 +497,30 @@ export class SecurityComponent implements OnInit {
       setTimeout(() => this.errorMessage = null, 3000);
     } finally {
       this.isLoading = false;
+      this.tempCredential = null;
+      this.publicKeyCredentialCreationOptions = null;
     }
-  }
-  
-  // Utility methods for converting between ArrayBuffer and Base64URL
-  private bufferToBase64URL(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    const base64 = btoa(String.fromCharCode(...bytes));
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
-  private base64URLToBuffer(base64URL: string): ArrayBuffer {
-    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-    const binary = atob(padded);
-    const buffer = new ArrayBuffer(binary.length);
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+  // Method to detect device name
+  detectDeviceName() {
+    const userAgent = navigator.userAgent;
+    if (userAgent.includes('Windows')) {
+      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
+    } else if (userAgent.includes('iPhone')) {
+      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
+      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+    } else if (userAgent.includes('Android')) {
+      const version = userAgent.match(/Android (\d+\.\d+)/);
+      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
+    } else if (userAgent.includes('Linux')) {
+      this.detectedDeviceName = 'Linux';
+    } else if (userAgent.includes('Mac')) {
+      this.detectedDeviceName = 'Mac';
+    } else {
+      this.detectedDeviceName = 'Dispositivo';
     }
-    return buffer;
   }
 
   async deleteDevice(index: number) {
@@ -550,7 +565,24 @@ export class SecurityComponent implements OnInit {
   async hideError(){
     setTimeout(()=> this.errorMessage=null, 3000);
   }
+  // Utility methods for converting between ArrayBuffer and Base64URL
+  private bufferToBase64URL(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
 
+  private base64URLToBuffer(base64URL: string): ArrayBuffer {
+    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const binary = atob(padded);
+    const buffer = new ArrayBuffer(binary.length);
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return buffer;
+  }
   // Add this new method to identify which device was last used
   identifyLastUsedDevice() {
     if (this.devices.length === 0) {
@@ -609,6 +641,6 @@ export class SecurityComponent implements OnInit {
       osInfo = 'Linux';
     }
     
-    return `${browserInfo} on ${osInfo}`;
+    return `${browserInfo} en ${osInfo}`;
   }
 }

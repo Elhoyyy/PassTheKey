@@ -52,7 +52,7 @@
                   
                   <div class="form-group">
                     <div class="password-field">
-                      <input type="password" id="newPassword" class="form-control" placeholder="New Password" 
+                      <input type="password" id="newPassword" class="form-control" placeholder="Nueva Contraseña" 
                         [(ngModel)]="newPassword" 
                         (input)="evaluatePasswordStrength()">
                       <span class="password-toggle" (click)="togglePasswordVisibility('newPassword')">
@@ -60,7 +60,7 @@
                       </span>
                     </div>
                     <div class="password-field mt-2">
-                      <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm Password" 
+                      <input type="password" id="confirmPassword" class="form-control" placeholder="Confirmar Contraseña" 
                         [(ngModel)]="confirmPassword">
                       <span class="password-toggle" (click)="togglePasswordVisibility('confirmPassword')">
                         <i class="bi bi-eye-slash"></i>
@@ -117,10 +117,10 @@
                     <strong>Mejora tu seguridad</strong>
                   </div>
                   <p>Actualmente no dispones de ninguna Llave de Acceso.</p>
-                  <p>Añadir una passkey mejorará notablemente la seguridad.</p>
-                  <button class="btn btn-primary mt-3 centered-btn" (click)="addDevice()" [disabled]="isLoading">
+                  <p>Añadir una  mejorará notablemente la seguridad.</p>
+                  <button class="btn btn-primary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
                     <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    {{ isLoading ? ' Añadiendo...' : 'Añadela!' }}
+                    {{ isLoading ? ' Añadiendo...' : 'Añade Una!' }}
                   </button>
                 </div>
                 
@@ -208,7 +208,7 @@
                 </div>
                 
                 <div class="passkey-action">
-                  <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="addDevice()" [disabled]="isLoading">
+                  <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="startPasskeyRegistration()" [disabled]="isLoading">
                     <i *ngIf="!isLoading" class="bi bi-plus-circle"></i>
                     <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     {{ isLoading ? 'Añadiendo...' : 'Añade una Llave De Acceso' }}

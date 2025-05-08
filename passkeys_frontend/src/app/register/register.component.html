@@ -28,9 +28,30 @@
             type="password" 
             [(ngModel)]="password" 
             name="password" 
-            placeholder="Password" />
+            placeholder="Password" 
+            (input)="evaluatePasswordStrength()"/>
         </div>
-        
+        <div class="password-requirements" *ngIf="showPasswordForRegistration">
+          <p>La contraseña debe contener:</p>
+          <ul>
+            <li class="requirement" [ngClass]="{'met': passwordRequirements.length}">
+              <i class="bi" [ngClass]="passwordRequirements.length ? 'bi-check-circle' : 'bi-x-circle'"></i>
+              Mínimo 8 caracteres
+            </li>
+            <li class="requirement" [ngClass]="{'met': passwordRequirements.uppercase}">
+              <i class="bi" [ngClass]="passwordRequirements.uppercase ? 'bi-check-circle' : 'bi-x-circle'"></i>
+              Letra mayúscula
+            </li>
+            <li class="requirement" [ngClass]="{'met': passwordRequirements.number}">
+              <i class="bi" [ngClass]="passwordRequirements.number ? 'bi-check-circle' : 'bi-x-circle'"></i>
+              Número
+            </li>
+            <li class="requirement" [ngClass]="{'met': passwordRequirements.special}">
+              <i class="bi" [ngClass]="passwordRequirements.special ? 'bi-check-circle' : 'bi-x-circle'"></i>
+              Caracter Especial
+            </li>
+          </ul>
+        </div>
         <!-- Toggle para mostrar/ocultar contraseña en registro -->
         <div class="password-toggle">
             <label class="toggle">
@@ -48,7 +69,7 @@
             [disabled]="isRegistering">
             <i *ngIf="!isRegistering" class="bi" [ngClass]="showPasswordForRegistration ? 'bi-person-plus' : 'bi-key'"></i>
             <span *ngIf="isRegistering" class="spinner-border spinner-border-sm"></span>
-            <span>{{ isRegistering ? 'Registrando...' : showPasswordForRegistration ? 'Registrar con contraseña' : 'Registrar con passkey' }}</span>
+            <span>{{ isRegistering ? 'Registrando...' : showPasswordForRegistration ? 'Registrar con contraseña' : 'Registrar llave de acceso' }}</span>
             </button>
         </div>
         
@@ -73,8 +94,8 @@
           </div>
 
           <div class="otp-description">
-            <p>Introduce el código de verificación de 6 dígitos.</p>
-            <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+            <p>Introduce el código de verificación de 6 dígitos. Necesitarás una app como <strong>Authy, 1-Password, Microsoft Authenticator...</strong></p>
+            <p>Este código cambia cada <strong>30 segundos.</strong> <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
             <!-- QR code section -->
             <div  class="qr-setup">
               <h4>Configurar Autenticador</h4>
@@ -96,9 +117,16 @@
             </div>
           </div>
 
-          <div class="buttons-container">
+          <div class="dialog-footer">
             <button 
-              class="btn-verify" 
+            class="btn btn-secondary" 
+            (click)="cancelOtpVerification()"
+            [disabled]="isVerifyingOtp">
+            <i class="bi bi-x-circle"></i>
+            <span>Cancelar</span>
+          </button>
+            <button 
+              class="btn btn-primary" 
               (click)="verifyAccount()"
               [disabled]="isVerifyingOtp">
               <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
@@ -106,13 +134,6 @@
               <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
             </button>
             
-            <button 
-              class="btn-cancel" 
-              (click)="cancelOtpVerification()"
-              [disabled]="isVerifyingOtp">
-              <i class="bi bi-x-circle"></i>
-              <span>Cancelar</span>
-            </button>
           </div>
         </div>
         

@@ -39,6 +39,20 @@ export class RecoveryComponent implements OnDestroy {
   timerInterval: any;
   otpSecret: string = '';
 
+  // Add password strength properties
+  passwordStrength: string = 'none'; // Password strength indicator: none, weak, medium, strong
+  passwordRequirements = {
+    length: false,
+    uppercase: false,
+    number: false,
+    special: false
+  };
+
+  // Añadir variable para almacenar credencial temporal
+  tempCredential: any = null;
+  // Variable para opciones de creación de credenciales
+  publicKeyCredentialCreationOptions: any = null;
+  
   constructor(
     private http: HttpClient, 
     private router: Router, 
@@ -46,6 +60,20 @@ export class RecoveryComponent implements OnDestroy {
     private profileService: ProfileService,
     private appComponent: AppComponent
   ) { }
+
+  // Add this method to evaluate password strength
+  evaluatePasswordStrength() {
+    const password = this.newPassword;
+    
+    // Reset requirements
+    this.passwordRequirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    
+  }
   
   async requestRecovery() {
     if (!this.username || !this.validateEmail(this.username)) {
@@ -188,9 +216,64 @@ export class RecoveryComponent implements OnDestroy {
   }
 
   async passkeyRecovery() {
-    this.detectDeviceName();
-    this.passkeyName = this.detectedDeviceName;
-    this.showPasskeyNameDialog = true;
+    this.isProcessing = true;
+    this.errorMessage = null;
+  
+    try {
+      console.log('[RECOVER-DEVICE] Requesting recover options for user:', this.username);
+      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
+        '/passkey/registro/passkey/additional', 
+        { username: this.username }
+      ).toPromise();
+      
+      console.log('[RECOVER-DEVICE] Received options:', options);
+      if (!options) {
+        throw new Error('Failed to get credential creation options');
+      }
+  
+      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+      this.publicKeyCredentialCreationOptions = {
+        ...options,
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        user: {
+          ...options.user,
+          id: this.base64URLToBuffer(options.user.id as unknown as string),
+        },
+        // Critical fix: Convert each excludeCredential.id to ArrayBuffer
+        excludeCredentials: options.excludeCredentials ? 
+          options.excludeCredentials.map(credential => ({
+            ...credential,
+            id: this.base64URLToBuffer(credential.id as unknown as string)
+          })) : []
+      };
+  
+      console.log('[RECOVER-DEVICE] Processed options:', this.publicKeyCredentialCreationOptions);
+  
+      console.log('[RECOVER-DEVICE] Calling navigator.credentials.create');
+      const credential = await navigator.credentials.create({
+        publicKey: this.publicKeyCredentialCreationOptions
+      }) as PublicKeyCredential;
+      console.log('[RECOVER-DEVICE] Created credential:', credential);
+      
+      // Guardar la credencial temporalmente
+      this.tempCredential = credential;
+      
+      // Ahora que tenemos la credencial, detectar y solicitar el nombre del dispositivo
+      this.detectDeviceName();
+      this.passkeyName = this.detectedDeviceName;
+      this.showPasskeyNameDialog = true;
+    } catch (error: any) {
+      console.error('[RECOVER-DEVICE] Error:', error);
+      if (error.name === 'NotAllowedError') {
+        this.errorMessage = 'Operación cancelada por el usuario o no permitida';
+      } else if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error añadiendo llave de acceso.';
+      } else {
+        this.errorMessage = 'Error añadiendo llave de acceso. Intente de nuevo';
+      }
+      this.hideError();
+      this.isProcessing = false;
+    }
   }
 
   // Method to detect device name based on user agent
@@ -217,19 +300,26 @@ export class RecoveryComponent implements OnDestroy {
   // Method to continue with passkey creation after naming
   confirmPasskeyName() {
     this.showPasskeyNameDialog = false;
-    this.createRecoveryPasskey();
+    this.completeRecoveryPasskey();
   }
 
   // Method to cancel passkey naming
   cancelPasskeyName() {
     this.showPasskeyNameDialog = false;
+    this.tempCredential = null;
+    this.publicKeyCredentialCreationOptions = null;
     this.stage = 'reset-options';
   }
 
-  // Renamed the actual passkey creation logic
-  async createRecoveryPasskey() {
+  // Nuevo método para completar el proceso después de obtener el nombre
+  async completeRecoveryPasskey() {
+    if (!this.tempCredential) {
+      this.errorMessage = 'Error en el proceso de registro. Por favor, intente de nuevo.';
+      this.hideError();
+      return;
+    }
+    
     this.isProcessing = true;
-    this.errorMessage = null;
     
     let deviceName = this.passkeyName;
     
@@ -243,51 +333,16 @@ export class RecoveryComponent implements OnDestroy {
     });
   
     try {
-      console.log('[RECOVER-DEVICE] Requesting recover options for user:', this.username);
-      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
-        '/passkey/registro/passkey/additional', 
-        { username: this.username }
-      ).toPromise();
-      
-      console.log('[RECOVER-DEVICE] Received options:', options);
-      if (!options) {
-        throw new Error('Failed to get credential creation options');
-      }
-  
-      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
-      const publicKeyCredentialCreationOptions = {
-        ...options,
-        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-        user: {
-          ...options.user,
-          id: this.base64URLToBuffer(options.user.id as unknown as string),
-        },
-        // Critical fix: Convert each excludeCredential.id to ArrayBuffer
-        excludeCredentials: options.excludeCredentials ? 
-          options.excludeCredentials.map(credential => ({
-            ...credential,
-            id: this.base64URLToBuffer(credential.id as unknown as string)
-          })) : []
-      };
-  
-      console.log('[RECOVER-DEVICE] Processed options:', publicKeyCredentialCreationOptions);
-  
-      console.log('[RECOVER-DEVICE] Calling navigator.credentials.create');
-      const credential = await navigator.credentials.create({
-        publicKey: publicKeyCredentialCreationOptions
-      }) as PublicKeyCredential;
-      console.log('[RECOVER-DEVICE] Created credential:', credential);
-  
       // Convert credential for sending to server
       const attestationResponse = {
         data: {  // Wrap in data object to match SimpleWebAuthn expectations
-          id: credential.id,
-          rawId: this.bufferToBase64URL(credential.rawId),
+          id: this.tempCredential.id,
+          rawId: this.bufferToBase64URL(this.tempCredential.rawId),
           response: {
-            attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
-            clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
+            attestationObject: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).clientDataJSON),
           },
-          type: credential.type
+          type: this.tempCredential.type
         },
         username: this.username,
         deviceName,
@@ -311,10 +366,11 @@ export class RecoveryComponent implements OnDestroy {
           this.profileService.setProfile(currentProfile);
         }
         
-        
         this.successMessage = 'Nueva llave de acceso añadida con éxito!';
         setTimeout(() => this.successMessage= null, 3000);
       }
+      
+      // Continuar con el inicio de sesión con la nueva passkey
       const loginOptions = await this.http.post<PublicKeyCredentialRequestOptions>(
         '/auth/login/passkey/by-email',
         { username: this.username }
@@ -327,7 +383,6 @@ export class RecoveryComponent implements OnDestroy {
       }
       
       // Convert challenge and credential IDs to ArrayBuffer
-      // Instead of repeating the same conversion logic
       const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(loginOptions);
       const getCredentialOptions: CredentialRequestOptions = {
         publicKey: publicKeyCredentialRequestOptions
@@ -376,9 +431,12 @@ export class RecoveryComponent implements OnDestroy {
       } else {
         this.errorMessage = 'Error añadiendo llave de acceso. Intente de nuevo';
       }
+      this.router.navigate(['/auth']);
       this.hideError();
     } finally {
       this.isProcessing = false;
+      this.tempCredential = null;
+      this.publicKeyCredentialCreationOptions = null;
     }
   }
 
@@ -421,8 +479,10 @@ export class RecoveryComponent implements OnDestroy {
       return;
     }
     
-    if (this.newPassword.length < 4) {
-      this.errorMessage = "La contraseña debe tener al menos 4 caracteres";
+    // Add password strength validation
+    this.evaluatePasswordStrength();
+    if (this.passwordStrength === 'weak') {
+      this.errorMessage = "La contraseña es demasiado débil. Añade más caracteres especiales, números o letras mayúsculas.";
       this.hideError();
       return;
     }
@@ -432,6 +492,7 @@ export class RecoveryComponent implements OnDestroy {
       this.hideError();
       return;
     }
+    
     
     this.isProcessing = true;
     this.errorMessage = null;
@@ -479,6 +540,11 @@ export class RecoveryComponent implements OnDestroy {
     } finally {
       this.isProcessing = false;
     }
+  }
+
+    // Add this method to handle input changes
+  onPasswordInput() {
+    this.evaluatePasswordStrength();
   }
   
   cancelAndGoBack() {

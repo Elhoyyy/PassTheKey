@@ -39,6 +39,20 @@ export class RegisterComponent {
   // Add flag to track if authenticator has been configured
   authenticatorConfigured: boolean = false;
 
+  // Añadir variable para almacenar credencial temporal
+  tempCredential: any = null;
+  // Variable para opciones de creación de credenciales
+  publicKeyCredentialCreationOptions: any = null;
+
+  // Add password strength properties
+  passwordStrength: string = 'none'; // Password strength indicator: none, weak, medium, strong
+  passwordRequirements = {
+    length: false,
+    uppercase: false,
+    number: false,
+    special: false
+  };
+  
   constructor(
     private http: HttpClient, 
     private router: Router, 
@@ -47,6 +61,19 @@ export class RegisterComponent {
     private profileService: ProfileService
   ) {}
 
+  evaluatePasswordStrength() {
+    const password = this.password;
+    
+    // Reset requirements
+    this.passwordRequirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    
+
+  }
   // Method to handle the registration
   async handleRegistration() {
     // If the password field is visible, register with password
@@ -58,13 +85,10 @@ export class RegisterComponent {
         this.hideError();
         return;
       }
-      // For passkey, first show the dialog to set a name
-      this.detectDeviceName();
-      this.passkeyName = this.detectedDeviceName;
-      this.showPasskeyNameDialog = true;
+      // Iniciar directamente el proceso de registro con passkey
+      await this.startPasskeyRegistration();
     }
   }
-
   // Method to detect device name from user agent
   detectDeviceName() {
     const userAgent = navigator.userAgent;
@@ -85,15 +109,145 @@ export class RegisterComponent {
     }
   }
 
-  // Method to confirm passkey name and start registration
+  // Método para iniciar el registro con passkey sin solicitar nombre primero
+  async startPasskeyRegistration() {
+    console.log('[REGISTRATION] Starting registration process');
+    this.errorMessage = null;
+    this.isRegistering = true;
+    
+    try {
+      if (!this.username || !this.validateEmail(this.username)) {
+        throw new Error('Por favor, introduce un correo electrónico válido');
+      }
+      
+      console.log('[REGISTRATION] Requesting creation options for user:', this.username);
+      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
+        '/passkey/registro/passkey', 
+        { username: this.username }
+      ).toPromise();
+      
+      console.log('[REGISTRATION] Received options:', options);
+      if (!options) {
+        throw new Error('Failed to get credential creation options');
+      }
+
+      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
+      this.publicKeyCredentialCreationOptions = {
+        ...options,
+        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        user: {
+          ...options.user,
+          id: this.base64URLToBuffer(options.user.id as unknown as string),
+        }
+      };
+
+      console.log('[REGISTRATION] Processed options:', this.publicKeyCredentialCreationOptions);
+
+      console.log('[REGISTRATION] Calling navigator.credentials.create');
+      const credential = await navigator.credentials.create({
+        publicKey: this.publicKeyCredentialCreationOptions
+      }) as PublicKeyCredential;
+      console.log('[REGISTRATION] Created credential:', credential);
+      
+      // Guardar la credencial temporalmente
+      this.tempCredential = credential;
+      
+      // Ahora que tenemos la credencial, detectar y solicitar el nombre del dispositivo
+      this.detectDeviceName();
+      this.passkeyName = this.detectedDeviceName;
+      this.showPasskeyNameDialog = true;
+    } catch (error: any) {
+      console.error('[REGISTRATION] Error creating credential:', error);
+      if (error.name === 'NotAllowedError') {
+        this.errorMessage = 'Operación cancelada por el usuario o no permitida';
+      } else if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error registrando dispositivo';
+      } else {
+        this.errorMessage = 'Error en el registro, intente de nuevo';
+      }
+      this.hideError();
+      this.isRegistering = false;
+    }
+  }
+
+  // Method to confirm passkey name and complete registration
   confirmPasskeyName() {
     this.showPasskeyNameDialog = false;
-    this.registerWithPasskey();
+    this.completePasskeyRegistration();
   }
 
   // Method to cancel passkey registration
   cancelPasskeyName() {
     this.showPasskeyNameDialog = false;
+    this.tempCredential = null;
+    this.publicKeyCredentialCreationOptions = null;
+    this.isRegistering = false;
+  }
+
+  // Método para completar el registro con passkey después de obtener el nombre
+  async completePasskeyRegistration() {
+    if (!this.tempCredential) {
+      this.errorMessage = 'Error en el proceso de registro. Por favor, intente de nuevo.';
+      this.hideError();
+      this.isRegistering = false;
+      return;
+    }
+    
+    try {
+      const deviceName = this.passkeyName;
+      const device_creationDate = new Date().toLocaleString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
+      // Convert credential for sending to server
+      const attestationResponse = {
+        data: {  // Wrap in data object to match SimpleWebAuthn expectations
+          id: this.tempCredential.id,
+          rawId: this.bufferToBase64URL(this.tempCredential.rawId),
+          response: {
+            attestationObject: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).clientDataJSON),
+          },
+          type: this.tempCredential.type
+        },
+        username: this.username,
+        deviceName,
+        device_creationDate
+      };
+
+      console.log('[REGISTRATION] Sending attestation response:', attestationResponse);
+
+      const response = await this.http.post<any>(
+        '/passkey/registro/passkey/fin', 
+        attestationResponse
+      ).toPromise();
+      
+      if (response && response.res) {
+        this.authService.login();
+        this.appComponent.isLoggedIn = true;
+        this.profileService.setProfile(response.userProfile);
+        this.router.navigate(['/profile'], { 
+          state: { userProfile: response.userProfile }
+        });
+      }
+    } catch (error: any) {
+      if (error.status === 400 || error.status === 409 || error.status === 401) {
+        this.errorMessage = error.error.message || 'Error registrando dispositivo';
+      }
+      else{
+        this.errorMessage = 'Error en el registro, intente de nuevo';
+      }
+      this.hideError();
+    } finally {
+      this.isRegistering = false;
+      this.tempCredential = null;
+      this.publicKeyCredentialCreationOptions = null;
+    }
   }
 
   async registerWithPassword() {
@@ -185,102 +339,6 @@ export class RegisterComponent {
       console.error('Error en el registro con contraseña:', error);
       this.errorMessage = error.error?.message || error.message || 'Error en el registro';
       this.hideError();
-      this.isRegistering = false;
-    }
-  }
-  
-  async registerWithPasskey() {
-    // We'll use the custom name provided by the user
-    let deviceName = this.passkeyName;
-    
-    const device_creationDate = new Date().toLocaleString('en-GB', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-
-    console.log('[REGISTRATION] Starting registration process');
-    this.errorMessage = null;
-    this.isRegistering = true;
-    
-    try {
-      if (!this.username || !this.validateEmail(this.username)) {
-        throw new Error('Por favor, introduce un correo electrónico válido');
-      }
-      
-      console.log('[REGISTRATION] Requesting creation options for user:', this.username);
-      const options = await this.http.post<PublicKeyCredentialCreationOptions>(
-        '/passkey/registro/passkey', 
-        { username: this.username }
-      ).toPromise();
-      
-      console.log('[REGISTRATION] Received options:', options);
-      if (!options) {
-        throw new Error('Failed to get credential creation options');
-      }
-
-      // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
-      const publicKeyCredentialCreationOptions = {
-        ...options,
-        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
-        user: {
-          ...options.user,
-          id: this.base64URLToBuffer(options.user.id as unknown as string),
-        }
-      };
-
-      console.log('[REGISTRATION] Processed options:', publicKeyCredentialCreationOptions);
-
-      console.log('[REGISTRATION] Calling navigator.credentials.create');
-      const credential = await navigator.credentials.create({
-        publicKey: publicKeyCredentialCreationOptions
-      }) as PublicKeyCredential;
-      console.log('[REGISTRATION] Created credential:', credential);
-
-      // Convert credential for sending to server
-      const attestationResponse = {
-        data: {  // Wrap in data object to match SimpleWebAuthn expectations
-          id: credential.id,
-          rawId: this.bufferToBase64URL(credential.rawId),
-          response: {
-            attestationObject: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).attestationObject),
-            clientDataJSON: this.bufferToBase64URL((credential.response as AuthenticatorAttestationResponse).clientDataJSON),
-          },
-          type: credential.type
-        },
-        username: this.username,
-        deviceName,
-        device_creationDate
-      };
-
-      console.log('[REGISTRATION] Sending attestation response:', attestationResponse);
-
-      const response = await this.http.post<any>(
-        '/passkey/registro/passkey/fin', 
-        attestationResponse
-      ).toPromise();
-      
-      if (response && response.res) {
-        this.authService.login();
-        this.appComponent.isLoggedIn = true;
-        this.profileService.setProfile(response.userProfile);
-        this.router.navigate(['/profile'], { 
-          state: { userProfile: response.userProfile }
-        });
-      }
-    } catch (error: any) {
-      if (error.status === 400 || error.status === 409 || error.status === 401) {
-        this.errorMessage = error.error.message || 'Error registrando dispositivo';
-        this.hideError();
-      }
-      else{
-        this.errorMessage = 'Error en el registro, intente de nuevo';
-        this.hideError();
-      }
-    } finally {
       this.isRegistering = false;
     }
   }
