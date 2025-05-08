@@ -3,7 +3,7 @@
     <form class="login">
         <p class="title">
         <i class="bi bi-key-fill"></i>
-        {{ showOtpVerification ? 'Verificación de código' : 'Registro de Usuario' }}
+        {{ showOtpVerification ? 'Habilitar 2FA' : 'Registro de Usuario' }}
         </p>
 
         <!-- Campos para registro (ocultos durante verificación OTP) -->
@@ -37,7 +37,7 @@
             <input type="checkbox" [(ngModel)]="showPasswordForRegistration" name="showPassword">
             <span class="slider"></span>
             </label>
-            <span>Usar passkey</span>
+            <span>Usar llaves de acceso</span>
         </div>
 
         <div class="buttons-container">
@@ -76,7 +76,7 @@
             <p>Introduce el código de verificación de 6 dígitos.</p>
             <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
             <!-- QR code section -->
-            <div *ngIf="showQrSetup" class="qr-setup">
+            <div  class="qr-setup">
               <h4>Configurar Autenticador</h4>
               <p>Escanea este código QR con tu aplicación de autenticación:</p>
               <img *ngIf="qrCodeUrl" [src]="qrCodeUrl" alt="QR Code" class="qr-code">
@@ -89,17 +89,10 @@
               <div class="setup-warning">
                 <p class="warning"><i class="bi bi-exclamation-triangle"></i> IMPORTANTE: Esta información solo se mostrará una vez.</p>
               </div>
-              
-              <button class="btn-secondary mt-2" (click)="confirmAuthenticatorSetup()">
-                <i class="bi bi-check-circle"></i> Listo
-              </button>
             </div>
             <!-- Show demo code and setup option -->
-            <div *ngIf="!showQrSetup" class="demo-token-container">
+            <div  class="demo-token-container">
               <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
-              <button *ngIf="!showQrSetup && !authenticatorConfigured" class="btn-link small" (click)="setupAuthenticator()">
-                <i class="bi bi-qr-code"></i> Configurar aplicación de autenticación
-              </button>
             </div>
           </div>
 
@@ -127,10 +120,10 @@
         <div *ngIf="showPasskeyNameDialog" class="passkey-name-dialog">
           <div class="dialog-content">
             <div class="dialog-header">
-              <h5><i class="bi bi-shield-lock"></i>Name Your Passkey</h5>
+              <h5><i class="bi bi-shield-lock"></i>Nombra tu Llave de Acceso</h5>
             </div>
             <div class="dialog-body">
-              <p>A passkey helps you sign in quickly and securely without using a password.</p>
+              <p>La llave de acceso te ayuda a iniciar sesión de forma rápida y segura sin contraseñas.</p>
               <div class="input-group">
                 <input type="text" class="form-control" [(ngModel)]="passkeyName" name="passkeyName" placeholder="Enter a name for this passkey">
               </div>
@@ -138,10 +131,10 @@
             </div>
             <div class="dialog-footer">
               <button class="btn btn-secondary" (click)="cancelPasskeyName()">
-                <i class="bi bi-x-circle"></i>Cancel
+                <i class="bi bi-x-circle"></i>Cancelar
               </button>
               <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!passkeyName.trim()">
-                <i class="bi bi-check-circle"></i>Continue
+                <i class="bi bi-check-circle"></i>Continuar
               </button>
             </div>
           </div>

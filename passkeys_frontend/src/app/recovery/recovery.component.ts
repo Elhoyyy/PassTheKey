@@ -232,7 +232,6 @@ export class RecoveryComponent implements OnDestroy {
     this.errorMessage = null;
     
     let deviceName = this.passkeyName;
-    const userAgent = navigator.userAgent;
     
     const device_creationDate = new Date().toLocaleString('en-GB', {
       year: 'numeric',
@@ -313,7 +312,7 @@ export class RecoveryComponent implements OnDestroy {
         }
         
         
-        this.successMessage = 'New passkey added successfully!';
+        this.successMessage = 'Nueva llave de acceso añadida con éxito!';
         setTimeout(() => this.successMessage= null, 3000);
       }
       const loginOptions = await this.http.post<PublicKeyCredentialRequestOptions>(
@@ -373,9 +372,9 @@ export class RecoveryComponent implements OnDestroy {
     } catch (error: any) {
       console.error('[RECOVER-DEVICE] Error:', error);
       if (error.status === 400 || error.status === 409 || error.status === 401) {
-        this.errorMessage = error.error.message || 'Error adding new passkey';
+        this.errorMessage = error.error.message || 'Error añadiendo llave de acceso.';
       } else {
-        this.errorMessage = 'Error adding new passkey. Please try again.';
+        this.errorMessage = 'Error añadiendo llave de acceso. Intente de nuevo';
       }
       this.hideError();
     } finally {
@@ -463,7 +462,7 @@ export class RecoveryComponent implements OnDestroy {
         this.errorMessage = "No se pudo restablecer la contraseña";
         this.hideError();
       }
-      this.successMessage = 'Password updated successfully';
+      this.successMessage = 'Contraseña restablecida con éxito!';
       this.newPassword = '';
       this.confirmPassword = '';
       // Keep success message visible for 3 seconds

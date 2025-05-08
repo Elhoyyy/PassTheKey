@@ -29,7 +29,6 @@ export class RegisterComponent {
   demoOtpCode: string = ''; // To display demo OTP code
   expirySeconds: number = 0;
   timerInterval: any;
-  showQrSetup: boolean = false;
   qrCodeUrl: string = '';
   otpSecret: string = '';
   
@@ -150,12 +149,25 @@ export class RegisterComponent {
             };
             this.showOtpVerification = true;
             this.isRegistering = false;
-          } else if (loginResponse && loginResponse.res) {
-            // Direct login without OTP
-            this.authService.login();
-            this.appComponent.isLoggedIn = true;
-            this.profileService.setProfile(loginResponse.userProfile);
-            this.router.navigate(['/profile']);
+            const otpresponse = await this.http.post<{
+              success: boolean,
+              qrCodeUrl: string,
+              secret: string,
+              currentToken: string,
+              expirySeconds: number
+            }>('/passkey/generate-totp-qr', {
+              username: this.username
+            }).toPromise();
+            
+            if (otpresponse && otpresponse.success) {
+              this.qrCodeUrl = otpresponse.qrCodeUrl;
+              this.otpSecret = otpresponse.secret;
+              this.demoOtpCode = otpresponse.currentToken;
+              this.expirySeconds = otpresponse.expirySeconds;
+              
+              // Update the timer
+              this.startExpiryTimer();
+            }
           } else {
             throw new Error('Error en el inicio de sesión automático');
           }
@@ -180,7 +192,6 @@ export class RegisterComponent {
   async registerWithPasskey() {
     // We'll use the custom name provided by the user
     let deviceName = this.passkeyName;
-    const userAgent = navigator.userAgent;
     
     const device_creationDate = new Date().toLocaleString('en-GB', {
       year: 'numeric',
@@ -333,7 +344,6 @@ export class RegisterComponent {
     }
     
     this.showOtpVerification = false;
-    this.showQrSetup = false;
     this.otpCode = '';
     this.pendingUserProfile = null;
   }
@@ -414,59 +424,7 @@ export class RegisterComponent {
     }
   }
   
-  // Method to set up authenticator app
-  async setupAuthenticator() {
-    try {
-      // Only allow setup if not already configured
-      if (this.authenticatorConfigured) {
-        this.errorMessage = 'El autenticador ya ha sido configurado';
-        this.hideError();
-        return;
-      }
-      
-      const response = await this.http.post<{
-        success: boolean,
-        qrCodeUrl: string,
-        secret: string,
-        currentToken: string,
-        expirySeconds: number
-      }>('/passkey/generate-totp-qr', {
-        username: this.username
-      }).toPromise();
-      
-      if (response && response.success) {
-        this.qrCodeUrl = response.qrCodeUrl;
-        this.otpSecret = response.secret;
-        this.demoOtpCode = response.currentToken;
-        this.expirySeconds = response.expirySeconds;
-        this.showQrSetup = true;
-        
-        // Update the timer
-        this.startExpiryTimer();
-      }
-    } catch (error) {
-      console.error('Error setting up authenticator:', error);
-      this.errorMessage = 'Error al configurar el autenticador';
-      this.hideError();
-    }
-  }
   
-  // Add method to confirm authenticator setup
-  confirmAuthenticatorSetup() {
-    this.authenticatorConfigured = true;
-    this.showQrSetup = false;
-    
-    // Store this setting for this user
-    localStorage.setItem(`${this.username}_authenticatorConfigured`, 'true');
-    
-    this.successMessage = 'Autenticador configurado exitosamente';
-    
-    setTimeout(() => {
-      this.successMessage = null;
-    }, 3000);
-    this.hideError();
-  }
-
   // Cleanup method to clear timers when component is destroyed
   ngOnDestroy() {
     if (this.timerInterval) {

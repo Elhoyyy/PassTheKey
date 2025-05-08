@@ -54,7 +54,7 @@ router.post('/login/passkey/direct', (req, res) => {
     
     if (credentialsCount === 0) {
         console.log(`[${operationType}] No credentials found, cannot offer authentication`);
-        return res.status(400).json({ message: 'No hay passkeys registradas' });
+        return res.status(400).json({ message: 'No hay llaves de acceso registradas' });
     }
 
     // Registrar una muestra de las credenciales
@@ -184,10 +184,8 @@ router.post('/login/passkey/fin', async (req, res) => {
 
     } catch (error) {
         console.error(`[LOGIN-VERIFY] ❌ Error:`, error);
-        return res.status(400).send({
-            error: error.message,
-            message: 'Error en la autenticación'
-        });
+        return res.status(400).json({ message: 'Fallo en la autenticación. Intente de nuevo' });
+
     } finally {
         console.log('=== END LOGIN VERIFICATION ===');
     }

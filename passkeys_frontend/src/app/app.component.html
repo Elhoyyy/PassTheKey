@@ -2,23 +2,23 @@
   <nav class="nav-bar">
     <div class="nav-brand">
       <i class="bi bi-shield-lock-fill"></i>
-      <span>PassTheKey Bank</span>
+      <span>Banco PassTheKey</span>
     </div>
     <div class="nav-buttons">
       <button (click)="navigateTo('home')" [class.active]="currentRoute === '/home'"><i class="bi bi-house"></i>
-        Home</button>
+        Inicio</button>
 
       <div *ngIf="!isLoggedIn" class="dropdown">
         <button class="dropdown-toggle" (click)="toggleDropdown()" 
                 [class.active]="currentRoute === '/auth' || currentRoute === '/register'">
-          <i class="bi bi-person"></i> Sign in/Up <i class="bi bi-caret-down-fill"></i>
+          <i class="bi bi-person"></i> Iniciar Sesión / Registrarse <i class="bi bi-caret-down-fill"></i>
         </button>
         <div class="dropdown-menu" [class.show]="isDropdownOpen">
           <button (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'">
-            <i class="bi bi-box-arrow-in-right"></i> Sign In
+            <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
           </button>
           <button (click)="navigateTo('register')" [class.active]="currentRoute === '/register'">
-            <i class="bi bi-person-plus"></i> Sign Up
+            <i class="bi bi-person-plus"></i> Registrarse
           </button>
         </div>
       </div>
@@ -26,19 +26,19 @@
       <div *ngIf="isLoggedIn" class="dropdown">
         <button class="dropdown-toggle" (click)="toggleDropdown()" 
                 [class.active]="currentRoute === '/profile' || currentRoute === '/security'">
-          <i class="bi bi-person"></i> Profile <i class="bi bi-caret-down-fill"></i>
+          <i class="bi bi-person"></i> Perfil <i class="bi bi-caret-down-fill"></i>
         </button>
         <div class="dropdown-menu" [class.show]="isDropdownOpen">
           <button (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'">
-            <i class="bi bi-person-badge"></i> Profile
+            <i class="bi bi-person-badge"></i> Perfil
           </button>
           <button (click)="navigateTo('security')" [class.active]="currentRoute === '/security'">
-            <i class="bi bi-shield-lock"></i> Security
+            <i class="bi bi-shield-lock"></i> Ajustes
           </button>
         </div>
       </div>
       <button *ngIf="isLoggedIn" (click)="logout()"><i class="bi bi-person-x-fill"></i>
-        Logout</button>
+        Cerrar Sesión</button>
     </div>
   </nav>
   <router-outlet></router-outlet>

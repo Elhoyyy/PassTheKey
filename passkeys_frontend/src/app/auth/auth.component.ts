@@ -300,7 +300,8 @@ export class AuthComponent implements OnDestroy {
           this.router.navigate(['/profile'], { state: { userProfile } });
         }
       } else {
-        this.errorMessage = 'Invalid credentials.';
+        this.errorMessage = 'Credenciales inválidas. Por favor, inténtalo de nuevo.';
+        this.hideError();
       }
     } catch (error: any) {
       console.error('Error en el login:', error);

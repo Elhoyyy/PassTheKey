@@ -290,7 +290,7 @@ router.post('/registro/passkey/fin', async (req, res) => {
             stack: error.stack,
             body: req.body
         });
-        return res.status(400).send({ message: error.message });
+        return res.status(400).send({ message: 'Fallo en el registro. Intente de nuevo.' });
     }
     console.log('=== END FIRST REGISTRATION VERIFICATION ===');
     res.status(500).send(false);
@@ -439,7 +439,7 @@ router.post('/registro/passkey/additional/fin', async (req, res) => {
             stack: error.stack,
             body: req.body
         });
-        return res.status(400).send({ message: error.message });
+        return res.status(400).send({ message: 'Fallo al añadir. Intente de nuevo.' });
     }
     console.log('=== END ADDITIONAL PASSKEY REGISTRATION VERIFICATION ===');
     res.status(500).send(false);

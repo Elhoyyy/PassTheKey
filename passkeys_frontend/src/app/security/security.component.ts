@@ -42,14 +42,14 @@ export class SecurityComponent implements OnInit {
   isPasswordLoading: boolean = false;
   passwordError: string | null = null;
   passwordSuccess: string | null = null;
-  passwordCreationDate: string = 'Unknown'; // Date when password was last changed
+  passwordCreationDate: string = 'Desconocida'; // Date when password was last changed
   securityScore: number = 0; // Security score percentage
 
   newDeviceName: string = '';
   editingDeviceIndex: number = -1; // Track which device is being edited
 
   // New properties for password strength
-  passwordStrength: string = 'none'; // Password strength indicator
+  passwordStrength: string = 'ninguna'; // Password strength indicator
   passwordRequirements = {
     length: false,
     uppercase: false,
@@ -136,13 +136,13 @@ export class SecurityComponent implements OnInit {
     
     // Set strength based on met requirements
     if (password.length === 0) {
-      this.passwordStrength = 'none';
+      this.passwordStrength = 'ninguna';
     } else if (metRequirements <= 1) {
-      this.passwordStrength = 'weak';
+      this.passwordStrength = 'débil';
     } else if (metRequirements === 2) {
-      this.passwordStrength = 'medium';
+      this.passwordStrength = 'moderada';
     } else if (metRequirements >= 3) {
-      this.passwordStrength = 'strong';
+      this.passwordStrength = 'fuerte';
     }
   }
 
@@ -241,21 +241,21 @@ export class SecurityComponent implements OnInit {
     
     // Validate passwords match
     if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'Passwords do not match';
+      this.passwordError = 'Las Contraseñas no coincides';
       setTimeout(() => this.passwordError = null, 3000);
       return;
     }
     
     // Validate password is not empty
     if (!this.newPassword) {
-      this.passwordError = 'Password cannot be empty';
+      this.passwordError = 'La contraseña no puede estar vacía';
       setTimeout(() => this.passwordError = null, 3000);
       return;
     }
     
     // Validate password strength
     if (this.passwordStrength === 'weak') {
-      this.passwordError = 'Password is too weak. Please improve it.';
+      this.passwordError = 'Contraseña débil. Mejórala';
       setTimeout(() => this.passwordError = null, 3000);
       return;
     }
@@ -286,7 +286,7 @@ export class SecurityComponent implements OnInit {
       // Recalculate security score
       this.calculateSecurityScore();
       
-      this.passwordSuccess = 'Password updated successfully';
+      this.passwordSuccess = 'Contraseña actualizada correctamente';
       this.newPassword = '';
       this.confirmPassword = '';
       
@@ -296,7 +296,7 @@ export class SecurityComponent implements OnInit {
       }, 3000);
     } catch (error: any) {
       console.error('Error updating password:', error);
-      this.passwordError = error.error?.message || 'Error updating password';
+      this.passwordError = error.error?.message || 'Error actualizando la contraseña. Inténtalo de nuevo';
       setTimeout(() => this.passwordError = null, 3000);
     } finally {
       this.isPasswordLoading = false;
@@ -321,7 +321,7 @@ export class SecurityComponent implements OnInit {
       
     } catch (error: any) {
       console.error('Error updating device name:', error);
-      this.errorMessage = 'Error updating device name. Please try again';
+      this.errorMessage = 'Error actualizando el nombre del dispositivo. Inténtalo de nuevo';
       this.hideError();
     }
     finally {
@@ -374,7 +374,7 @@ export class SecurityComponent implements OnInit {
     } else if (userAgent.includes('Mac')) {
       this.detectedDeviceName = 'Mac';
     } else {
-      this.detectedDeviceName = 'My Device';
+      this.detectedDeviceName = 'Dispositivo';
     }
   }
 
@@ -474,7 +474,7 @@ export class SecurityComponent implements OnInit {
         this.updatePasskeyUIState();
         
         // Show success message
-        this.successMessage = 'Passkey added successfully';
+        this.successMessage = 'Llave de acceso registrada correctamente';
         setTimeout(() => this.successMessage = null, 3000);
         
         // Identify the last used device
@@ -482,7 +482,7 @@ export class SecurityComponent implements OnInit {
       }
     } catch (error: any) {
       console.error('Error registering passkey:', error);
-      this.errorMessage = error.error?.message || error.message || 'Error registering passkey';
+      this.errorMessage = error.error?.message || error.message || 'Error registrando llave de acceso.';
       setTimeout(() => this.errorMessage = null, 3000);
     } finally {
       this.isLoading = false;
@@ -576,8 +576,8 @@ export class SecurityComponent implements OnInit {
   // Add this method to display user agent information
   formatUserAgent(userAgent: string): string {
     // Extract the browser and OS information
-    let browserInfo = 'Unknown Browser';
-    let osInfo = 'Unknown OS';
+    let browserInfo = 'Naveador';
+    let osInfo = 'OS Desconocido';
     
     // Detect browser
     if (userAgent.includes('Firefox')) {
