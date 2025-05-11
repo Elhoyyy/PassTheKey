@@ -92,22 +92,21 @@
             </div>
           </div>
 
-          <div class="buttons-container">
+          <div class="dialog-footer"> 
             <button 
-              class="btn-verify" 
+              class="btn btn-secondary" 
+              (click)="cancelOtpVerification()"
+              [disabled]="isVerifyingOtp">
+              <i class="bi bi-x-circle"></i>
+              <span>Cancelar</span>
+            </button>
+            <button 
+              class="btn btn-primary" 
               (click)="verifyAccount()"
               [disabled]="isVerifyingOtp">
               <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
               <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
               <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
-            </button>
-            
-            <button 
-              class="btn-cancel" 
-              (click)="cancelOtpVerification()"
-              [disabled]="isVerifyingOtp">
-              <i class="bi bi-x-circle"></i>
-              <span>Cancelar</span>
             </button>
           </div>
         </div>

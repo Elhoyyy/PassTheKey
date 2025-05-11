@@ -3,29 +3,29 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const { users } = require('../data');
 
-// Obtiene el perfil de un usuario en base a su nombre de usuario (username)
-// Devuelve un objeto con los datos del usuario o un mensaje de error si no se encuentra el usuario
-// Se puede usar para obtener el perfil de un usuario después de iniciar sesión
-
+// Update password route - For changing existing passwords
 router.post('/update-password', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, currentPassword, newPassword } = req.body;
     
     console.log('Received update password request for user:', username);
-    console.log('Validating password...');
-    /*
-    if(!isValidPassword(password)){
-      console.log('Password validation failed:', password);
-      return res.status(400).json({ message: 'La contraseña debe cumplir los criterios de seguridad' });
-    }*/
     
     try {
-        console.log('Password validation passed, hashing password...');
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
         if (!users[username]) {
             console.log('User not found:', username);
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
+        
+        // Verify the current password if provided
+        if (currentPassword) {
+            const isPasswordCorrect = await bcrypt.compare(currentPassword, users[username].password);
+            if (!isPasswordCorrect) {
+                console.log('Current password verification failed');
+                return res.status(400).json({ message: 'La contraseña actual es incorrecta' });
+            }
+        }
+        
+        console.log('Password validation passed, hashing password...');
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
         
         // Get current date in DD/MM/YYYY format
         const now = new Date();
@@ -51,6 +51,51 @@ router.post('/update-password', async (req, res) => {
     }
 });
 
+// Add password route - For setting a password for the first time
+router.post('/add-password', async (req, res) => {
+    const { username, password } = req.body;
+    
+    console.log('Received add password request for user:', username);
+    
+    try {
+        if (!users[username]) {
+            console.log('User not found:', username);
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Check if user has OTP secret (2FA is set up)
+        if (!users[username].otpSecret) {
+            console.log('User does not have 2FA set up');
+            return res.status(400).json({ message: 'Debe configurar 2FA antes de añadir contraseña' });
+        }
+        
+        console.log('Password validation passed, hashing password...');
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Get current date in DD/MM/YYYY format
+        const now = new Date();
+        const passwordCreationDate = now.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        
+        users[username].password = hashedPassword;
+        users[username].passwordCreationDate = passwordCreationDate; // Add password creation date
+        
+        console.log('Password added successfully for user:', username);
+        console.log('Password creation date:', passwordCreationDate);
+        
+        return res.status(200).json({ 
+            message: 'Contraseña añadida correctamente',
+            passwordCreationDate: passwordCreationDate // Return the date to client
+        });
+    } catch (error) {
+        console.error('Error adding password:', error);
+        return res.status(500).json({ message: 'Error al añadir la contraseña' });
+    }
+});
+
 router.post('/update-device-name', async (req, res) => {
     const { username, deviceIndex, newDeviceName } = req.body;
     
@@ -71,31 +116,6 @@ router.post('/update-device-name', async (req, res) => {
         devices: users[username].devices 
     });
 });
-
-/*
-router.post('/update-email', (req, res) => {
-    const { username, email } = req.body;
-    
-    if (!users[username]) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-    if(!isValidEmail(email) ){
-        console.log('email not valid');
-        return res.status(400).json({ message: 'El email no es válido' });
-    }
-    if(!users[email]){
-        console.log('email already registered');
-        return res.status(409).json({ message: 'El email ya está registrado' });
-    }
-
-
-    users[username].email = email;
-    console.log('email updated');
-    res.status(200).json({ message: 'Email actualizado correctamente' });
-});
-
-
-*/
 
 function isValidPassword(password) {
   // Enhanced password validation

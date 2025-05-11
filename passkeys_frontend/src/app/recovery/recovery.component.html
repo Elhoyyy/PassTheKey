@@ -62,7 +62,14 @@
         </div>
       </div>
 
-      <div class="dialog-footer">
+      <div class="dialog-footer"> 
+        <button 
+        class="btn btn-secondary" 
+        (click)="cancelAndGoBack()"
+          [disabled]="isProcessing">
+          <i class="bi bi-x-circle"></i>
+          <span>Cancelar</span>
+        </button>
         <button 
         class="btn btn-primary" 
           (click)="verifyOtp()"
@@ -70,14 +77,6 @@
           <i *ngIf="!isProcessing" class="bi bi-check-circle"></i>
           <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
           <span>{{ isProcessing ? 'Verificando...' : 'Verificar' }}</span>
-        </button>
-        
-        <button 
-        class="btn btn-secondary" 
-        (click)="cancelAndGoBack()"
-          [disabled]="isProcessing">
-          <i class="bi bi-x-circle"></i>
-          <span>Cancelar</span>
         </button>
       </div>
     </div>

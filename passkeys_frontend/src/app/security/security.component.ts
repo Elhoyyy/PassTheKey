@@ -36,14 +36,29 @@ export class SecurityComponent implements OnInit {
   showPasskeyRecommendation: boolean = false; // Flag to control the passkey recommendation
   showAddDeviceButton: boolean = true; // Flag to control the visibility of the add device button
 
-  // New properties for security section
+  // Modified and added properties for password management
   newPassword: string = '';
   confirmPassword: string = '';
+  currentPassword: string = '';  // For existing password when changing
   isPasswordLoading: boolean = false;
   passwordError: string | null = null;
   passwordSuccess: string | null = null;
   passwordCreationDate: string = 'Desconocida'; // Date when password was last changed
   securityScore: number = 0; // Security score percentage
+
+  // New properties to track password and 2FA status
+  hasPassword: boolean = false;
+  has2FA: boolean = false;
+
+  // OTP verification properties
+  showOtpDialog: boolean = false; // Renamed property to reflect that it's now a dialog
+  otpCode: string = '';
+  isVerifyingOtp: boolean = false;
+  demoOtpCode: string = ''; // To display demo OTP code
+  expirySeconds: number = 0;
+  timerInterval: any;
+  qrCodeUrl: string = '';
+  otpSecret: string = '';
 
   newDeviceName: string = '';
   editingDeviceIndex: number = -1; // Track which device is being edited
@@ -108,6 +123,9 @@ export class SecurityComponent implements OnInit {
     
     // Identify the last used device
     this.identifyLastUsedDevice();
+
+    // Check if user has password and 2FA
+    this.checkPasswordAndTwoFactorStatus();
   }
 
   // Update UI state based on passkeys availability
@@ -116,10 +134,25 @@ export class SecurityComponent implements OnInit {
     this.showAddDeviceButton = !this.showPasskeyRecommendation;
   }
 
+  // Check if user has password and 2FA
+  checkPasswordAndTwoFactorStatus() {
+    // Check if password exists (not 'Not changed yet' or null/undefined)
+    this.hasPassword = this.passwordCreationDate !== 'Not changed yet' && 
+                      this.passwordCreationDate !== null && 
+                      this.passwordCreationDate !== undefined;
+    
+    // Check if 2FA is enabled (assuming the user profile has this info)
+    const profile = this.profileService.getProfile();
+    if (profile) {
+      this.has2FA = profile.otpSecret !== undefined && profile.otpSecret !== null;
+    }
+  }
+
   // Reset password form fields and messages
   resetPasswordFields() {
     this.newPassword = '';
     this.confirmPassword = '';
+    this.currentPassword = '';
     this.passwordError = null;
     this.passwordSuccess = null;
   }
@@ -141,13 +174,13 @@ export class SecurityComponent implements OnInit {
     
     // Set strength based on met requirements
     if (password.length === 0) {
-      this.passwordStrength = 'ninguna';
+      this.passwordStrength = 'ninguna'; // This should match a CSS class name
     } else if (metRequirements <= 1) {
-      this.passwordStrength = 'débil';
+      this.passwordStrength = 'debil'; // Changed from 'débil' to match CSS class name
     } else if (metRequirements === 2) {
-      this.passwordStrength = 'moderada';
+      this.passwordStrength = 'moderada'; // Changed from 'moderada' to match CSS class name
     } else if (metRequirements >= 3) {
-      this.passwordStrength = 'fuerte';
+      this.passwordStrength = 'fuerte' ; // Changed from 'fuerte' to match CSS class name
     }
   }
 
@@ -172,11 +205,13 @@ export class SecurityComponent implements OnInit {
     
     if (savedDate) {
       this.passwordCreationDate = savedDate;
+      this.hasPassword = true;
       return;
     }
     
     // If no date is saved anywhere, set it to "Not changed yet"
     this.passwordCreationDate = "Not changed yet";
+    this.hasPassword = false;
   }
 
   // Save password creation date to localStorage
@@ -198,6 +233,255 @@ export class SecurityComponent implements OnInit {
     
     localStorage.setItem(`${this.username}_passwordDate`, dateToSave);
     this.passwordCreationDate = dateToSave;
+  }
+
+  // Updated method to handle both adding and changing password
+  async updatePassword() {
+    this.passwordError = null;
+    this.passwordSuccess = null;
+    
+    // Validate passwords match
+    if (this.newPassword !== this.confirmPassword) {
+      this.passwordError = 'Las Contraseñas no coinciden';
+      setTimeout(() => this.passwordError = null, 3000);
+      return;
+    }
+    
+    // Validate password is not empty
+    if (!this.newPassword) {
+      this.passwordError = 'La contraseña no puede estar vacía';
+      setTimeout(() => this.passwordError = null, 3000);
+      return;
+    }
+    
+    // Validate password strength
+    if (this.passwordStrength === 'weak') {
+      this.passwordError = 'Contraseña débil. Mejórala';
+      setTimeout(() => this.passwordError = null, 3000);
+      return;
+    }
+    
+    // If user doesn't have a password yet, require 2FA setup
+    if (!this.hasPassword) {
+      await this.startOtpSetup();
+      return;
+    }
+    
+    // If user has a password, validate current password
+    this.isPasswordLoading = true;
+    
+    try {
+      console.log('Starting password update, spinner should be visible');
+      
+      // Simulate a delay to ensure spinner is visible (can be removed in production)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Different endpoint call depending on if changing or adding password
+      const endpoint = this.hasPassword ? '/profile/update-password' : '/profile/add-password';
+      
+      const payload = this.hasPassword ? 
+        { username: this.username, currentPassword: this.currentPassword, newPassword: this.newPassword } :
+        { username: this.username, password: this.newPassword };
+      
+      const response = await this.http.post<{message: string, passwordCreationDate: string}>(
+        endpoint, payload
+      ).toPromise();
+      
+      console.log('Password update response:', response);
+      
+      // Save the password creation date if returned from server
+      if (response && response.passwordCreationDate) {
+        this.savePasswordCreationDate(response.passwordCreationDate);
+        this.hasPassword = true; // Now the user has a password
+      } else {
+        // Fallback to current date if server doesn't return a date
+        this.savePasswordCreationDate();
+        this.hasPassword = true;
+      }
+      
+      // Recalculate security score
+      this.calculateSecurityScore();
+      
+      this.resetPasswordFields();
+      // Establecer el mensaje de éxito
+      if (this.hasPassword && endpoint === '/profile/update-password') {
+        this.passwordSuccess = response?.message || 'Contraseña actualizada correctamente';
+        console.log(this.passwordSuccess); // Verificar que se establece correctamente
+      }
+      // Configurar el temporizador para limpiar el mensaje después de 3 segundos
+      setTimeout(() => this.passwordSuccess = null, 3000);
+  
+      console.log( this.passwordSuccess);
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      this.passwordError = error.error?.message || 'Error actualizando la contraseña. Inténtalo de nuevo';
+      setTimeout(() => this.passwordError = null, 3000);
+    } finally {
+      this.isPasswordLoading = false;
+      console.log('Password update complete, spinner should be hidden');
+    }
+  }
+
+  // Start TOTP setup when adding password for the first time - updated to show dialog
+  async startOtpSetup() {
+    try {
+      const response = await this.http.post<{
+        success: boolean,
+        qrCodeUrl: string,
+        secret: string,
+        currentToken: string,
+        expirySeconds: number
+      }>('/passkey/generate-totp-qr', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.success) {
+        this.qrCodeUrl = response.qrCodeUrl;
+        this.otpSecret = response.secret;
+        this.demoOtpCode = response.currentToken;
+        this.expirySeconds = response.expirySeconds;
+        
+        // Start the countdown timer
+        this.startExpiryTimer();
+        
+        // Show the OTP dialog instead of changing the password section view
+        this.showOtpDialog = true;
+      } else {
+        this.passwordError = 'Error generando configuración 2FA';
+        setTimeout(() => this.passwordError = null, 3000);
+      }
+    } catch (error: any) {
+      console.error('Error setting up 2FA:', error);
+      this.passwordError = error.error?.message || 'Error configurando 2FA';
+      setTimeout(() => this.passwordError = null, 3000);
+    }
+  }
+
+  // Verify OTP code and complete password addition - updated for dialog approach
+  async verifyOtp() {
+    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+      this.passwordError = "Por favor, ingresa un código de verificación válido de 6 dígitos";
+      setTimeout(() => this.passwordError = null, 3000);
+      return;
+    }
+    
+    this.isVerifyingOtp = true;
+    this.passwordError = null;
+    
+    try {
+      const verifyResponse = await this.http.post<{ success: boolean }>('/passkey/verify-otp', {
+        username: this.username,
+        otpCode: this.otpCode
+      }).toPromise();
+      
+      if (verifyResponse && verifyResponse.success) {
+        // OTP verified, now add the password
+        const addPasswordResponse = await this.http.post<{message: string, passwordCreationDate: string}>('/profile/add-password', { 
+          username: this.username, 
+          password: this.newPassword 
+        }).toPromise();
+        
+        // Save the password creation date
+        if (addPasswordResponse && addPasswordResponse.passwordCreationDate) {
+          this.savePasswordCreationDate(addPasswordResponse.passwordCreationDate);
+        } else {
+          this.savePasswordCreationDate();
+        }
+        
+        // Update status flags
+        this.hasPassword = true;
+        this.has2FA = true;
+        // Update the profile with the OTP secret to persist 2FA status
+        const currentProfile = this.profileService.getProfile();
+        if (currentProfile) {
+          // Save the OTP secret in the profile
+          currentProfile.otpSecret = this.otpSecret || true;
+          this.profileService.setProfile(currentProfile);
+          
+          // Also save in localStorage for cross-tab persistence
+          localStorage.setItem(`${this.username}_2fa_enabled`, 'true');
+        }
+      
+        // Recalculate security score
+        this.calculateSecurityScore();
+        
+        // Hide the dialog instead of switching views
+        this.showOtpDialog = false;
+        this.resetPasswordFields();
+        
+        // Show success message
+        this.passwordSuccess = 'Contraseña y autenticación en dos factores configuradas correctamente';
+        setTimeout(() => this.passwordSuccess = null, 3000);
+        
+        // Stop the timer
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+      } else {
+        throw new Error('Código de verificación incorrecto');
+      }
+    } catch (error: any) {
+      console.error('Error en la verificación:', error);
+      this.passwordError = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      setTimeout(() => this.passwordError = null, 3000);
+    } finally {
+      this.isVerifyingOtp = false;
+    }
+  }
+
+  // Cancel OTP verification - updated for dialog
+  cancelOtp() {
+    this.showOtpDialog = false;
+    this.otpCode = '';
+    
+    // Stop the timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    this.resetPasswordFields();
+  }
+
+  // Start countdown timer for TOTP expiry
+  startExpiryTimer() {
+    // Clear any existing timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Start new interval timer
+    this.timerInterval = setInterval(() => {
+      if (this.expirySeconds > 0) {
+        this.expirySeconds--;
+      } else {
+        // When time runs out, generate a new code
+        if (this.showOtpDialog) {
+          this.refreshOtpCode();
+        } else {
+          clearInterval(this.timerInterval);
+        }
+      }
+    }, 1000);
+  }
+  
+  // Refresh the OTP code when it expires
+  async refreshOtpCode() {
+    try {
+      const response = await this.http.post<{
+        res: boolean,
+        demoToken: string,
+        expirySeconds: number
+      }>('/auth/asign-otp', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.res) {
+        this.demoOtpCode = response.demoToken;
+        this.expirySeconds = response.expirySeconds;
+      }
+    } catch (error) {
+      console.error('Error refreshing OTP code:', error);
+    }
   }
 
   // Calculate security score based on passkeys and password
@@ -237,76 +521,6 @@ export class SecurityComponent implements OnInit {
       return '#198754'; // Green for excellent
     }
     return '#2196F3'; // Default blue if no match
-  }
-
-  // Update user password
-  async updatePassword() {
-    this.passwordError = null;
-    this.passwordSuccess = null;
-    
-    // Validate passwords match
-    if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'Las Contraseñas no coincides';
-      setTimeout(() => this.passwordError = null, 3000);
-      return;
-    }
-    
-    // Validate password is not empty
-    if (!this.newPassword) {
-      this.passwordError = 'La contraseña no puede estar vacía';
-      setTimeout(() => this.passwordError = null, 3000);
-      return;
-    }
-    
-    // Validate password strength
-    if (this.passwordStrength === 'weak') {
-      this.passwordError = 'Contraseña débil. Mejórala';
-      setTimeout(() => this.passwordError = null, 3000);
-      return;
-    }
-
-    this.isPasswordLoading = true;
-    
-    try {
-      console.log('Starting password update, spinner should be visible');
-      
-      // Simulate a delay to ensure spinner is visible (can be removed in production)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const response = await this.http.post<{message: string, passwordCreationDate: string}>('/profile/update-password', {
-        username: this.username,
-        password: this.newPassword
-      }).toPromise();
-      
-      console.log('Password update response:', response);
-      
-      // Save the password creation date if returned from server
-      if (response && response.passwordCreationDate) {
-        this.savePasswordCreationDate(response.passwordCreationDate);
-      } else {
-        // Fallback to current date if server doesn't return a date
-        this.savePasswordCreationDate();
-      }
-      
-      // Recalculate security score
-      this.calculateSecurityScore();
-      
-      this.passwordSuccess = 'Contraseña actualizada correctamente';
-      this.newPassword = '';
-      this.confirmPassword = '';
-      
-      // Keep success message visible for 3 seconds
-      setTimeout(() => {
-        this.passwordSuccess = null;
-      }, 3000);
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      this.passwordError = error.error?.message || 'Error actualizando la contraseña. Inténtalo de nuevo';
-      setTimeout(() => this.passwordError = null, 3000);
-    } finally {
-      this.isPasswordLoading = false;
-      console.log('Password update complete, spinner should be hidden');
-    }
   }
 
   async updateDeviceName(index: number, newName: string) {
@@ -642,5 +856,12 @@ export class SecurityComponent implements OnInit {
     }
     
     return `${browserInfo} en ${osInfo}`;
+  }
+
+  // Cleanup method for component destruction
+  ngOnDestroy() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
   }
 }

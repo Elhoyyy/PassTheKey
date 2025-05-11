@@ -31,13 +31,27 @@
               <div class="section">
                 <div class="section-header">
                   <i class="bi bi-key-fill"></i>
-                  <h5 class="section-title">Administración de contraseñas (Añadir o Modificar)</h5>
+                  <h5 class="section-title">
+                    {{ hasPassword ? 'Cambiar contraseña' : 'Añadir contraseña' }}
+                  </h5>
                 </div>
+                
+                <!-- 2FA Status Badge -->
+                <div class="twofa-status">
+                  <span class="twofa-badge" [ngClass]="{'enabled': has2FA, 'disabled': !has2FA}">
+                    <i class="bi" [ngClass]="has2FA ? 'bi-shield-check' : 'bi-shield'"></i>
+                    2FA {{ has2FA ? 'Activado' : 'No Activado' }}
+                  </span>
+                  <small *ngIf="!has2FA" class="text-muted">Al añadir contraseña se activará automáticamente 2FA</small>
+                </div>
+                
+                <!-- Password form - always visible now, no more *ngIf="!showOtpVerification -->
                 <div class="password-section">
                   <div class="password-strength-meter">
                     <p>Seguridad de la contraseña:</p>
                     <div class="strength-bar">
-                      <div class="strength-level" [ngClass]="passwordStrength"></div>
+                      <div class="strength-level" [ngClass]="passwordStrength">
+                      </div>
                     </div>
                     <span class="strength-text" [ngClass]="passwordStrength">{{ passwordStrength | titlecase }}</span>
                     <p class="last-updated">
@@ -45,14 +59,27 @@
                         Último cambio: {{ passwordCreationDate }}
                       </ng-container>
                       <ng-container *ngIf="passwordCreationDate === 'Not changed yet'">
-                        {{ passwordCreationDate }}
+                        Sin contraseña configurada
                       </ng-container>
                     </p>
                   </div>
                   
+                  <!-- Current password field - only show when changing existing password -->
+                  <div class="form-group" *ngIf="hasPassword">
+                    <div class="password-field">
+                      <input type="password" id="currentPassword" class="form-control" 
+                        placeholder="Contraseña Actual" 
+                        [(ngModel)]="currentPassword">
+                      <span class="password-toggle" (click)="togglePasswordVisibility('currentPassword')">
+                        <i class="bi bi-eye-slash"></i>
+                      </span>
+                    </div>
+                  </div>
+                  
                   <div class="form-group">
                     <div class="password-field">
-                      <input type="password" id="newPassword" class="form-control" placeholder="Nueva Contraseña" 
+                      <input type="password" id="newPassword" class="form-control" 
+                        placeholder="{{ hasPassword ? 'Nueva Contraseña' : 'Contraseña' }}" 
                         [(ngModel)]="newPassword" 
                         (input)="evaluatePasswordStrength()">
                       <span class="password-toggle" (click)="togglePasswordVisibility('newPassword')">
@@ -60,7 +87,8 @@
                       </span>
                     </div>
                     <div class="password-field mt-2">
-                      <input type="password" id="confirmPassword" class="form-control" placeholder="Confirmar Contraseña" 
+                      <input type="password" id="confirmPassword" class="form-control" 
+                        placeholder="Confirmar Contraseña" 
                         [(ngModel)]="confirmPassword">
                       <span class="password-toggle" (click)="togglePasswordVisibility('confirmPassword')">
                         <i class="bi bi-eye-slash"></i>
@@ -90,7 +118,7 @@
                     <div class="text-center">
                       <button class="btn btn-primary mt-3 centered-btn" (click)="updatePassword()" [disabled]="isPasswordLoading">
                         <span *ngIf="isPasswordLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        {{ isPasswordLoading ? 'Actualizando...' : 'Actualiza la contraseña' }}
+                        {{ isPasswordLoading ? 'Actualizando...' : hasPassword ? 'Actualizar contraseña' : 'Añadir contraseña' }}
                       </button>
                     </div>
                   </div>
@@ -218,6 +246,73 @@
                   </div>
                   <div *ngIf="successMessage" class="alert alert-success mt-3">
                     <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- OTP verification dialog - now a modal overlay -->
+              <div *ngIf="showOtpDialog" class="otp-dialog-overlay">
+                <div class="otp-dialog">
+                  <div class="dialog-header">
+                    <h5><i class="bi bi-shield-lock me-2"></i>Configurar Autenticación en Dos Factores</h5>
+                    <p class="text-muted">Necesario para añadir una contraseña</p>
+                  </div>
+                  
+                  <div class="dialog-body">
+                    <div class="input-group">
+                      <i class="bi bi-shield-lock"></i>
+                      <input 
+                        type="text" 
+                        [(ngModel)]="otpCode" 
+                        name="otpCode" 
+                        placeholder="Código de verificación" 
+                        maxlength="6"
+                        autocomplete="one-time-code" />
+                    </div>
+        
+                    <div class="otp-description">
+                      <p>Introduce el código de verificación de 6 dígitos. Necesitarás una app como <strong>Authy, 1-Password, Microsoft Authenticator...</strong></p>
+                      <p>Este código cambia cada <strong>30 segundos.</strong> <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+                      
+                      <!-- QR code section -->
+                      <div class="qr-setup">
+                        <h4>Configurar Autenticador</h4>
+                        <p>Escanea este código QR con tu aplicación de autenticación:</p>
+                        <img *ngIf="qrCodeUrl" [src]="qrCodeUrl" alt="QR Code" class="qr-code">
+                        
+                        <div class="manual-setup">
+                          <p>O ingresa manualmente este código:</p>
+                          <div class="secret-code">{{ otpSecret }}</div>
+                        </div>
+                        
+                        <div class="setup-warning">
+                          <p class="warning"><i class="bi bi-exclamation-triangle"></i> IMPORTANTE: Esta información solo se mostrará una vez.</p>
+                        </div>
+                      </div>
+                      
+                      <!-- Show demo code -->
+                      <div class="demo-token-container">
+                        <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
+                      </div>
+                    </div>
+                  </div>
+      
+                  <div class="buttons-container">
+                    <button 
+                      class="btn-action btn-secondary" 
+                      (click)="cancelOtp()"
+                      [disabled]="isVerifyingOtp">
+                      <i class="bi bi-x-circle"></i>
+                      <span>Cancelar</span>
+                    </button>
+                    <button 
+                      class="btn-action btn-primary" 
+                      (click)="verifyOtp()"
+                      [disabled]="isVerifyingOtp">
+                      <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
+                      <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
+                      <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
+                    </button>
                   </div>
                 </div>
               </div>

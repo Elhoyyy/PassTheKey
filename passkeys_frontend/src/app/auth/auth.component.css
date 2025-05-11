@@ -108,11 +108,27 @@ body {
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
-.buttons-container {
+
+.dialog-footer {
   display: flex;
-  flex-direction: column; /* Changed from row to column */
-  gap: 15px;
-  margin-top: 20px;
+  justify-content: center;
+  gap: 12px;
+}
+
+.dialog-footer button {
+  padding: 10px 20px;
+  min-width: 120px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.dialog-footer button i {
+  margin-right: 6px;
+}
+
+.dialog-footer button:hover {
+  transform: translateY(-2px);
 }
 
 .btn-direct-auth, .btn-auth, .btn-register {
@@ -325,52 +341,31 @@ input:checked + .slider:before {
   }
 }
 
-.btn-verify {
-  flex: 1;
-  padding: 10px;
-  background: #4CAF50;
+.btn-primary {
+  background-color: #2196F3;
+  border-color: #2196F3;
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
-.btn-verify:hover {
-  background: #45a049;
+.btn-primary:hover {
+  background-color: #1976D2;
+  border-color: #1976D2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
 }
 
-.btn-verify:disabled {
-  background: #cccccc;
-  cursor: not-allowed;
-}
-
-.btn-cancel {
-  flex: 1;
-  padding: 10px;
-  background: #f44336;
+.btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
-.btn-cancel:hover {
-  background: #d32f2f;
+.btn-secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
 }
-
-.btn-cancel:disabled {
-  background: #cccccc;
-  cursor: not-allowed;
-}
-
 .otp-description {
   margin: 15px 0;
   text-align: center;
