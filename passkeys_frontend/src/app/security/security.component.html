@@ -17,7 +17,7 @@
                     </div>
                   </div>
                   <div class="security-score-label">
-                    <p>Your Security Score</p>
+                    <p>La seguridad de tu cuenta:</p>
                     <span *ngIf="securityScore === 0">Extremadamente Vulnerable - Añade medidas de seguridad</span>
                     <span *ngIf="securityScore === 25">Bastante Flojo - Añade una llave de acceso para mayor seguridad</span>
                     <span *ngIf="securityScore === 50">Basico - Añade una contraseña segura</span>
@@ -172,7 +172,7 @@
                             <div class="edit-buttons mt-2">
                               <button class="btn btn-primary me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoading">
                                 <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                Save
+                                Guardar
                               </button>
                               <button class="btn btn-secondary" (click)="cancelEditingDevice()">Cancelar</button>
                             </div>

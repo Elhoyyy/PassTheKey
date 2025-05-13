@@ -408,7 +408,8 @@ export class AuthComponent implements OnDestroy {
       }
     } catch (error: any) {
       console.error(`[EMAIL-PASSKEY] Error:`, error);
-      this.errorMessage = error.error?.message || error.message || 'Error durante el inicio de sesión';
+      this.errorMessage = 'Error durante el inicio de sesión';
+      this.showLoginPasswordField = true;
       this.hideError();
     } finally {
       this.isAuthenticating = false;

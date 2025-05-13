@@ -127,6 +127,9 @@
           name="newPassword" 
           placeholder="Nueva contraseña" 
           (input)="evaluatePasswordStrength()"/>
+          <span class="password-toggle" (click)="togglePasswordVisibility('newPassword')">
+            <i class="bi bi-eye-slash"></i>
+          </span>
       </div>
 
           
@@ -138,6 +141,9 @@
           [(ngModel)]="confirmPassword" 
           name="confirmPassword" 
           placeholder="Confirmar contraseña" />
+          <span class="password-toggle" (click)="togglePasswordVisibility('confirmPassword')">
+          <i class="bi bi-eye-slash"></i>
+          </span>
       </div>
 
       <div class="password-requirements">

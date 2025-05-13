@@ -588,6 +588,19 @@ export class RecoveryComponent implements OnDestroy {
     setTimeout(() => this.errorMessage = null, 3000);
   }
   
+  // Toggle password visibility
+  togglePasswordVisibility(fieldId: string) {
+    const field = document.getElementById(fieldId) as HTMLInputElement;
+    if (field) {
+      field.type = field.type === 'password' ? 'text' : 'password';
+      // Toggle eye icon
+      const icon = field.nextElementSibling?.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('bi-eye-slash');
+        icon.classList.toggle('bi-eye');
+      }
+    }
+  }
   // Validador simple de email
   private validateEmail(email: string): boolean {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

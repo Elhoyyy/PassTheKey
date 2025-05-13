@@ -410,7 +410,7 @@ export class SecurityComponent implements OnInit {
         this.resetPasswordFields();
         
         // Show success message
-        this.passwordSuccess = 'Contraseña y autenticación en dos factores configuradas correctamente';
+        this.passwordSuccess = 'Contraseña y 2FA configuradas correctamente';
         setTimeout(() => this.passwordSuccess = null, 3000);
         
         // Stop the timer

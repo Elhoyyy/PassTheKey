@@ -88,6 +88,20 @@ body {
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+/* Password toggle icon */
+.password-tugle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.password-tugle:hover {
+  color: #2196F3;
+}
 
 .btn-auth, .btn-cancel, .btn-option {
   width: 100%;
@@ -434,7 +448,6 @@ body {
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
 }
 
-
 .dialog-footer {
   display: flex;
   justify-content: center;
@@ -623,4 +636,9 @@ body {
   .email-input {
     padding-left: 30px !important;
   } 
+
+  i {
+    width: 10px; /* Ancho fijo para el icono */
+    text-align: center;
+  }
 }

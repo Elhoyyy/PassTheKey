@@ -11,6 +11,7 @@
         <div class="input-group">
             <i class="bi bi-person"></i>
             <input 
+          
             type="email" 
             [(ngModel)]="username" 
             name="username" 
@@ -24,13 +25,18 @@
         <div class="input-group" *ngIf="showPasswordForRegistration">
             <i class="bi bi-lock"></i>
             <input 
+            id="password"
             class ="password-input"
             type="password" 
             [(ngModel)]="password" 
             name="password" 
             placeholder="Password" 
             (input)="evaluatePasswordStrength()"/>
+            <span class="password-tugle" (click)="togglePasswordVisibility('password')">
+            <i class="bi bi-eye-slash"></i>
+            </span>
         </div>
+
         <div class="password-requirements" *ngIf="showPasswordForRegistration">
           <p>La contraseña debe contener:</p>
           <ul>

@@ -109,6 +109,22 @@ export class RegisterComponent {
     }
   }
 
+
+  
+  // Toggle password visibility
+  togglePasswordVisibility(fieldId: string) {
+    const field = document.getElementById(fieldId) as HTMLInputElement;
+    if (field) {
+      field.type = field.type === 'password' ? 'text' : 'password';
+      // Toggle eye icon
+      const icon = field.nextElementSibling?.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('bi-eye-slash');
+        icon.classList.toggle('bi-eye');
+      }
+    }
+  }
+  
   // Método para iniciar el registro con passkey sin solicitar nombre primero
   async startPasskeyRegistration() {
     console.log('[REGISTRATION] Starting registration process');

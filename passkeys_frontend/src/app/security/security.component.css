@@ -791,6 +791,29 @@ body {
   to { opacity: 1; }
 }
 
+
+.dialog-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.dialog-footer button {
+  padding: 10px 20px;
+  min-width: 120px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.dialog-footer button i {
+  margin-right: 6px;
+}
+
+.dialog-footer button:hover {
+  transform: translateY(-2px);
+}
+
 .dialog-content {
   background-color: white;
   border-radius: 12px;

@@ -165,7 +165,12 @@ body {
   border-radius: 10px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
-
+.com-ahora{
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
 /* Section Styles */
 .section {
   padding: 30px;

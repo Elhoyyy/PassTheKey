@@ -525,6 +525,21 @@ input:checked + .slider:before {
   color: #ffc107;
 }
 
+/*Password-toggle*/
+.password-tugle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.password-tugle:hover {
+  color: #2196F3;
+}
+
 /* Password Requirements */
 .password-requirements {
   background-color: white;
@@ -614,14 +629,15 @@ input:checked + .slider:before {
   }
   .password-input{
     padding-left: 30px !important;
-    margin-left: 30px
+
   }
   .email-input {
     padding-left: 30px !important;
-    margin-left: 30px;
+
   }
   .input-group i {
     width: 10px; /* Ancho fijo para el icono */
     text-align: center;
   }
+
 }
