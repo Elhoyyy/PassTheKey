@@ -240,13 +240,6 @@ export class SecurityComponent implements OnInit {
     this.passwordError = null;
     this.passwordSuccess = null;
     
-    // Validate passwords match
-    if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'Las Contraseñas no coinciden';
-      setTimeout(() => this.passwordError = null, 3000);
-      return;
-    }
-    
     // Validate password is not empty
     if (!this.newPassword) {
       this.passwordError = 'La contraseña no puede estar vacía';
@@ -254,12 +247,6 @@ export class SecurityComponent implements OnInit {
       return;
     }
     
-    // Validate password strength
-    if (this.passwordStrength === 'weak') {
-      this.passwordError = 'Contraseña débil. Mejórala';
-      setTimeout(() => this.passwordError = null, 3000);
-      return;
-    }
     
     // If user doesn't have a password yet, require 2FA setup
     if (!this.hasPassword) {
@@ -280,7 +267,7 @@ export class SecurityComponent implements OnInit {
       const endpoint = this.hasPassword ? '/profile/update-password' : '/profile/add-password';
       
       const payload = this.hasPassword ? 
-        { username: this.username, currentPassword: this.currentPassword, newPassword: this.newPassword } :
+        { username: this.username, currentPassword: this.currentPassword, newPassword: this.newPassword, confirmPassword: this.confirmPassword } :
         { username: this.username, password: this.newPassword };
       
       const response = await this.http.post<{message: string, passwordCreationDate: string}>(

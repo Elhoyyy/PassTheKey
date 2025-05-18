@@ -69,50 +69,15 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       // If we have both token and email, go directly to reset options
       if (this.recoveryToken && this.username) {
         console.log('Recovery token detected, going directly to reset options');
-        this.validateRecoveryToken();
+          this.stage = 'reset-options';
       }
     });
-  }
-
-  // Method to validate the recovery token with the server
-  validateRecoveryToken() {
-    // Validate email first
-    if (!this.username || !this.validateEmail(this.username)) {
-      this.errorMessage = "Correo electrónico inválido en el enlace de recuperación";
-      this.hideError();
-      return;
-    }
-
-    this.isProcessing = true;
-    
-    // Check with the server if the token is valid
-    this.http.post<{ success: boolean, message: string }>('/auth/validate-recovery-token', { 
-      token: this.recoveryToken,
-      username: this.username
-    }).subscribe(
-      response => {
-        this.isProcessing = false;
-        if (response && response.success) {
-          // Token is valid, proceed to reset options
-          this.stage = 'reset-options';
-        } else {
-          this.errorMessage = "Enlace de recuperación inválido o expirado";
-          this.hideError();
-        }
-      },
-      error => {
-        this.isProcessing = false;
-        console.error('Error validando el token de recuperación:', error);
-        this.errorMessage = error.error?.message || "Error validando el enlace de recuperación";
-        this.hideError();
-      }
-    );
   }
   
   // New method to go directly to reset options
   goToResetOptions() {
     // Validate email first
-    if (!this.username || !this.validateEmail(this.username)) {
+    if (!this.username ) {
       this.errorMessage = "Correo electrónico inválido en el enlace de recuperación";
       this.hideError();
       return;
@@ -153,7 +118,7 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   }
   
   async requestRecovery() {
-    if (!this.username || !this.validateEmail(this.username)) {
+    if (!this.username ) {
       this.errorMessage = "Por favor, introduce un correo electrónico válido";
       this.hideError();
       return;
@@ -483,11 +448,6 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       return;
     }
     
-    if (this.newPassword !== this.confirmPassword) {
-      this.errorMessage = "Las contraseñas no coinciden";
-      this.hideError();
-      return;
-    }
     
     
     this.isProcessing = true;
@@ -496,7 +456,9 @@ export class RecoveryComponent implements OnDestroy, OnInit {
     try {
       const response = await this.http.post<{success: boolean, userProfile?: any, passwordCreationDate?: string}>('/profile/update-password', {
         username: this.username, 
-        password: this.newPassword 
+        currentPassword: undefined,
+        newPassword: this.newPassword,
+        confirmPassword: this.confirmPassword,
       }).toPromise();
       
       if (response && response.passwordCreationDate) {
@@ -591,10 +553,5 @@ export class RecoveryComponent implements OnDestroy, OnInit {
         icon.classList.toggle('bi-eye');
       }
     }
-  }
-  // Validador simple de email
-  private validateEmail(email: string): boolean {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
   }
 }

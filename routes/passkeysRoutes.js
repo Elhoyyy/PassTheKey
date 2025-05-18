@@ -557,7 +557,12 @@ function isValidEmail(email){
 
 function isValidPassword(password) {
   // Enhanced password validation
-  if (password.length < 8) {
+
+  if (!password || typeof password !== 'string') {
+    return false;
+  }
+
+  if (password.lenght < 8) {
     return false;
   }
   

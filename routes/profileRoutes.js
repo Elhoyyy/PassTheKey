@@ -5,7 +5,7 @@ const { users } = require('../data');
 
 // Update password route - For changing existing passwords
 router.post('/update-password', async (req, res) => {
-    const { username, currentPassword, newPassword } = req.body;
+    const { username, currentPassword, newPassword, confirmPassword} = req.body;
     
     console.log('Received update password request for user:', username);
     
@@ -20,8 +20,14 @@ router.post('/update-password', async (req, res) => {
             return res.status(400).json({ message: 'La contraseña no cumple con los requisitos de seguridad' });
         }
 
+        if (newPassword !== confirmPassword) {
+            console.log('New password and confirmation do not match');
+            return res.status(400).json({ message: 'Las contraseñas no coinciden' });
+        }
+
         // Verify the current password if provided
-        if (currentPassword) {
+        
+        if (currentPassword && currentPassword !== undefined ) {
             const isPasswordCorrect = await bcrypt.compare(currentPassword, users[username].password);
             if (!isPasswordCorrect) {
                 console.log('Current password verification failed');
@@ -128,8 +134,10 @@ router.post('/update-device-name', async (req, res) => {
 
 function isValidPassword(password) {
   // Enhanced password validation
+
+
   if (password.length < 8) {
-    return false;
+    return false;  // Password must be at least 8 characters long
   }
   
   // Check for uppercase letter
