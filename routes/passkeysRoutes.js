@@ -6,6 +6,20 @@ const SimpleWebAuthnServer = require('@simplewebauthn/server');
 const { authenticator } = require('otplib');
 const qrcode = require('qrcode'); // Add QR code library
 
+// Array of allowed email domains
+const allowedDomains = [
+  'gmail.com',
+  'hotmail.com',
+  'outlook.com',
+  'yahoo.com',
+  'icloud.com',
+  'proton.me',
+  'tutanota.com',
+  'lavabit.com',
+  'mailfence.com',
+  'hushmail.com',
+  'email.com'
+];
 // Configure otplib
 authenticator.options = {
     window: 1, // Allow 1 step before/after for clock skew
@@ -136,10 +150,10 @@ router.post('/registro/usuario', (req, res) => {
         console.log('Email inválido');
         return res.status(400).json({ message: 'Email inválido' });
     }
-    
-    if (password.length < 4) {
-        console.log('Contraseña muy corta');
-        return res.status(400).json({ message: 'La contraseña debe tener al menos 4 caracteres' });
+
+    if (!isValidPassword(password)) {
+        console.log('La contrsaeña no cumple los criterios.');
+        return res.status(400).json({ message: 'La contraseña no cumple los criterios.' });
     }
 
     if (users[username]) {
@@ -489,8 +503,41 @@ router.post('/verify-otp', (req, res) => {
     }
 });
 
+ 
+
 function isValidEmail(email){
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // First check email format
+    if (!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+        return false;
+    }
+    
+    // Then check if domain is in allowed list
+    const domain = email.split('@')[1];
+    return allowedDomains.includes(domain);
+}
+
+function isValidPassword(password) {
+  // Enhanced password validation
+  if (password.length < 8) {
+    return false;
+  }
+  
+  // Check for uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    return false;
+  }
+  
+  // Check for numbers
+  if (!/\d/.test(password)) {
+    return false;
+  }
+  
+  // Check for special characters
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return false;
+  }
+  
+  return true;  // All conditions passed, password is valid
 }
 
 module.exports = router;

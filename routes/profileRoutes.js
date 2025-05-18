@@ -14,7 +14,12 @@ router.post('/update-password', async (req, res) => {
             console.log('User not found:', username);
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
-        
+
+        if (!isValidPassword(newPassword)){
+            console.log('New password validation failed');
+            return res.status(400).json({ message: 'La contraseña no cumple con los requisitos de seguridad' });
+        }
+
         // Verify the current password if provided
         if (currentPassword) {
             const isPasswordCorrect = await bcrypt.compare(currentPassword, users[username].password);
@@ -56,7 +61,11 @@ router.post('/add-password', async (req, res) => {
     const { username, password } = req.body;
     
     console.log('Received add password request for user:', username);
-    
+    if (!isValidPassword(password)){
+        console.log('Password validation failed');
+        return res.status(400).json({ message: 'La contraseña no cumple con los requisitos de seguridad' });
+    }
+
     try {
         if (!users[username]) {
             console.log('User not found:', username);
