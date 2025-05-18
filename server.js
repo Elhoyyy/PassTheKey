@@ -7,6 +7,7 @@ require('dotenv').config();//modulo para manejar variables de entorno desde un a
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const passkeyRoutes = require('./routes/passkeysRoutes');
+const { initEmailService } = require('./utils/emailService');
 
 app.use(cors({ origin: '*' }));//habilitamos cors, permite solicitudes desde cualquier origen
 app.use(bodyParser.urlencoded({ extended: false }));//habilitamos bodyparser
@@ -18,6 +19,16 @@ app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);
 app.use('/passkey', passkeyRoutes);
 
+
+// Initialize email service
+initEmailService()
+    .then(success => {
+        if (success) {
+            console.log('Email service initialized successfully');
+        } else {
+            console.warn('Failed to initialize email service, recovery emails will not be sent');
+        }
+    });
 
 //iniciamos el servidor, escucha en el puerto
 app.listen(process.env.PORT || 3000, '0.0.0.0', err => {

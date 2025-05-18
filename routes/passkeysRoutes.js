@@ -178,15 +178,18 @@ router.post('/registro/usuario', (req, res) => {
         const otpSecret = authenticator.generateSecret();
         
         // Guardar usuario con contraseña, fecha de creación y secreto OTP
+        // Mark user as pending verification with verification timestamp
         users[username] = { 
             password: hash,
             email: username,
             devices: [],
             credential: [], // Añadimos un array vacío para evitar errores
             passwordCreationDate: passwordCreationDate, // Añadimos la fecha de creación de la contraseña
-            otpSecret: otpSecret // Store the OTP secret
+            otpSecret: otpSecret, // Store the OTP secret
+            pendingVerification: true, // Mark as pending verification
+            verificationTimestamp: Date.now() // Add timestamp for verification timeout
         };
-        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate})`);
+        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate}), pendiente de verificación`);
         
         // Ya estamos preparados para la verificación OTP cuando el usuario inicie sesión
         res.status(200).json({ 
@@ -459,6 +462,25 @@ router.post('/registro/passkey/additional/fin', async (req, res) => {
     res.status(500).send(false);
 });
 
+// Add a new endpoint for canceling OTP verification and cleaning up the user
+router.post('/cancel-otp-verification', (req, res) => {
+    const { username } = req.body;
+    console.log(`[OTP-CANCEL] Canceling verification for user: ${username}`);
+    
+    if (!users[username]) {
+        return res.status(200).json({ message: 'Usuario no encontrado o ya eliminado' });
+    }
+    
+    // Only delete if the user is still pending verification
+    if (users[username].pendingVerification) {
+        console.log(`[OTP-CANCEL] Removing pending user: ${username}`);
+        delete users[username];
+        return res.status(200).json({ success: true, message: 'Registro cancelado exitosamente' });
+    }
+    
+    return res.status(200).json({ success: false, message: 'El usuario ya está verificado' });
+});
+
 // Updated endpoint to verify OTP using proper TOTP verification
 router.post('/verify-otp', (req, res) => {
     const { username, otpCode } = req.body;
@@ -467,6 +489,16 @@ router.post('/verify-otp', (req, res) => {
     if (!users[username]) {
         console.log('[OTP-VERIFY] User not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Check if user verification has timed out (5 minutes = 300000 ms)
+    if (users[username].pendingVerification && users[username].verificationTimestamp) {
+        const verificationAge = Date.now() - users[username].verificationTimestamp;
+        if (verificationAge > 300000) { // 5 minutes timeout
+            console.log('[OTP-VERIFY] Verification timeout, removing user');
+            delete users[username];
+            return res.status(400).json({ message: 'Tiempo de verificación expirado. Por favor, regístrese de nuevo.' });
+        }
     }
     
     // Check if the user has an OTP secret
@@ -484,6 +516,13 @@ router.post('/verify-otp', (req, res) => {
         
         if (isValid) {
             console.log('[OTP-VERIFY] TOTP verification successful');
+            
+            // Update user to mark as verified
+            if (users[username].pendingVerification) {
+                users[username].pendingVerification = false;
+                delete users[username].verificationTimestamp;
+            }
+            
             return res.status(200).json({
                 success: true,
                 userProfile: { username, ...users[username] }

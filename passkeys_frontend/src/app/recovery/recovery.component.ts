@@ -1,7 +1,7 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
@@ -14,16 +14,16 @@ import { AppComponent } from '../app.component';
   templateUrl: './recovery.component.html',
   styleUrl: './recovery.component.css'
 })
-export class RecoveryComponent implements OnDestroy {
+export class RecoveryComponent implements OnDestroy, OnInit {
   
   username: string = ''; // Email for account recovery
+  recoveryToken: string | null = null; // New property to hold recovery token
   devices: { name: string, creationDate: string, lastUsed: string }[] = []; // Update devices property
   device_creationDate: string = ''; // Fecha de creación del dispositivo
   errorMessage: string | null = null;
   successMessage: string | null = null; // Message to show to the user
   isProcessing: boolean = false;
-  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' = 'initial'; // Current stage of the recovery process
-  otpCode: string = '';
+  stage: 'initial' | 'reset-options' | 'password-reset' = 'initial'; // Removed OTP verification stage
   newPassword: string = '';
   confirmPassword: string = '';
   passwordCreationDate: string = 'Unknown'; // Date when password was last changed
@@ -33,12 +33,6 @@ export class RecoveryComponent implements OnDestroy {
   passkeyName: string = '';
   detectedDeviceName: string = 'Passkey_Device';
   
-  // Add TOTP related properties
-  demoOtpCode: string = '';
-  expirySeconds: number = 0;
-  timerInterval: any;
-  otpSecret: string = '';
-
   // Add password strength properties
   passwordStrength: string = 'none'; // Password strength indicator: none, weak, medium, strong
   passwordRequirements = {
@@ -55,12 +49,95 @@ export class RecoveryComponent implements OnDestroy {
   
   constructor(
     private http: HttpClient, 
-    private router: Router, 
+    private router: Router,
+    private route: ActivatedRoute,
     private authService: AuthService,
     private profileService: ProfileService,
     private appComponent: AppComponent
   ) { }
+  
+  ngOnDestroy() {
+    // Clean up any resources if needed
+  }
 
+  ngOnInit() {
+    // Check for recovery token in the URL
+    this.route.queryParams.subscribe(params => {
+      this.recoveryToken = params['token'] || null;
+      this.username = params['email'] || '';
+      
+      // If we have both token and email, go directly to reset options
+      if (this.recoveryToken && this.username) {
+        console.log('Recovery token detected, going directly to reset options');
+        this.validateRecoveryToken();
+      }
+    });
+  }
+
+  // Method to validate the recovery token with the server
+  validateRecoveryToken() {
+    // Validate email first
+    if (!this.username || !this.validateEmail(this.username)) {
+      this.errorMessage = "Correo electrónico inválido en el enlace de recuperación";
+      this.hideError();
+      return;
+    }
+
+    this.isProcessing = true;
+    
+    // Check with the server if the token is valid
+    this.http.post<{ success: boolean, message: string }>('/auth/validate-recovery-token', { 
+      token: this.recoveryToken,
+      username: this.username
+    }).subscribe(
+      response => {
+        this.isProcessing = false;
+        if (response && response.success) {
+          // Token is valid, proceed to reset options
+          this.stage = 'reset-options';
+        } else {
+          this.errorMessage = "Enlace de recuperación inválido o expirado";
+          this.hideError();
+        }
+      },
+      error => {
+        this.isProcessing = false;
+        console.error('Error validando el token de recuperación:', error);
+        this.errorMessage = error.error?.message || "Error validando el enlace de recuperación";
+        this.hideError();
+      }
+    );
+  }
+  
+  // New method to go directly to reset options
+  goToResetOptions() {
+    // Validate email first
+    if (!this.username || !this.validateEmail(this.username)) {
+      this.errorMessage = "Correo electrónico inválido en el enlace de recuperación";
+      this.hideError();
+      return;
+    }
+
+    // Check if user exists
+    this.http.post<{ exists: boolean }>('/auth/check-user', { 
+      username: this.username
+    }).subscribe(
+      response => {
+        if (response && response.exists) {
+          this.stage = 'reset-options';
+        } else {
+          this.errorMessage = "Usuario no encontrado";
+          this.hideError();
+        }
+      },
+      error => {
+        console.error('Error verificando usuario:', error);
+        this.errorMessage = "Error verificando usuario. Intente de nuevo.";
+        this.hideError();
+      }
+    );
+  }
+  
   // Add this method to evaluate password strength
   evaluatePasswordStrength() {
     const password = this.newPassword;
@@ -97,117 +174,36 @@ export class RecoveryComponent implements OnDestroy {
         return;
       }
       
-      // Get the OTP and setup TOTP timer
-      const response = await this.http.post<{ 
-        res: boolean, 
-        demoToken: string, 
-        expirySeconds: number 
-      }>('/auth/asign-otp', {
+      // Generate recovery link using endpoint
+      const response = await this.http.post<{
+        success: boolean,
+        message: string,
+        recoveryUrl?: string,
+        previewUrl?: string
+      }>('/auth/generate-recovery-link', {
         username: this.username
       }).toPromise();
       
-      if (response && response.res) {
-        this.demoOtpCode = response.demoToken || '';
-        this.expirySeconds = response.expirySeconds || 30;
-        this.startExpiryTimer();
-        this.stage = 'otp-verification';
+      if (response && response.success) {
+        this.successMessage = `Se ha enviado un enlace de recuperación a ${this.username}`;
         
+        // In development, log the recovery URL and preview URL for easy testing
+        console.log('Recovery URL (for testing):', response.recoveryUrl);
+        if (response.previewUrl) {
+          console.log('Email preview URL:', response.previewUrl);
+        }
+        
+
       } else {
-        throw new Error('No se pudo enviar el código de verificación');
+        throw new Error('No se pudo generar el enlace de recuperación');
       }
+      
     } catch (error: any) {
       console.error('Error en la solicitud de recuperación:', error);
       this.errorMessage = error.error?.message || error.message || 'Error en la solicitud de recuperación';
       this.hideError();
     } finally {
       this.isProcessing = false;
-    }
-  }
-  
-  async verifyOtp() {
-    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
-      this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
-      this.hideError();
-      return;
-    }
-    
-    this.isProcessing = true;
-    this.errorMessage = null;
-    
-    try {
-      const response = await this.http.post<{ success: boolean, userProfile?: any }>('/passkey/verify-otp', {
-        username: this.username,
-        otpCode: this.otpCode
-      }).toPromise();
-      
-      if (response && response.success) {
-      
-        // Clear the timer when verification is successful
-        if (this.timerInterval) {
-          clearInterval(this.timerInterval);
-        }
-        
-        this.stage = 'reset-options';
-      } else {
-        this.errorMessage = "Código de verificación incorrecto";
-        this.hideError();
-      }
-    } catch (error: any) {
-      console.error('Error en la verificación del OTP:', error);
-      this.errorMessage = error.error?.message || error.message || 'Error en la verificación';
-      this.hideError();
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-  
-  // Start countdown timer for TOTP expiry
-  startExpiryTimer() {
-    // Clear any existing timer
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-    }
-    
-    // Start new interval timer
-    this.timerInterval = setInterval(() => {
-      if (this.expirySeconds > 0) {
-        this.expirySeconds--;
-      } else {
-        // When time runs out, generate a new code
-        if (this.stage === 'otp-verification') {
-          this.refreshOtpCode();
-        } else {
-          clearInterval(this.timerInterval);
-        }
-      }
-    }, 1000);
-  }
-  
-  // Refresh the OTP code when it expires
-  async refreshOtpCode() {
-    try {
-      const response = await this.http.post<{
-        res: boolean,
-        demoToken: string,
-        expirySeconds: number
-      }>('/auth/asign-otp', {
-        username: this.username
-      }).toPromise();
-      
-      if (response && response.res) {
-        this.demoOtpCode = response.demoToken;
-        this.expirySeconds = response.expirySeconds;
-      }
-    } catch (error) {
-      console.error('Error refreshing OTP code:', error);
-    }
-  }
- 
-  
-  // Method to clean up on component destruction
-  ngOnDestroy() {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
     }
   }
   
@@ -548,12 +544,7 @@ export class RecoveryComponent implements OnDestroy {
   }
   
   cancelAndGoBack() {
-    if (this.stage === 'otp-verification' || this.stage === 'reset-options') {
-      // Stop timer if we're going back from OTP verification
-      if (this.stage === 'otp-verification' && this.timerInterval) {
-        clearInterval(this.timerInterval);
-      }
-      
+    if (this.stage === 'reset-options') {
       this.stage = 'initial';
     } else if (this.stage === 'password-reset') {
       this.stage = 'reset-options';

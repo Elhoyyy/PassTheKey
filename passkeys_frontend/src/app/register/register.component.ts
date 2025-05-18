@@ -359,6 +359,31 @@ export class RegisterComponent {
     }
   }
 
+  // Método para cancelar la verificación OTP
+  cancelOtpVerification() {
+    // Stop the timer when canceling
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Call the server to cancel the registration and delete the pending user
+    if (this.username) {
+      this.http.post('/passkey/cancel-otp-verification', { username: this.username })
+        .subscribe({
+          next: (response: any) => {
+            console.log('Registration canceled:', response);
+          },
+          error: (error) => {
+            console.error('Error canceling registration:', error);
+          }
+        });
+    }
+    
+    this.showOtpVerification = false;
+    this.otpCode = '';
+    this.pendingUserProfile = null;
+  }
+
   async verifyAccount() {
     if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
       this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
@@ -403,25 +428,23 @@ export class RegisterComponent {
       }
     } catch (error: any) {
       console.error('Error en la verificación:', error);
-      this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      
+      // Specifically handle verification timeout
+      if (error.error?.message?.includes('Tiempo de verificación expirado')) {
+        this.errorMessage = 'El tiempo para verificar su cuenta ha expirado. Por favor, regístrese nuevamente.';
+        this.showOtpVerification = false;
+        this.otpCode = '';
+        this.pendingUserProfile = null;
+      } else {
+        this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      }
+      
       this.hideError();
     } finally {
       this.isVerifyingOtp = false;
     }
   }
   
-  // Método para cancelar la verificación OTP
-  cancelOtpVerification() {
-    // Stop the timer when canceling
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-    }
-    
-    this.showOtpVerification = false;
-    this.otpCode = '';
-    this.pendingUserProfile = null;
-  }
-
   // Método para ir a la página de login
   goToLogin() {
     this.router.navigate(['/auth']);

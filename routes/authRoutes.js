@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const { users, challenges, getNewChallenge, expectedOrigin } = require('../data');
 const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
 const { authenticator } = require('otplib'); // Import otplib authenticator
+const crypto = require('crypto');
+const { sendEmail } = require('../utils/emailService');
 
 // Configure otplib
 authenticator.options = {
@@ -350,6 +352,98 @@ router.post('/login/passkey/by-email', (req, res) => {
     
     console.log(`[EMAIL-PASSKEY] ✅ Challenge generation complete`);
     console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
+});
+
+// New endpoint for email recovery link generation
+router.post('/generate-recovery-link', async (req, res) => {
+    const { username } = req.body;
+    
+    if (!username || !users[username]) {
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Generate a unique token for recovery
+    const recoveryToken = crypto.randomBytes(32).toString('hex');
+    
+    // Build the recovery URL - use the hostname from the request or default to localhost:3000
+    const baseUrl = req.get('origin') || `http://${req.hostname}:3000`;
+    const recoveryUrl = `${baseUrl}/recovery?token=${recoveryToken}&email=${encodeURIComponent(username)}`;
+    
+    console.log(`Generated recovery link for ${username}: ${recoveryUrl}`);
+    
+    // Create email content
+    const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #1976D2;">Recupera tu cuenta</h2>
+            </div>
+            <p>Hola,</p>
+            <p>Recibimos una solicitud para recuperar tu cuenta. Haz clic en el siguiente enlace para restablecer tu contraseña o crear una nueva llave de acceso:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${recoveryUrl}" style="background-color: #1976D2; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Recuperar cuenta</a>
+            </div>
+            <p>O copia y pega este enlace en tu navegador:</p>
+            <p style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; word-break: break-all;">${recoveryUrl}</p>
+            <p>Si no solicitaste esta recuperación, puedes ignorar este correo.</p>
+            <p>Este enlace expirará en 24 horas por motivos de seguridad.</p>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #757575; font-size: 12px;">
+                <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+            </div>
+        </div>
+    `;
+    
+    // Plain text version for email clients that don't support HTML
+    const emailText = `
+        Recupera tu cuenta
+        
+        Hola,
+        
+        Recibimos una solicitud para recuperar tu cuenta. Visita el siguiente enlace para restablecer tu contraseña o crear una nueva llave de acceso:
+        
+        ${recoveryUrl}
+        
+        Si no solicitaste esta recuperación, puedes ignorar este correo.
+        
+        Este enlace expirará en 24 horas por motivos de seguridad.
+        
+        Este es un correo automático, por favor no respondas a este mensaje.
+    `;
+    
+    // Send the email using our email service
+    const emailResult = await sendEmail({
+        to: username,
+        subject: 'Recuperación de cuenta - PassTheKey',
+        text: emailText,
+        html: emailHtml
+    });
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Enlace de recuperación enviado con éxito',
+        recoveryUrl: recoveryUrl,
+        previewUrl: emailResult.previewUrl || null
+    });
+});
+
+// New endpoint to validate a recovery token
+router.post('/validate-recovery-token', (req, res) => {
+    const { token, username } = req.body;
+    
+    // In a real application, you would:
+    // 1. Look up the token in your database
+    // 2. Check if it's expired
+    // 3. Verify it belongs to the correct user
+    
+    // For demo purposes, we'll accept any token as valid
+    if (!username || !users[username]) {
+        return res.status(400).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Return success for demo
+    res.status(200).json({ 
+        success: true, 
+        message: 'Token de recuperación válido'
+    });
 });
 
 module.exports = router;

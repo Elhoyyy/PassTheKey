@@ -5,7 +5,6 @@
       <i class="bi bi-shield-lock"></i>
       {{ 
         stage === 'initial' ? 'Recuperación de Cuenta' : 
-        stage === 'otp-verification' ? 'Verificación de Código' :
         stage === 'reset-options' ? 'Opciones de Recuperación' :
         'Restablecimiento de Contraseña'
       }}
@@ -30,7 +29,7 @@
           [disabled]="isProcessing">
           <i *ngIf="!isProcessing" class="bi bi-send"></i>
           <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
-          <span>{{ isProcessing ? 'Enviando...' : 'Enviar correo  de recuperación' }}</span>
+          <span>{{ isProcessing ? 'Enviando...' : 'Enviar correo de recuperación' }}</span>
         </button>
       </div>
 
@@ -39,47 +38,6 @@
       </div>
     </div>
 
-    <!-- Pantalla de verificación OTP -->
-    <div *ngIf="stage === 'otp-verification'">
-      <div class="input-group">
-        <i class="bi bi-shield-lock"></i>
-        <input 
-          type="text" 
-          [(ngModel)]="otpCode" 
-          name="otpCode" 
-          placeholder="Código de verificación" 
-          maxlength="6"
-          autocomplete="one-time-code" />
-      </div>
-
-      <div class="otp-description">
-        <p>Introduce el código de verificación de 6 dígitos.</p>
-        <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
-        
-        <!-- Demo token always displayed for convenience during development -->
-        <div class="demo-token-container">
-          <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
-        </div>
-      </div>
-
-      <div class="dialog-footer"> 
-        <button 
-        class="btn btn-secondary" 
-        (click)="cancelAndGoBack()"
-          [disabled]="isProcessing">
-          <i class="bi bi-x-circle"></i>
-          <span>Cancelar</span>
-        </button>
-        <button 
-        class="btn btn-primary" 
-          (click)="verifyOtp()"
-          [disabled]="isProcessing">
-          <i *ngIf="!isProcessing" class="bi bi-check-circle"></i>
-          <span *ngIf="isProcessing" class="spinner-border spinner-border-sm"></span>
-          <span>{{ isProcessing ? 'Verificando...' : 'Verificar' }}</span>
-        </button>
-      </div>
-    </div>
     <!-- Pantalla de opciones de recuperación -->
     <div *ngIf="stage === 'reset-options'">
       <div class="recovery-options">
@@ -127,7 +85,7 @@
           name="newPassword" 
           placeholder="Nueva contraseña" 
           (input)="evaluatePasswordStrength()"/>
-          <span class="password-toggle" (click)="togglePasswordVisibility('newPassword')">
+          <span class="password-tugle" (click)="togglePasswordVisibility('newPassword')">
             <i class="bi bi-eye-slash"></i>
           </span>
       </div>
@@ -141,7 +99,7 @@
           [(ngModel)]="confirmPassword" 
           name="confirmPassword" 
           placeholder="Confirmar contraseña" />
-          <span class="password-toggle" (click)="togglePasswordVisibility('confirmPassword')">
+          <span class="password-tugle" (click)="togglePasswordVisibility('confirmPassword')">
           <i class="bi bi-eye-slash"></i>
           </span>
       </div>
