@@ -21,6 +21,9 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
+              "src/logo.svg",
+              "src/logo2.png",
+              
               {
                 "glob": "**/*",
                 "input": "public"
@@ -79,6 +82,7 @@
             ],
             "tsConfig": "tsconfig.spec.json",
             "assets": [
+              "public/logo_app.png",
               {
                 "glob": "**/*",
                 "input": "public"
