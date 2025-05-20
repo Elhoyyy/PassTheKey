@@ -58,6 +58,7 @@
             </li>
           </ul>
         </div>
+
         <!-- Toggle para mostrar/ocultar contraseña en registro -->
         <div class="password-toggle">
             <label class="toggle">
@@ -88,20 +89,10 @@
 
         <!-- Pantalla de verificación OTP -->
         <div *ngIf="showOtpVerification && !showPasskeyNameDialog">
-          <div class="input-group">
-            <i class="bi bi-shield-lock"></i>
-            <input 
-              type="text" 
-              [(ngModel)]="otpCode" 
-              name="otpCode" 
-              placeholder="Código de verificación" 
-              maxlength="6"
-              autocomplete="one-time-code" />
-          </div>
+
 
           <div class="otp-description">
-            <p>Introduce el código de verificación de 6 dígitos. Necesitarás una app como <strong>Authy, 1-Password, Microsoft Authenticator...</strong></p>
-            <p>Este código cambia cada <strong>30 segundos.</strong> <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+            <p>Introduce el código de verificación de 6 dígitos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
             <!-- QR code section -->
             <div  class="qr-setup">
               <h4>Configurar Autenticador</h4>
@@ -122,7 +113,16 @@
               <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
             </div>
           </div>
-
+          <div class="input-group">
+            <i class="bi bi-shield-lock"></i>
+            <input 
+              type="text" 
+              [(ngModel)]="otpCode" 
+              name="otpCode" 
+              placeholder="Código de verificación" 
+              maxlength="6"
+              autocomplete="one-time-code" />
+          </div>
           <div class="dialog-footer">
             <button 
             class="btn btn-secondary" 
@@ -161,6 +161,35 @@
                 <i class="bi bi-x-circle"></i>Cancelar
               </button>
               <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!passkeyName.trim()">
+                <i class="bi bi-check-circle"></i>Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 2FA Confirmation dialog -->
+        <div *ngIf="show2FAConfirmationDialog" class="passkey-name-dialog">
+          <div class="dialog-content">
+            <div class="dialog-header">
+              <h5><i class="bi bi-shield-lock"></i>Configuración de Segundo Factor</h5>
+            </div>
+            <div class="dialog-body">
+              <p><strong>Autenticación de Dos Factores Requerida</strong></p>
+              <p>Para aumentar la seguridad de tu cuenta, se configurará un segundo factor de autenticación (2FA) tras el registro.</p>
+              <div class="info-message">
+                <i class="bi bi-info-circle"></i>
+                <p>Necesitarás una aplicación como:</p>
+                <ul>
+                  <li>Google Authenticator</li>
+                  <li>Microsoft Authenticator</li>
+                  <li>Authy</li>
+                  <li>1Password</li>
+                </ul>
+                <p>Esta aplicación generará códigos de verificación cada 30 segundos que deberás usar cada vez que inicies sesión.</p>
+              </div>
+            </div>
+            <div class="dialog-footer">
+              <button class="btn btn-primary" (click)="confirm2FASetup()">
                 <i class="bi bi-check-circle"></i>Continuar
               </button>
             </div>

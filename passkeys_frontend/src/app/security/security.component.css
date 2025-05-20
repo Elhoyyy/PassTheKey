@@ -668,18 +668,6 @@ body {
   align-self: center; /* Center within the flexbox */
 }
 
-/* Add Passkey Button */
-.add-passkey-btn {
-  margin: 15px auto 0; /* Center the button horizontally */
-  display: block; /* Make it a block element to center */
-  padding: 10px 25px;
-  min-width: 250px; /* Make it wider */
-}
-
-.passkey-action {
-  text-align: center; /* Center-align the content in passkey-action div */
-}
-
 /* Alerts */
 .alert {
   border-radius: 8px;
@@ -1101,6 +1089,60 @@ body {
   padding: 3px 6px;
   border-radius: 4px;
   font-weight: bold;
+}
+
+/* Recovery Recommendation Styling */
+.recovery-recommendation {
+  background-color: #fff8e6 !important;
+  border-left: 4px solid #ffc107 !important;
+  color: #856404 !important;
+  padding: 20px !important;
+  border-radius: 10px !important;
+  margin-bottom: 25px !important;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.1) !important;
+  text-align: left !important;
+  transition: all 0.3s ease !important;
+  width: auto !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+.recovery-recommendation .recommendation-header i {
+  color: #ffc107;
+  font-size: 1.2rem;
+}
+
+.recovery-recommendation .recommendation-header strong {
+  font-size: 1.1rem;
+  color: #856404;
+}
+
+.recovery-recommendation p {
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.recovery-recommendation button {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+  display: block;
+  margin: 0 auto;
+  min-width: 200px;
+  align-self: center;
+}
+
+.recovery-recommendation button:hover {
+  background-color: #e0a800;
+  border-color: #d39e00;
+  color: #212529;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3);
 }
 
 /* Responsive Styles */

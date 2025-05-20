@@ -5,6 +5,7 @@
       <i class="bi bi-shield-lock"></i>
       {{ 
         stage === 'initial' ? 'Recuperación de Cuenta' : 
+        stage === 'otp-verification' ? 'Verificación de código' :
         stage === 'reset-options' ? 'Opciones de Recuperación' :
         'Restablecimiento de Contraseña'
       }}
@@ -35,6 +36,63 @@
 
       <div class="links-container">
         <a (click)="goToLogin()">Volver al inicio de sesión</a>
+      </div>
+    </div>
+
+    <!-- Nueva pantalla de verificación OTP -->
+    <div *ngIf="stage === 'otp-verification'">
+      <div class="input-group">
+        <i class="bi bi-shield-lock"></i>
+        <input 
+          type="text" 
+          [(ngModel)]="otpCode" 
+          name="otpCode" 
+          placeholder="Código de verificación" 
+          maxlength="6"
+          autocomplete="one-time-code" />
+      </div>
+
+      <div class="otp-description">
+        <p>Introduce el código de verificación de 6 dígitos.</p>
+        <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+        
+        <!-- Demo token always displayed for convenience during development -->
+        <div class="demo-token-container">
+          <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
+        </div>
+      </div>
+
+      <div class="dialog-footer"> 
+        <button 
+          class="btn btn-secondary" 
+          (click)="cancelOtpVerification()"
+          [disabled]="isVerifyingOtp">
+          <i class="bi bi-x-circle"></i>
+          <span>Cancelar</span>
+        </button>
+        <button 
+          class="btn btn-primary" 
+          (click)="verifyOtpCode()"
+          [disabled]="isVerifyingOtp">
+          <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
+          <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
+        </button>
+      </div>
+
+      <!-- New passkey button -->
+      <div class="alternative-auth-container">
+        <div class="option-separator">
+          <span>o</span>
+        </div>
+        <button 
+          class="btn-direct-auth" 
+          (click)="verifyWithPasskey()"
+          [disabled]="isVerifyingPasskey">
+          <i *ngIf="!isVerifyingPasskey" class="bi bi-key"></i>
+          <span *ngIf="isVerifyingPasskey" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isVerifyingPasskey ? 'Verificando...' : 'Usar una llave de acceso' }}</span>
+        </button>
       </div>
     </div>
 

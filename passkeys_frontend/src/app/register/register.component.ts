@@ -21,6 +21,8 @@ export class RegisterComponent {
   successMessage: string | null = null;
   isRegistering: boolean = false;
   showPasswordForRegistration: boolean = false;
+  // Add 2FA confirmation dialog flag
+  show2FAConfirmationDialog: boolean = false;
   // OTP verification properties
   showOtpVerification: boolean = false;
   otpCode: string = '';
@@ -78,6 +80,7 @@ export class RegisterComponent {
   async handleRegistration() {
     // If the password field is visible, register with password
     if (this.showPasswordForRegistration) {
+      // Only validate email before showing the dialog
       await this.registerWithPassword();
     } else {
       if (!this.username || !this.validateEmail(this.username)) {
@@ -89,6 +92,14 @@ export class RegisterComponent {
       await this.startPasskeyRegistration();
     }
   }
+  
+ 
+
+  // Method to confirm 2FA setup and proceed with registration
+  async confirm2FASetup() {
+    this.show2FAConfirmationDialog = false;
+  }
+
   // Method to detect device name from user agent
   detectDeviceName() {
     const userAgent = navigator.userAgent;
@@ -319,6 +330,7 @@ export class RegisterComponent {
             };
             this.showOtpVerification = true;
             this.isRegistering = false;
+            this.show2FAConfirmationDialog = true;
             const otpresponse = await this.http.post<{
               success: boolean,
               qrCodeUrl: string,

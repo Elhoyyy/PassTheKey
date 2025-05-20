@@ -425,25 +425,42 @@ router.post('/generate-recovery-link', async (req, res) => {
     });
 });
 
-// New endpoint to validate a recovery token
-router.post('/validate-recovery-token', (req, res) => {
-    const { token, username } = req.body;
+// Endpoint for OTP verification
+router.post('/passkey/verify-otp', (req, res) => {
+    console.log('=== START OTP VERIFICATION ===');
+    let { username, otpCode } = req.body;
     
-    // In a real application, you would:
-    // 1. Look up the token in your database
-    // 2. Check if it's expired
-    // 3. Verify it belongs to the correct user
-    
-    // For demo purposes, we'll accept any token as valid
     if (!username || !users[username]) {
+        console.log('[OTP-VERIFY] User not found');
         return res.status(400).json({ message: 'Usuario no encontrado' });
     }
     
-    // Return success for demo
-    res.status(200).json({ 
-        success: true, 
-        message: 'Token de recuperación válido'
+    if (!users[username].otpSecret) {
+        console.log('[OTP-VERIFY] No OTP secret for this user');
+        return res.status(400).json({ message: 'La verificación OTP no está configurada para este usuario' });
+    }
+    
+    console.log(`[OTP-VERIFY] Verifying code ${otpCode} for user ${username}`);
+    
+    const isValid = authenticator.verify({
+        token: otpCode,
+        secret: users[username].otpSecret
     });
+    
+    if (isValid) {
+        console.log('[OTP-VERIFY] ✅ OTP verification successful');
+        res.status(200).json({ 
+            success: true, 
+            message: 'Verificación exitosa'
+        });
+    } else {
+        console.log('[OTP-VERIFY] ❌ OTP verification failed');
+        res.status(400).json({ 
+            success: false, 
+            message: 'Código de verificación incorrecto'
+        });
+    }
+    console.log('=== END OTP VERIFICATION ===');
 });
 
 module.exports = router;

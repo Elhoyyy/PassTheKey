@@ -23,7 +23,8 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null; // Message to show to the user
   isProcessing: boolean = false;
-  stage: 'initial' | 'reset-options' | 'password-reset' = 'initial'; // Removed OTP verification stage
+  // Update the stage type to include otp-verification
+  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' = 'initial'; // Removed OTP verification stage
   newPassword: string = '';
   confirmPassword: string = '';
   passwordCreationDate: string = 'Unknown'; // Date when password was last changed
@@ -47,6 +48,16 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   // Variable para opciones de creación de credenciales
   publicKeyCredentialCreationOptions: any = null;
   
+  // Add OTP verification properties
+  otpCode: string = '';
+  demoOtpCode: string = '';
+  isVerifyingOtp: boolean = false;
+  expirySeconds: number = 0;
+  timerInterval: any;
+
+  // Add new property for passkey verification
+  isVerifyingPasskey: boolean = false;
+  
   constructor(
     private http: HttpClient, 
     private router: Router,
@@ -57,7 +68,10 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   ) { }
   
   ngOnDestroy() {
-    // Clean up any resources if needed
+    // Clean up any resources
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
   }
 
   ngOnInit() {
@@ -66,12 +80,148 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       this.recoveryToken = params['token'] || null;
       this.username = params['email'] || '';
       
-      // If we have both token and email, go directly to reset options
+      // If we have both token and email, go directly to OTP verification step
       if (this.recoveryToken && this.username) {
-        console.log('Recovery token detected, going directly to reset options');
-          this.stage = 'reset-options';
+        console.log('Recovery token detected, going to OTP verification');
+        this.requestOtpVerification();
       }
     });
+  }
+  
+  // New method to request OTP verification
+  async requestOtpVerification() {
+    if (!this.username) {
+      this.errorMessage = "Correo electrónico inválido en el enlace de recuperación";
+      this.hideError();
+      return;
+    }
+
+    this.isProcessing = true;
+    
+    try {
+      // Check if user exists
+      const checkResponse = await this.http.post<{ exists: boolean }>('/auth/check-user', { 
+        username: this.username
+      }).toPromise();
+      
+      if (!checkResponse || !checkResponse.exists) {
+        this.errorMessage = "Usuario no encontrado";
+        this.hideError();
+        return;
+      }
+      
+      // Request OTP verification
+      const response = await this.http.post<{
+        res: boolean,
+        demoToken?: string,
+        expirySeconds?: number
+      }>('/auth/asign-otp', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.res) {
+        // Store demo token and expiry for convenience during development
+        this.demoOtpCode = response.demoToken || '';
+        this.expirySeconds = response.expirySeconds || 30;
+        this.startExpiryTimer();
+        
+        // Move to OTP verification stage
+        this.stage = 'otp-verification';
+      } else {
+        throw new Error('No se pudo iniciar la verificación OTP');
+      }
+    } catch (error: any) {
+      console.error('Error inicializando verificación OTP:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error en la verificación';
+      this.hideError();
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+  
+  // Add method to start expiry timer
+  startExpiryTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    this.timerInterval = setInterval(() => {
+      if (this.expirySeconds > 0) {
+        this.expirySeconds--;
+      } else {
+        // Refresh OTP code when timer expires
+        this.refreshOtpCode();
+      }
+    }, 1000);
+  }
+  
+  // Add method to refresh OTP code
+  async refreshOtpCode() {
+    try {
+      const response = await this.http.post<{
+        res: boolean,
+        demoToken: string,
+        expirySeconds: number
+      }>('/auth/asign-otp', {
+        username: this.username
+      }).toPromise();
+
+      if (response && response.res) {
+        this.demoOtpCode = response.demoToken;
+        this.expirySeconds = response.expirySeconds;
+      }
+    } catch (error) {
+      console.error('Error refreshing OTP code:', error);
+    }
+  }
+  
+  // Add method to verify OTP code
+  async verifyOtpCode() {
+    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+      this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
+      this.hideError();
+      return;
+    }
+
+    this.isVerifyingOtp = true;
+    this.errorMessage = null;
+
+    try {
+      const response = await this.http.post<{ success: boolean }>('/passkey/verify-otp', {
+        username: this.username,
+        otpCode: this.otpCode
+      }).toPromise();
+
+      if (response && response.success) {
+        // Clear the timer
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
+        // Move to reset options stage
+        this.stage = 'reset-options';
+        this.successMessage = 'Verificación exitosa. Puedes continuar con la recuperación de tu cuenta.';
+        setTimeout(() => this.successMessage = null, 3000);
+      } else {
+        throw new Error('Código de verificación incorrecto');
+      }
+    } catch (error: any) {
+      console.error('Error en la verificación OTP:', error);
+      this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      this.hideError();
+    } finally {
+      this.isVerifyingOtp = false;
+    }
+  }
+  
+  // Add method to cancel OTP verification
+  cancelOtpVerification() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    this.otpCode = '';
+    this.stage = 'initial';
   }
   
   // New method to go directly to reset options
@@ -134,8 +284,8 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       }).toPromise();
       
       if (!checkResponse || !checkResponse.exists) {
-        this.errorMessage = "Usuario no encontrado";
-        this.hideError();
+        this.successMessage = `Se ha enviado un enlace de recuperación a ${this.username}`;
+        this.hideSuccess();
         return;
       }
       
@@ -151,7 +301,7 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       
       if (response && response.success) {
         this.successMessage = `Se ha enviado un enlace de recuperación a ${this.username}`;
-        
+        this.hideSuccess();
         // In development, log the recovery URL and preview URL for easy testing
         console.log('Recovery URL (for testing):', response.recoveryUrl);
         if (response.previewUrl) {
@@ -540,6 +690,9 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   hideError() {
     setTimeout(() => this.errorMessage = null, 3000);
   }
+  hideSuccess() {
+    setTimeout(() => this.successMessage = null, 3000);
+  }
   
   // Toggle password visibility
   togglePasswordVisibility(fieldId: string) {
@@ -552,6 +705,99 @@ export class RecoveryComponent implements OnDestroy, OnInit {
         icon.classList.toggle('bi-eye-slash');
         icon.classList.toggle('bi-eye');
       }
+    }
+  }
+
+  // Add method to verify with passkey
+  async verifyWithPasskey() {
+    this.isVerifyingPasskey = true;
+    this.errorMessage = null;
+    
+    try {
+      // First check if user has passkeys
+      const checkResponse = await this.http.post<{ exists: boolean, hasPasskey: boolean }>('/auth/check-user-passkey', { 
+        username: this.username
+      }).toPromise();
+      
+      if (!checkResponse || !checkResponse.exists) {
+        throw new Error('Usuario no encontrado');
+      }
+      
+      if (!checkResponse.hasPasskey) {
+        throw new Error('No tienes llaves de acceso registradas. Por favor usa la verificación por código.');
+      }
+      
+      // Get passkey login options
+      const options = await this.http.post<PublicKeyCredentialRequestOptions>(
+        '/auth/login/passkey/by-email',
+        { username: this.username }
+      ).toPromise();
+      
+      console.log(`[RECOVERY-PASSKEY] Received options:`, options);
+      
+      if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
+        throw new Error('No hay llaves de acceso disponibles');
+      }
+      
+      // Convert challenge and credential IDs to ArrayBuffer
+      const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(options);
+      const getCredentialOptions: CredentialRequestOptions = {
+        publicKey: publicKeyCredentialRequestOptions
+      };
+      
+      // Prompt for passkey
+      const assertion = await navigator.credentials.get(getCredentialOptions) as PublicKeyCredential;
+      
+      // Convert response for server
+      const authData = {
+        id: assertion.id,
+        rawId: this.bufferToBase64URL(assertion.rawId),
+        response: {
+          authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
+          clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
+          signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
+          userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
+            this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
+            null
+        },
+        type: assertion.type
+      };
+      
+      // Verify passkey with server
+      const response = await this.http.post<{
+        res: boolean,
+        userProfile?: any
+      }>('/auth/login/passkey/fin', {
+        data: authData,
+        username: this.username,
+        isConditional: false
+      }).toPromise();
+      
+      if (response && response.res) {
+        console.log(`[RECOVERY-PASSKEY] Success:`, response);
+        
+        // Clear the TOTP timer
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
+        // Move to reset options stage
+        this.stage = 'reset-options';
+        this.successMessage = 'Verificación exitosa con llave de acceso. Puedes continuar con la recuperación de tu cuenta.';
+        setTimeout(() => this.successMessage = null, 3000);
+      } else {
+        throw new Error('Error en la verificación con llave de acceso');
+      }
+    } catch (error: any) {
+      console.error(`[RECOVERY-PASSKEY] Error:`, error);
+      if (error.name === 'NotAllowedError') {
+        this.errorMessage = 'Operación cancelada por el usuario';
+      } else {
+        this.errorMessage = error.error?.message || error.message || 'Error en la verificación con llave de acceso';
+      }
+      this.hideError();
+    } finally {
+      this.isVerifyingPasskey = false;
     }
   }
 }

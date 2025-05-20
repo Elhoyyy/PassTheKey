@@ -32,7 +32,7 @@
                 <div class="section-header">
                   <i class="bi bi-key-fill"></i>
                   <h5 class="section-title">
-                    {{ hasPassword ? 'Cambiar contraseña' : 'Añadir contraseña' }}
+                    {{ hasPassword ? 'Cambiar contraseña' : 'Añadir Contraseña y 2FA' }}
                   </h5>
                 </div>
                 
@@ -42,7 +42,7 @@
                     <i class="bi" [ngClass]="has2FA ? 'bi-shield-check' : 'bi-shield'"></i>
                     2FA {{ has2FA ? 'Activado' : 'No Activado' }}
                   </span>
-                  <small *ngIf="!has2FA" class="text-muted">Al añadir contraseña se activará automáticamente 2FA</small>
+                  <small *ngIf="!has2FA" class="text-muted">Al añadir contraseña se procederá a la configuración de un 2FA</small>
                 </div>
                 
                 <!-- Password form - always visible now, no more *ngIf="!showOtpVerification -->
@@ -152,6 +152,20 @@
                   </button>
                 </div>
                 
+                <!-- Recovery passkey recommendation message - only show when exactly 1 passkey exists -->
+                <div *ngIf="devices.length === 1" class="alert alert-warning mt-2 recovery-recommendation">
+                  <div class="recommendation-header">
+                    <i class="bi bi-key"></i>
+                    <strong>Asegura el acceso a tu cuenta</strong>
+                  </div>
+                  <p>¡Ya tienes una Llave de Acceso! Para mayor seguridad, te recomendamos registrar una segunda en otro dispositivo.</p>
+                  <p>Así podrás recuperar tu cuenta incluso si pierdes tu dispositivo actual.</p>
+                  <button class="btn btn-secondary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? ' Añadiendo...' : 'Añadir llave de backup' }}
+                  </button>
+                </div>
+                
                 <div class="device-list-container">
                   <ul class="list-group">
                     <li class="list-group-item d-flex justify-content-between align-items-center" 
@@ -232,20 +246,6 @@
                         <i class="bi bi-check-circle"></i>Continuar
                       </button>
                     </div>
-                  </div>
-                </div>
-                
-                <div class="passkey-action">
-                  <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="showAddDeviceButton" (click)="startPasskeyRegistration()" [disabled]="isLoading">
-                    <i *ngIf="!isLoading" class="bi bi-plus-circle"></i>
-                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    {{ isLoading ? 'Añadiendo...' : 'Añade una Llave De Acceso' }}
-                  </button>
-                  <div *ngIf="errorMessage" class="alert alert-danger mt-3">
-                    <i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}
-                  </div>
-                  <div *ngIf="successMessage" class="alert alert-success mt-3">
-                    <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
                   </div>
                 </div>
               </div>

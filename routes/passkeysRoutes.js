@@ -152,7 +152,7 @@ router.post('/registro/usuario', (req, res) => {
     }
 
     if (!isValidPassword(password)) {
-        console.log('La contrsaeña no cumple los criterios.');
+        console.log('La contraseña no cumple los criterios.');
         return res.status(400).json({ message: 'La contraseña no cumple los criterios.' });
     }
 
