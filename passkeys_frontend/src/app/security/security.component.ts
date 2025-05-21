@@ -36,7 +36,7 @@ export class SecurityComponent implements OnInit {
   isLoadingName: boolean = false; // Comprobar si hay algo cargando para activar el spinner.
   showPasskeyRecommendation: boolean = false; // Flag to control the passkey recommendation
   showAddDeviceButton: boolean = true; // Flag to control the visibility of the add device button
-
+  show2FAConfirmationDialog: boolean = false; // Flag to control the visibility of the 2FA confirmation dialog
   // Modified and added properties for password management
   newPassword: string = '';
   confirmPassword: string = '';
@@ -310,6 +310,12 @@ export class SecurityComponent implements OnInit {
     }
   }
 
+  async show2FAConfirmation() {
+    this.show2FAConfirmationDialog = true;
+  }
+  async confirm2FASetup() {
+    this.show2FAConfirmationDialog = false;
+  }
   // Start TOTP setup when adding password for the first time - updated to show dialog
   async startOtpSetup() {
     try {
