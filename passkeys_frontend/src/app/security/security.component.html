@@ -278,7 +278,12 @@
                         
                         <div class="manual-setup">
                           <p>O ingresa manualmente este código:</p>
-                          <div class="secret-code">{{ otpSecret }}</div>
+                          <div class="secret-code">
+                            {{ otpSecret }}
+                            <button class="copy-button" (click)="copyToClipboard(otpSecret)" title="Copiar al portapapeles">
+                              <i class="bi" [ngClass]="copied ? 'bi-clipboard-check' : 'bi-clipboard'"></i>
+                            </button>
+                          </div>
                         </div>
                         
                         <div class="setup-warning">
@@ -286,10 +291,11 @@
                         </div>
                       </div>
                       
-                      <!-- Show demo code -->
+                      <!-- Show demo code 
                       <div class="demo-token-container">
                         <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
-                      </div>
+                      </div> -->
+                      
                     </div>
                   </div>
                   <div class="input-group">
@@ -319,6 +325,12 @@
                       <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
                       <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
                     </button>
+                  </div>
+                  <div *ngIf="errorMessageModal" class="alert alert-danger mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessageModal }}
+                  </div>
+                  <div *ngIf="successMessageModal" class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle me-2"></i>{{ successMessageModal }}
                   </div>
                 </div>
               </div>

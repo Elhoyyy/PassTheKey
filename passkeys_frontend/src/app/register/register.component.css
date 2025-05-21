@@ -1,5 +1,4 @@
 /* Reset basic styles */
-
 body {
   margin: 0;
   padding: 0;
@@ -86,8 +85,7 @@ body {
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
-
-a, p{
+a, p {
   margin-top: 10px;
   margin-bottom: 10px;
   display: flex;
@@ -149,6 +147,7 @@ a, p{
   color: #2196F3;
   text-decoration: none;
   font-size: 0.9em;
+  cursor: pointer;
 }
 
 .links-container a:hover {
@@ -246,11 +245,12 @@ input:checked + .slider:before {
   cursor: not-allowed;
 }
 
-
-
+/* OTP description with improved responsiveness */
 .otp-description {
   margin: 15px 0;
   text-align: center;
+  overflow-y: auto;
+  max-height: 400px; /* Limit height on small screens */
 }
 
 .otp-description p {
@@ -264,15 +264,7 @@ input:checked + .slider:before {
   font-style: italic;
 }
 
-
-
-.detected-device {
-  font-weight: 500;
-  color: #495057;
-  display: inline;
-}
-
-/* Passkey naming dialog - enhanced version */
+/* Passkey naming dialog - enhanced version and more responsive */
 .passkey-name-dialog {
   position: fixed;
   top: 0;
@@ -284,7 +276,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 15px;
   backdrop-filter: blur(3px);
   animation: fadeIn 0.3s ease;
 }
@@ -297,13 +289,15 @@ input:checked + .slider:before {
 .dialog-content {
   background-color: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
   width: 100%;
   max-width: 420px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   transform: translateY(0);
   animation: slideUp 0.3s ease;
   border-top: 4px solid #2196F3;
+  overflow-y: auto;
+  max-height: 90vh; /* Allow scrolling on small screens */
 }
 
 @keyframes slideUp {
@@ -333,16 +327,15 @@ input:checked + .slider:before {
 }
 
 .dialog-body {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .dialog-body p {
-  margin-bottom: 16px;
+  margin-bottom: 15px;
   color: #495057;
   text-align: center;
   font-size: 0.95rem;
 }
-
 
 .dialog-body input.form-control {
   border: 1px solid #c8e1ff;
@@ -350,16 +343,13 @@ input:checked + .slider:before {
   font-size: 1rem;
   transition: all 0.2s ease;
   box-shadow: none;
-  border: 1px solid #c8e1ff;
-  border-right: none;
+  width: 100%;
 }
 
 .dialog-body input.form-control:focus {
   border-color: #2196F3;
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
 }
-
-
 
 .dialog-footer {
   display: flex;
@@ -369,7 +359,7 @@ input:checked + .slider:before {
 
 .dialog-footer button {
   padding: 10px 20px;
-  min-width: 120px;
+  min-width: 100px;
   font-weight: 500;
   border-radius: 6px;
   transition: all 0.2s ease;
@@ -409,7 +399,7 @@ input:checked + .slider:before {
   box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
 }
 
-/* QR code styles */
+/* QR code styles with improved responsiveness */
 .qr-setup {
   background-color: #f8f9fa;
   border-radius: 8px;
@@ -426,14 +416,15 @@ input:checked + .slider:before {
 }
 
 .qr-code {
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   margin: 10px auto;
   display: block;
   border: 1px solid #ddd;
   border-radius: 5px;
   padding: 5px;
   background: white;
+  max-width: 100%;
 }
 
 .manual-setup {
@@ -445,62 +436,55 @@ input:checked + .slider:before {
   padding: 8px 12px;
   border-radius: 4px;
   font-family: monospace;
-  font-size: 1rem;
+  font-size: 0.9rem;
   letter-spacing: 1px;
   margin: 5px 0;
   word-break: break-all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.btn-link {
+/* Copy button styling */
+.copy-button {
   background: transparent;
   border: none;
   color: #2196F3;
   cursor: pointer;
-  padding: 0;
-  font-size: 0.9em;
-  text-decoration: underline;
+  padding: 5px;
+  margin-left: 8px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.btn-link:hover {
-  color: #0d6efd;
+.copy-button:hover {
+  background-color: rgba(33, 150, 243, 0.1);
+  color: #1976D2;
 }
 
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.copy-button:active {
+  transform: scale(0.95);
 }
 
-.demo-token-container {
-  margin-top: 10px;
+.copy-button i {
+  font-size: 1rem;
 }
 
-.demo-token {
-  font-family: monospace;
-  font-size: 1.2em;
-  letter-spacing: 1px;
-  background: #e2e8f0;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.mt-2 {
-  margin-top: 10px;
-}
-
-.small {
-  font-size: 0.85rem;
+/* For responsiveness */
+@media (max-width: 480px) {
+  .secret-code {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .copy-button {
+    margin-left: 0;
+    margin-top: 5px;
+    align-self: flex-end;
+  }
 }
 
 .setup-warning {
@@ -525,7 +509,7 @@ input:checked + .slider:before {
   color: #ffc107;
 }
 
-/*Password-toggle*/
+/* Password toggle icon */
 .password-tugle {
   position: absolute;
   right: 10px;
@@ -584,6 +568,12 @@ input:checked + .slider:before {
   animation: pulse 0.5s ease-in-out;
 }
 
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
 /* 2FA Information Dialog */
 .info-message {
   background-color: #e7f5ff;
@@ -617,6 +607,7 @@ input:checked + .slider:before {
   color: #495057;
 }
 
+/* Responsive styles - improved for better mobile experience */
 @media (max-width: 768px) {
   .wrapper {
     padding: 10px;
@@ -625,52 +616,108 @@ input:checked + .slider:before {
   }
 
   .login {
-    width: 90%;
+    width: 95%;
     max-width: 400px;
     margin: 0 auto;
-    padding: 15px 15px 70px 15px;
+    padding: 15px;
   }
 
-  .login input {
-    padding: 12px 8px;
-    font-size: 14px;
-  }
-
-  .login button {
-    height: 45px;
-  }
-  
   .input-group i {
     width: 10px;
     text-align: center;
-
   }
   
-  .password-input{
-    padding-left: 30px !important;
-  }
-  
+  .password-input,
   .email-input {
     padding-left: 30px !important;
+  }
+  
+  .qr-code {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .dialog-footer {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .dialog-footer button {
+    flex: 1;
+    min-width: 100px;
+  }
+  
+  .secret-code {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login {
+    width: 100%;
+    padding: 15px;
+  }
+  
+  .qr-code {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .secret-code {
+    font-size: 0.8rem;
+  }
+  
+  .dialog-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .dialog-footer button {
+    width: 100%;
+  }
+  
+  .dialog-content {
+    padding: 15px;
+  }
+  
+  .otp-description {
+    max-height: 350px;
   }
 }
 
 @media (max-width: 320px) {
   .login {
     width: 100%;
-    padding: 10px 10px 60px 10px;
+    padding: 10px;
   }
-  .password-input{
-    padding-left: 30px !important;
-
-  }
-  .email-input {
-    padding-left: 30px !important;
-
-  }
+  
   .input-group i {
-    width: 10px; /* Ancho fijo para el icono */
+    width: 10px;
     text-align: center;
   }
-
+  
+  .dialog-content {
+    padding: 10px;
+  }
+  
+  .qr-code {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .dialog-header h5 {
+    font-size: 1rem;
+  }
+  
+  .dialog-header h5 i {
+    font-size: 1.2rem;
+  }
+  
+  .qr-setup h4 {
+    font-size: 1rem;
+  }
+  
+  .setup-warning .warning {
+    font-size: 0.8rem;
+  }
 }

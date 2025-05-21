@@ -55,6 +55,9 @@ export class RegisterComponent {
     special: false
   };
   
+  // Add this property to track copy state
+  copied: boolean = false;
+
   constructor(
     private http: HttpClient, 
     private router: Router, 
@@ -539,5 +542,30 @@ export class RegisterComponent {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+  }
+
+  // Add method to copy text to clipboard
+  copyToClipboard(text: string) {
+
+    
+    navigator.clipboard.writeText(text).then(() => {
+      this.showCopyFeedback();
+    }, (err) => {
+      console.error('No se pudo copiar al portapapeles: ', err);
+      this.errorMessage = 'No se pudo copiar al portapapeles';
+      this.hideError();
+    });
+  }
+
+  // Show feedback when copy is successful
+  showCopyFeedback() {
+    this.copied = true;
+    this.successMessage = 'Código copiado al portapapeles';
+    
+    // Reset copy state and success message after 2 seconds
+    setTimeout(() => {
+      this.copied = false;
+      this.successMessage = null;
+    }, 2000);
   }
 }

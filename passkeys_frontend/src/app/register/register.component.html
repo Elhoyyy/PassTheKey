@@ -101,17 +101,23 @@
               
               <div class="manual-setup">
                 <p>O ingresa manualmente este código:</p>
-                <div class="secret-code">{{ otpSecret }}</div>
+                <div class="secret-code">
+                  {{ otpSecret }}
+                  <button class="copy-button" (click)="copyToClipboard(otpSecret)" title="Copiar al portapapeles">
+                    <i class="bi" [ngClass]="copied ? 'bi-clipboard-check' : 'bi-clipboard'"></i>
+                  </button>
+                </div>
               </div>
               
               <div class="setup-warning">
                 <p class="warning"><i class="bi bi-exclamation-triangle"></i> IMPORTANTE: Esta información solo se mostrará una vez.</p>
               </div>
             </div>
-            <!-- Show demo code and setup option -->
+            <!-- Show demo code and setup option
             <div  class="demo-token-container">
               <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
-            </div>
+            </div> -->
+            
           </div>
           <div class="input-group">
             <i class="bi bi-shield-lock"></i>

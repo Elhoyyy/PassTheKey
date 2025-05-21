@@ -46,11 +46,13 @@ export class SecurityComponent implements OnInit {
   passwordSuccess: string | null = null;
   passwordCreationDate: string = 'Desconocida'; // Date when password was last changed
   securityScore: number = 0; // Security score percentage
-
+  errorMessageModal: string | null = null; // Error message for modal
+  successMessageModal: string | null = null; // Success message for modal
   // New properties to track password and 2FA status
   hasPassword: boolean = false;
   has2FA: boolean = false;
 
+  copied: boolean = false; // Add property to track copy state
   // OTP verification properties
   showOtpDialog: boolean = false; // Renamed property to reflect that it's now a dialog
   otpCode: string = '';
@@ -870,5 +872,30 @@ export class SecurityComponent implements OnInit {
   
   hidePasskeyInfoModal() {
     this.showPasskeyInfo = false;
+  }
+
+
+  // Add method to copy text to clipboard
+  copyToClipboard(text: string) {
+
+    navigator.clipboard.writeText(text).then(() => {
+      this.showCopyFeedback();
+    }, (err) => {
+      console.error('No se pudo copiar al portapapeles: ', err);
+      this.errorMessageModal = 'No se pudo copiar al portapapeles';
+      this.hideError();
+    });
+  }
+
+  // Show feedback when copy is successful
+  showCopyFeedback() {
+    this.copied = true;
+    this.successMessageModal = 'Código copiado al portapapeles';
+    
+    // Reset copy state and success message after 2 seconds
+    setTimeout(() => {
+      this.copied = false;
+      this.successMessageModal = null;
+    }, 2000);
   }
 }
