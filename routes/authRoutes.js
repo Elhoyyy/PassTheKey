@@ -5,7 +5,7 @@ const { users, challenges, getNewChallenge, expectedOrigin } = require('../data'
 const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
 const { authenticator } = require('otplib'); // Import otplib authenticator
 const crypto = require('crypto');
-const { sendEmail } = require('../utils/emailService');
+const { sendEmail, sendRecoveryEmail } = require('../utils/emailService');
 
 // Configure otplib
 authenticator.options = {
@@ -370,76 +370,83 @@ router.post('/login/passkey/by-email', (req, res) => {
     console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
 });
 
-// New endpoint for email recovery link generation
+// Enhanced endpoint for email recovery link generation
 router.post('/generate-recovery-link', async (req, res) => {
     const { username } = req.body;
     
-    if (!username || !users[username]) {
-        return res.status(400).json({ message: 'Usuario no encontrado' });
+    if (!username) {
+        return res.status(400).json({ message: 'Se requiere un correo electrónico' });
     }
     
-    // Generate a unique token for recovery
-    const recoveryToken = crypto.randomBytes(32).toString('hex');
-    
-    // Build the recovery URL - use the hostname from the request or default to localhost:3000
-    const baseUrl = req.get('origin') || `http://${req.hostname}:3000`;
-    const recoveryUrl = `${baseUrl}/recovery?token=${recoveryToken}&email=${encodeURIComponent(username)}`;
-    
-    console.log(`Generated recovery link for ${username}: ${recoveryUrl}`);
-    
-    // Create email content
-    const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #1976D2;">Recupera tu cuenta</h2>
-            </div>
-            <p>Hola,</p>
-            <p>Recibimos una solicitud para recuperar tu cuenta. Haz clic en el siguiente enlace para restablecer tu contraseña o crear una nueva llave de acceso:</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${recoveryUrl}" style="background-color: #1976D2; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Recuperar cuenta</a>
-            </div>
-            <p>O copia y pega este enlace en tu navegador:</p>
-            <p style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; word-break: break-all;">${recoveryUrl}</p>
-            <p>Si no solicitaste esta recuperación, puedes ignorar este correo.</p>
-            <p>Este enlace expirará en 24 horas por motivos de seguridad.</p>
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #757575; font-size: 12px;">
-                <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-            </div>
-        </div>
-    `;
-    
-    // Plain text version for email clients that don't support HTML
-    const emailText = `
-        Recupera tu cuenta
+    try {
+        // Check if user exists but don't reveal this information in response
+        const userExists = !!users[username];
         
-        Hola,
+        // Generate a unique token for recovery that expires in 24 hours
+        const recoveryToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
         
-        Recibimos una solicitud para recuperar tu cuenta. Visita el siguiente enlace para restablecer tu contraseña o crear una nueva llave de acceso:
+        // Store the token for verification later (if user exists)
+        if (userExists) {
+            if (!users[username].recoveryTokens) {
+                users[username].recoveryTokens = [];
+            }
+            
+            // Remove any expired tokens
+            users[username].recoveryTokens = users[username].recoveryTokens.filter(
+                token => token.expiry > Date.now()
+            );
+            
+            // Add new token
+            users[username].recoveryTokens.push({
+                token: recoveryToken,
+                expiry: tokenExpiry
+            });
+            
+            console.log(`[RECOVERY] Generated token for ${username}, expires: ${new Date(tokenExpiry).toISOString()}`);
+        }
         
-        ${recoveryUrl}
+        // Build the recovery URL - use the hostname from the request or default to localhost:3000
+        const baseUrl = req.get('origin') || `http://${req.hostname}:3000`;
+        const recoveryUrl = `${baseUrl}/recovery?token=${recoveryToken}&email=${encodeURIComponent(username)}`;
         
-        Si no solicitaste esta recuperación, puedes ignorar este correo.
+        // Send the email (only if user exists, but don't reveal this in response)
+        let emailResult = { success: true };
+        if (userExists) {
+            // Use the new specialized recovery email function
+            emailResult = await sendRecoveryEmail({
+                to: username,
+                recoveryUrl: recoveryUrl
+            });
+            
+            if (emailResult.success) {
+                console.log(`[RECOVERY] Email sent successfully to ${username}`);
+            } else {
+                console.error(`[RECOVERY] Failed to send email to ${username}:`, emailResult.error);
+            }
+        }
         
-        Este enlace expirará en 24 horas por motivos de seguridad.
+        // Always return success to prevent user enumeration attacks
+        res.status(200).json({ 
+            success: true, 
+            message: 'Si la dirección existe en nuestro sistema, recibirás un correo con instrucciones para recuperar tu cuenta.',
+            // For development only - should be removed in production
+            devInfo: {
+                userExists,
+                recoveryUrl: userExists ? recoveryUrl : null,
+                previewUrl: emailResult.previewUrl || null
+            }
+        });
         
-        Este es un correo automático, por favor no respondas a este mensaje.
-    `;
-    
-    // Send the email using our email service
-    const emailResult = await sendEmail({
-        to: username,
-        subject: 'Recuperación de cuenta - PassTheKey',
-        text: emailText,
-        html: emailHtml
-    });
-    
-    res.status(200).json({ 
-        success: true, 
-        message: 'Enlace de recuperación enviado con éxito',
-        recoveryUrl: recoveryUrl,
-        previewUrl: emailResult.previewUrl || null
-    });
+    } catch (error) {
+        console.error('[RECOVERY] Error generating recovery link:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al procesar la solicitud. Inténtalo de nuevo más tarde.' 
+        });
+    }
 });
+
 
 // Endpoint for OTP verification
 router.post('/passkey/verify-otp', (req, res) => {

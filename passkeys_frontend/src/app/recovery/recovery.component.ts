@@ -315,7 +315,7 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       }).toPromise();
       
       if (!checkResponse || !checkResponse.exists) {
-        this.successMessage = `Se ha enviado un enlace de recuperación a ${this.username}`;
+        this.successMessage = `Se ha enviado un enlace de recuperación a ${this.username}, verifica el Spam si no lo ves en la bandeja de entrada`;
         this.hideSuccess();
         return;
       }
