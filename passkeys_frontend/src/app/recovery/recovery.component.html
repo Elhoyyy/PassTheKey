@@ -41,10 +41,28 @@
 
     <!-- Nueva pantalla de verificación OTP -->
     <div *ngIf="stage === 'otp-verification'">
-      <div class="input-group">
+      
+      <div class="info-message">
+        <i class="bi bi-info-circle"></i>
+        <p *ngIf="hasPassword && hasPasskey">
+          Tu cuenta tiene contraseña y llaves de acceso.
+          Puedes verificar tu identidad con el código de verificación o usar una de tus llaves de acceso.
+        </p>
+        <p *ngIf="hasPassword && !hasPasskey">
+          Tu cuenta solo tiene contraseña con verificación en dos pasos.
+          Debes verificar tu identidad con el código de verificación.
+        </p>
+        <p *ngIf="!hasPassword && hasPasskey">
+          Tu cuenta solo tiene llaves de acceso.
+          Debes verificar tu identidad usando una de tus llaves de acceso registradas.
+        </p>
+      </div>
+      
+      <div class="input-group" *ngIf="hasPassword">
         <i class="bi bi-shield-lock"></i>
         <input 
           type="text" 
+          
           [(ngModel)]="otpCode" 
           name="otpCode" 
           placeholder="Código de verificación" 
@@ -52,7 +70,7 @@
           autocomplete="one-time-code" />
       </div>
 
-      <div class="otp-description">
+      <div class="otp-description" *ngIf="hasPassword">
         <p>Introduce el código de verificación de 6 dígitos.</p>
         <p>Este código cambia cada 30 segundos. <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
         
@@ -62,7 +80,7 @@
         </div>
       </div>
 
-      <div class="dialog-footer"> 
+      <div class="dialog-footer" *ngIf="hasPassword"> 
         <button 
           class="btn btn-secondary" 
           (click)="cancelOtpVerification()"
@@ -80,9 +98,9 @@
         </button>
       </div>
 
-      <!-- New passkey button -->
-      <div class="alternative-auth-container">
-        <div class="option-separator">
+      <!-- New passkey button - Only show if user has passkeys -->
+      <div class="alternative-auth-container" *ngIf="hasPasskey">
+        <div class="option-separator" *ngIf="hasPassword">
           <span>o</span>
         </div>
         <button 

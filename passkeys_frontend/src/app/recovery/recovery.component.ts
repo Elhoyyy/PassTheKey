@@ -28,7 +28,9 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   newPassword: string = '';
   confirmPassword: string = '';
   passwordCreationDate: string = 'Unknown'; // Date when password was last changed
-
+  hasPassword: boolean = false; // Flag to indicate if the user has a password
+  hasPasskey: boolean = false; // Flag to indicate if the user has passkeys registered
+  
   // Add these properties for passkey naming dialog
   showPasskeyNameDialog: boolean = false;
   passkeyName: string = '';
@@ -103,33 +105,62 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       const checkResponse = await this.http.post<{ exists: boolean }>('/auth/check-user', { 
         username: this.username
       }).toPromise();
-      
+
       if (!checkResponse || !checkResponse.exists) {
         this.errorMessage = "Usuario no encontrado";
         this.hideError();
         return;
       }
       
-      // Request OTP verification
-      const response = await this.http.post<{
-        res: boolean,
-        demoToken?: string,
-        expirySeconds?: number
-      }>('/auth/asign-otp', {
+      // Check if the user has a password - make a server-side request instead of relying on localStorage
+      const passwordCheckResponse = await this.http.post<{ hasPassword: boolean }>('/auth/check-user-password', {
         username: this.username
       }).toPromise();
       
-      if (response && response.res) {
-        // Store demo token and expiry for convenience during development
-        this.demoOtpCode = response.demoToken || '';
-        this.expirySeconds = response.expirySeconds || 30;
-        this.startExpiryTimer();
+      if (passwordCheckResponse) {
+        this.hasPassword = passwordCheckResponse.hasPassword;
         
-        // Move to OTP verification stage
-        this.stage = 'otp-verification';
-      } else {
-        throw new Error('No se pudo iniciar la verificación OTP');
       }
+      
+      //Check if the user has passkeys registered
+      const checkPasskeyResponse = await this.http.post<{ hasPasskey: boolean }>('/auth/check-user-passkey', { 
+        username: this.username
+      }).toPromise();
+      
+      if (checkPasskeyResponse) {
+        this.hasPasskey = checkPasskeyResponse.hasPasskey;
+      }
+      
+      // If user only has passkeys (no password), go straight to OTP verification screen
+      if (this.hasPasskey && !this.hasPassword) {
+        this.stage = 'otp-verification';
+        return;
+      }
+
+      // Only request OTP if the user has a password
+      if (this.hasPassword) {
+        // Request OTP verification
+        const response = await this.http.post<{
+          res: boolean,
+          demoToken?: string,
+          expirySeconds?: number
+        }>('/auth/asign-otp', {
+          username: this.username
+        }).toPromise();
+        
+        if (response && response.res) {
+          // Store demo token and expiry for convenience during development
+          this.demoOtpCode = response.demoToken || '';
+          this.expirySeconds = response.expirySeconds || 30;
+          this.startExpiryTimer();
+        } else {
+          throw new Error('No se pudo iniciar la verificación OTP');
+        }
+      }
+      
+      // Always move to OTP verification stage, the UI will adapt based on hasPassword and hasPasskey flags
+      this.stage = 'otp-verification';
+      
     } catch (error: any) {
       console.error('Error inicializando verificación OTP:', error);
       this.errorMessage = error.error?.message || error.message || 'Error en la verificación';

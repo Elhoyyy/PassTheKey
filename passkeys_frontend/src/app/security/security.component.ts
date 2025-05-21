@@ -33,6 +33,7 @@ export class SecurityComponent implements OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null; // Mensaje de éxito para mostrar al usuario
   isLoading: boolean = false; // Comprobar si hay algo cargando para activar el spinner. 
+  isLoadingName: boolean = false; // Comprobar si hay algo cargando para activar el spinner.
   showPasskeyRecommendation: boolean = false; // Flag to control the passkey recommendation
   showAddDeviceButton: boolean = true; // Flag to control the visibility of the add device button
 
@@ -479,10 +480,10 @@ export class SecurityComponent implements OnInit {
     if (hasPassword && passkeysCount > 1) {
       // Has password and multiple passkeys: 100%
       this.securityScore = 100;
-    } else if (hasPassword && passkeysCount === 1) {
+    } else if ((hasPassword && passkeysCount === 1)  || (!hasPassword && passkeysCount > 1)) {
       // Has password and one passkey: 75%
       this.securityScore = 75;
-    } else if (!hasPassword && passkeysCount >= 1) {
+    } else if (!hasPassword && passkeysCount == 1) {
       // Has passkey(s) but no password: 50%
       this.securityScore = 50;
     } else if (hasPassword && passkeysCount === 0) {
@@ -511,7 +512,7 @@ export class SecurityComponent implements OnInit {
   }
 
   async updateDeviceName(index: number, newName: string) {
-    this.isLoading = true;
+    this.isLoadingName = true;
     this.errorMessage = null;
 
     try {
@@ -531,7 +532,7 @@ export class SecurityComponent implements OnInit {
       this.hideError();
     }
     finally {
-      this.isLoading = false;
+      this.isLoadingName = false;
     }
   }
   
@@ -725,7 +726,6 @@ export class SecurityComponent implements OnInit {
   }
 
   async deleteDevice(index: number) {
-    this.isLoading = true;
     try {
         const response = await this.http.post<boolean>('/passkey/registro/passkey/delete', { 
             username: this.username,
@@ -750,6 +750,8 @@ export class SecurityComponent implements OnInit {
             
             // Update UI state after deletion
             this.updatePasskeyUIState();
+            this.successMessage = 'Dispositivo eliminado correctamente';
+            this.hideSuccess();
         }
     } catch (error: any) {
       if (error.status === 400 || error.status === 409 || error.status === 401) {
@@ -758,13 +760,13 @@ export class SecurityComponent implements OnInit {
       } 
       this.hideError();
     }
-    finally {
-        this.isLoading = false;
-    }
   }
 
   async hideError(){
     setTimeout(()=> this.errorMessage=null, 3000);
+  }
+  async hideSuccess(){
+    setTimeout(()=> this.successMessage=null, 3000);
   }
   // Utility methods for converting between ArrayBuffer and Base64URL
   private bufferToBase64URL(buffer: ArrayBuffer): string {
@@ -850,5 +852,17 @@ export class SecurityComponent implements OnInit {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+  }
+
+  // Add a new property for the passkey info modal
+  showPasskeyInfo: boolean = false;
+
+  // Add these new methods for controlling the passkey info modal
+  showPasskeyInfoModal() {
+    this.showPasskeyInfo = true;
+  }
+  
+  hidePasskeyInfoModal() {
+    this.showPasskeyInfo = false;
   }
 }

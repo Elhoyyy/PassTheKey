@@ -27,6 +27,131 @@
                 </div>
               </div>
               
+              <!-- Passkeys Management Section -->
+              <div class="section mt-4">
+                <div class="section-header">
+                  <i class="bi bi-fingerprint"></i>
+                  <h5 class="section-title">Administración de llaves de acceso </h5>
+                  <!-- Add info icon -->
+                  <i class="bi bi-info-circle info-icon" (click)="showPasskeyInfoModal()"></i>
+                </div>
+                
+                <!-- Passkey recommendation message -->
+                <div *ngIf="showPasskeyRecommendation" class="alert alert-info mt-2 passkey-recommendation">
+                  <div class="recommendation-header">
+                    <i class="bi bi-shield-lock"></i>
+                    <strong>Mejora tu seguridad</strong>
+                  </div>
+                  <p>Actualmente no dispones de ninguna Llave de Acceso.</p>
+                  <p>Añadir una  mejorará notablemente la seguridad.</p>
+                  <button class="btn btn-primary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? ' Añadiendo...' : 'Añade Una!' }}
+                  </button>
+                </div>
+                
+                <!-- Recovery passkey recommendation message - only show when exactly 1 passkey exists -->
+                <div *ngIf="devices.length === 1 && !hasPassword" class="alert alert-warning mt-2 recovery-recommendation">
+                  <div class="recommendation-header">
+                    <i class="bi bi-key"></i>
+                    <strong>Asegura el acceso a tu cuenta</strong>
+                  </div>
+                  <p>Te recomendamos registrar una segunda en otro dispositivo.</p>
+                  <p>Así podrás recuperar tu cuenta incluso si pierdes tu dispositivo actual.</p>
+                  <button class="btn btn-secondary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? ' Añadiendo...' : 'Añadir llave de backup' }}
+                  </button>
+                </div>
+                
+                <div class="passkey-info mt-4" *ngIf="devices.length > 0">
+                  <div class="passkey-info-header">
+                    <i class="bi bi-shield-lock"></i>
+                    <h3>Llaves de Acceso Registradas:</h3>
+                  </div>
+                <div class="device-list-container">
+                  <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center" 
+                        *ngFor="let device of devices; let i = index"
+                        [ngClass]="{'last-used-device': i === lastUsedDeviceIndex}">
+                      <div class="device-info">
+                        <div class="device-icon" [ngClass]="{'last-used-icon': i === lastUsedDeviceIndex}">
+                          <i class="bi bi-laptop"></i>
+                        </div>
+                        <!-- Show input field when editing this device -->
+                        <div class="device-details">
+                          <span class="device-name" *ngIf="editingDeviceIndex !== i">
+                            {{ device.name }}
+                            <span class="last-used-badge" *ngIf="i === lastUsedDeviceIndex">Dispositivo actual </span>
+                          </span>
+                          <div *ngIf="editingDeviceIndex === i" class="edit-name-form">
+                            <input type="text" class="form-control device-edit-input" [(ngModel)]="newDeviceName">
+                            <div class="edit-buttons mt-2">
+                              <button class="btn btn-primary me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoadingName">
+                                <span *ngIf="isLoadingName" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Guardar
+                              </button>
+                              <button class="btn btn-secondary" (click)="cancelEditingDevice()">Cancelar</button>
+                            </div>
+                          </div>
+                          <div class="device-dates">
+                            <small class="text-muted">Creado: {{ device.creationDate }}</small>
+                            <small class="text-muted">Último uso: {{ device.lastUsed | date:'dd/MM/yyyy HH:mm' }}</small>
+                            <small class="text-muted device-agent" *ngIf="device.userAgent">Dispositivo: {{ formatUserAgent(device.userAgent) }}</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="device-actions">
+                        <!-- Edit button - only show when not currently editing this device -->
+                        <button class="btn btn-sm btn-outline-primary me-2" *ngIf="editingDeviceIndex !== i" (click)="startEditingDevice(i)">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <!-- Delete button - only show when not editing -->
+                        <button class="btn btn-sm btn-danger" *ngIf="editingDeviceIndex !== i" (click)="deleteDevice(i)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                </div>
+                <!-- Improved Passkey naming dialog -->
+                <div *ngIf="showPasskeyNameDialog" class="passkey-name-dialog">
+                  <div class="dialog-content">
+                    <div class="dialog-header">
+                      <h5><i class="bi bi-shield-lock"></i>Nombre tu Llave de Acceso:</h5>
+                    </div>
+                    <div class="dialog-body">
+                      <p>La llave de acceso te ayuda a iniciar sesión de forma rápida y segura sin contraseñas.</p>
+                      <div class="input-group">
+                        <input type="text" class="form-control" [(ngModel)]="newPasskeyName" placeholder="Enter a name for this passkey">
+                      </div>
+                    </div>
+                    <div class="dialog-footer">
+                      <button class="btn btn-secondary" (click)="cancelPasskeyName()">
+                        <i class="bi bi-x-circle"></i>Cancelar
+                      </button>
+                      <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!newPasskeyName.trim()">
+                        <i class="bi bi-check-circle"></i>Continuar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="passkey-action">
+                  <button class="btn btn-outline-primary px-4 add-passkey-btn" *ngIf="(showAddDeviceButton && hasPassword && devices.length >= 1) || (showAddDeviceButton && !hasPassword && devices.length > 1)" (click)="startPasskeyRegistration()" [disabled]="isLoading">
+                    <i *ngIf="!isLoading" class="bi bi-plus-circle"></i>
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? 'Añadiendo...' : 'Añade más Llaves De Acceso' }}
+                  </button>
+                  <div *ngIf="errorMessage" class="alert alert-danger mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage }}
+                  </div>
+                  <div *ngIf="successMessage" class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
+                  </div>
+                </div>
+              </div> 
               <!-- Password Change Section -->
               <div class="section">
                 <div class="section-header">
@@ -130,125 +255,7 @@
                   </div>
                 </div>
               </div>
-              
-              <!-- Passkeys Management Section -->
-              <div class="section mt-4">
-                <div class="section-header">
-                  <i class="bi bi-fingerprint"></i>
-                  <h5 class="section-title">Administración de contraseñas </h5>
-                </div>
-                
-                <!-- Passkey recommendation message -->
-                <div *ngIf="showPasskeyRecommendation" class="alert alert-info mt-2 passkey-recommendation">
-                  <div class="recommendation-header">
-                    <i class="bi bi-shield-lock"></i>
-                    <strong>Mejora tu seguridad</strong>
-                  </div>
-                  <p>Actualmente no dispones de ninguna Llave de Acceso.</p>
-                  <p>Añadir una  mejorará notablemente la seguridad.</p>
-                  <button class="btn btn-primary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
-                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    {{ isLoading ? ' Añadiendo...' : 'Añade Una!' }}
-                  </button>
-                </div>
-                
-                <!-- Recovery passkey recommendation message - only show when exactly 1 passkey exists -->
-                <div *ngIf="devices.length === 1" class="alert alert-warning mt-2 recovery-recommendation">
-                  <div class="recommendation-header">
-                    <i class="bi bi-key"></i>
-                    <strong>Asegura el acceso a tu cuenta</strong>
-                  </div>
-                  <p>¡Ya tienes una Llave de Acceso! Para mayor seguridad, te recomendamos registrar una segunda en otro dispositivo.</p>
-                  <p>Así podrás recuperar tu cuenta incluso si pierdes tu dispositivo actual.</p>
-                  <button class="btn btn-secondary mt-3 centered-btn" (click)="startPasskeyRegistration()" [disabled]="isLoading">
-                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    {{ isLoading ? ' Añadiendo...' : 'Añadir llave de backup' }}
-                  </button>
-                </div>
-                
-                <div class="device-list-container">
-                  <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center" 
-                        *ngFor="let device of devices; let i = index"
-                        [ngClass]="{'last-used-device': i === lastUsedDeviceIndex}">
-                      <div class="device-info">
-                        <div class="device-icon" [ngClass]="{'last-used-icon': i === lastUsedDeviceIndex}">
-                          <i class="bi bi-laptop"></i>
-                        </div>
-                        <!-- Show input field when editing this device -->
-                        <div class="device-details">
-                          <span class="device-name" *ngIf="editingDeviceIndex !== i">
-                            {{ device.name }}
-                            <span class="last-used-badge" *ngIf="i === lastUsedDeviceIndex">Dispositivo actual </span>
-                          </span>
-                          <div *ngIf="editingDeviceIndex === i" class="edit-name-form">
-                            <input type="text" class="form-control device-edit-input" [(ngModel)]="newDeviceName">
-                            <div class="edit-buttons mt-2">
-                              <button class="btn btn-primary me-2" (click)="updateDeviceName(i, newDeviceName)" [disabled]="isLoading">
-                                <span *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                Guardar
-                              </button>
-                              <button class="btn btn-secondary" (click)="cancelEditingDevice()">Cancelar</button>
-                            </div>
-                          </div>
-                          <div class="device-dates">
-                            <small class="text-muted">Creado: {{ device.creationDate }}</small>
-                            <small class="text-muted">Último uso: {{ device.lastUsed | date:'dd/MM/yyyy HH:mm' }}</small>
-                            <small class="text-muted device-agent" *ngIf="device.userAgent">Dispositivo: {{ formatUserAgent(device.userAgent) }}</small>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="device-actions">
-                        <!-- Edit button - only show when not currently editing this device -->
-                        <button class="btn btn-sm btn-outline-primary me-2" *ngIf="editingDeviceIndex !== i" (click)="startEditingDevice(i)">
-                          <i class="bi bi-pencil"></i>
-                        </button>
-                        <!-- Delete button - only show when not editing -->
-                        <button class="btn btn-sm btn-danger" *ngIf="editingDeviceIndex !== i" (click)="deleteDevice(i)">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div class="passkey-info mt-4" *ngIf="devices.length > 0">
-                  <div class="passkey-info-header">
-                    <i class="bi bi-info-circle"></i>
-                    <h6>Sobre Llaves de Acceso</h6>
-                  </div>
-                  <p>Estas ofrecen una seguridad mayor respecto a contraseñas tradicionales:</p>
-                  <ul class="benefits-list">
-                    <li><i class="bi bi-check2-circle"></i> No se pueden robar por phishing</li>
-                    <li><i class="bi bi-check2-circle"></i> Únicas para cada Web</li>
-                    <li><i class="bi bi-check2-circle"></i> Usan autenticación por biometría</li>
-                    <li><i class="bi bi-check2-circle"></i> Simplifican el proceso de inicio de sesión.</li>
-                  </ul>
-                </div>
-                
-                <!-- Improved Passkey naming dialog -->
-                <div *ngIf="showPasskeyNameDialog" class="passkey-name-dialog">
-                  <div class="dialog-content">
-                    <div class="dialog-header">
-                      <h5><i class="bi bi-shield-lock"></i>Nombre tu Llave de Acceso:</h5>
-                    </div>
-                    <div class="dialog-body">
-                      <p>La llave de acceso te ayuda a iniciar sesión de forma rápida y segura sin contraseñas.</p>
-                      <div class="input-group">
-                        <input type="text" class="form-control" [(ngModel)]="newPasskeyName" placeholder="Enter a name for this passkey">
-                      </div>
-                    </div>
-                    <div class="dialog-footer">
-                      <button class="btn btn-secondary" (click)="cancelPasskeyName()">
-                        <i class="bi bi-x-circle"></i>Cancelar
-                      </button>
-                      <button class="btn btn-primary" (click)="confirmPasskeyName()" [disabled]="!newPasskeyName.trim()">
-                        <i class="bi bi-check-circle"></i>Continuar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
               
               <!-- OTP verification dialog - now a modal overlay -->
               <div *ngIf="showOtpDialog" class="otp-dialog-overlay">
@@ -258,18 +265,7 @@
                     <p class="text-muted">Necesario para añadir una contraseña</p>
                   </div>
                   
-                  <div class="dialog-body">
-                    <div class="input-group">
-                      <i class="bi bi-shield-lock"></i>
-                      <input 
-                        type="text" 
-                        [(ngModel)]="otpCode" 
-                        name="otpCode" 
-                        placeholder="Código de verificación" 
-                        maxlength="6"
-                        autocomplete="one-time-code" />
-                    </div>
-        
+                  <div class="dialog-body">        
                     <div class="otp-description">
                       <p>Introduce el código de verificación de 6 dígitos. Necesitarás una app como <strong>Authy, 1-Password, Microsoft Authenticator...</strong></p>
                       <p>Este código cambia cada <strong>30 segundos.</strong> <span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
@@ -296,8 +292,18 @@
                       </div>
                     </div>
                   </div>
-      
+                  <div class="input-group">
+                    <i class="bi bi-shield-lock"></i>
+                    <input 
+                      type="text" 
+                      [(ngModel)]="otpCode" 
+                      name="otpCode" 
+                      placeholder="Código de verificación" 
+                      maxlength="6"
+                      autocomplete="one-time-code" />
+                  </div>
                   <div class="buttons-container">
+
                     <button 
                       class="btn-action btn-secondary" 
                       (click)="cancelOtp()"
@@ -313,6 +319,28 @@
                       <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
                       <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
                     </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Add the passkey info modal -->
+              <div *ngIf="showPasskeyInfo" class="passkey-info-modal">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <i class="bi bi-info-circle"></i>
+                    <h5>Sobre Llaves de Acceso</h5>
+                  </div>
+                  <div class="modal-body">
+                    <p>Estas ofrecen una seguridad mayor respecto a contraseñas tradicionales:</p>
+                    <ul class="benefits-list">
+                      <li><i class="bi bi-check2-circle"></i> No se pueden robar por phishing</li>
+                      <li><i class="bi bi-check2-circle"></i> Únicas para cada Web</li>
+                      <li><i class="bi bi-check2-circle"></i> Usan autenticación por biometría</li>
+                      <li><i class="bi bi-check2-circle"></i> Simplifican el proceso de inicio de sesión.</li>
+                    </ul>
+                  </div>
+                  <div class="dialog-footer">
+                    <button class="btn btn-primary" (click)="hidePasskeyInfoModal()">Entendido</button>
                   </div>
                 </div>
               </div>

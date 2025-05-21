@@ -307,8 +307,24 @@ router.post('/check-user', (req, res) => {
     console.log(`[CHECK] User exists: ${exists}`);
     
     res.status(200).json({ exists });
-}
-);
+});
+
+// New endpoint to check if user has a password
+router.post('/check-user-password', (req, res) => {
+    const { username } = req.body;
+    console.log(`[CHECK] Checking if user ${username} has a password`);
+    
+    if (!username) { 
+        return res.status(400).json({ message: 'Usuario requerido' });
+    }
+    
+    const exists = !!users[username];
+    const hasPassword = exists && !!users[username].password;
+    
+    console.log(`[CHECK] User exists: ${exists}, has password: ${hasPassword}`);
+    
+    res.status(200).json({ exists, hasPassword });
+});
 
 // Endpoint for login with passkey by email
 router.post('/login/passkey/by-email', (req, res) => {

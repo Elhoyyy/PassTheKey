@@ -21,6 +21,7 @@ export class AuthComponent implements OnDestroy {
   errorMessage: string | null = null;
   showPasswordField: boolean = false;
   hasPasskey: boolean = false;
+  hasPassword: boolean = false;
   isAuthenticating: boolean = false;
   isAuthenticating_direct: boolean = false;
   devices: { name: string, creationDate: string, lastUsed: string }[] = [];
@@ -409,7 +410,16 @@ export class AuthComponent implements OnDestroy {
     } catch (error: any) {
       console.error(`[EMAIL-PASSKEY] Error:`, error);
       this.errorMessage = 'Error durante el inicio de sesión';
-      this.showLoginPasswordField = true;
+     // Check if the user has a password - make a server-side request instead of relying on localStorage
+      const passwordCheckResponse = await this.http.post<{ hasPassword: boolean }>('/auth/check-user-password', {
+        username: this.username
+      }).toPromise();
+      
+      if (passwordCheckResponse) {
+        this.hasPassword = passwordCheckResponse.hasPassword;
+        this.showLoginPasswordField = this.hasPassword;
+      }
+      
       this.hideError();
     } finally {
       this.isAuthenticating = false;

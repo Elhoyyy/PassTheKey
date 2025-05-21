@@ -673,3 +673,27 @@ body {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.info-message {
+  background-color: #e7f3ff;
+  border-left: 4px solid #2196F3;
+  padding: 12px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.info-message i {
+  color: #2196F3;
+  font-size: 1.1rem;
+  margin-top: 2px;
+}
+
+.info-message p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.4;
+}
