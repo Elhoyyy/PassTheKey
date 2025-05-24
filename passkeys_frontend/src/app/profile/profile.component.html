@@ -22,7 +22,7 @@
               </div>
               
               <div class="account-actions">
-                <button class="action-btn">
+                <button class="action-btn" (click)="openTransferModal()">
                   <i class="bi bi-send"></i>
                   Transferir
                 </button>
@@ -119,5 +119,153 @@
       </div>
     </div>
   </div>           
+</div>
+
+<!-- Transfer Modal - Updated design -->
+<div class="modal-backdrop" *ngIf="showTransferModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi" 
+             [ngClass]="{
+               'bi-send': transferStep === 'form',
+               'bi-shield-lock': transferStep === 'verification',
+               'bi-check-circle': transferStep === 'success',
+               'bi-exclamation-circle': transferStep === 'error'
+             }"></i> 
+          <span *ngIf="transferStep === 'form'">Nueva Transferencia</span>
+          <span *ngIf="transferStep === 'verification'">Verificación de Seguridad</span>
+          <span *ngIf="transferStep === 'success'">Transferencia Exitosa</span>
+          <span *ngIf="transferStep === 'error'">Error en la Transferencia</span>
+        </h5>
+        <button type="button" class="btn-close" (click)="closeTransferModal()" *ngIf="transferStep !== 'verification'">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Transfer Form Step -->
+        <div *ngIf="transferStep === 'form'">
+          <div class="mb-3">
+            <label for="phoneNumber" class="form-label">Número de Teléfono del Destinatario</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-phone"></i></span>
+              <input type="text" class="form-control" id="phoneNumber" [(ngModel)]="phoneNumber" 
+                placeholder="Ej: 612345678" maxlength="9">
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="amount" class="form-label">Cantidad a Transferir (€)</label>
+            <div class="input-group">
+              <span class="input-group-text">€</span>
+              <input type="number" class="form-control" id="amount" [(ngModel)]="transferAmount" 
+                placeholder="Ej: 100" min="1">
+            </div>
+          </div>
+          
+          <div class="alert alert-danger" *ngIf="transferErrorMessage">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            {{ transferErrorMessage }}
+          </div>
+          
+          <div class="transfer-summary">
+            <small class="text-muted">La transferencia se realizará desde tu cuenta principal.</small>
+            <div class="d-flex justify-content-between">
+              <span>Comisión:</span>
+              <span class="fw-bold">€0.00</span>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <span>Tiempo estimado:</span>
+              <span class="fw-bold">Inmediato</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Verification Step -->
+        <div *ngIf="transferStep === 'verification'" class="text-center py-3">
+          <div class="verification-animation">
+            <i class="bi bi-shield-lock"></i>
+          </div>
+          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">Verificando con tu llave de acceso</h5>
+          <p class="text-muted mb-4">Por favor, verifica la operación utilizando tu llave de acceso...</p>
+          <div class="spinner-border text-primary mt-2" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </div>
+        
+        <!-- Success Step -->
+        <div *ngIf="transferStep === 'success'" class="text-center py-3">
+          <div class="success-animation">
+            <i class="bi bi-check-circle"></i>
+          </div>
+          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">¡Transferencia Realizada!</h5>
+          <div class="transfer-details">
+            <div class="row mb-2">
+              <div class="col-5 text-start text-muted">Destinatario:</div>
+              <div class="col-7 text-end fw-bold">+34 {{ phoneNumber }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-5 text-start text-muted">Cantidad:</div>
+              <div class="col-7 text-end fw-bold">€{{ transferAmount.toFixed(2) }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-5 text-start text-muted">Fecha:</div>
+              <div class="col-7 text-end">{{ today | date:'dd/MM/yyyy' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-5 text-start text-muted">ID Operación:</div>
+              <div class="col-7 text-end">TR-{{ randomTransferId }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Error Step -->
+        <div *ngIf="transferStep === 'error'" class="text-center py-3">
+          <div class="error-animation">
+            <i class="bi bi-exclamation-circle"></i>
+          </div>
+          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">No se pudo completar la transferencia</h5>
+          <p class="text-danger">{{ transferErrorMessage }}</p>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <!-- Form Step Buttons -->
+        <div *ngIf="transferStep === 'form'" class="w-100">
+          <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary" (click)="closeTransferModal()">
+              <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" (click)="initiateTransfer()">
+              Continuar <i class="bi bi-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Success Step Buttons -->
+        <div *ngIf="transferStep === 'success'" class="w-100">
+          <div class="d-flex justify-content-center">
+            <button type="button" class="btn btn-primary" (click)="closeTransferModal()">
+              <i class="bi bi-check-circle"></i> Finalizar
+            </button>
+          </div>
+        </div>
+        
+        <!-- Error Step Buttons -->
+        <div *ngIf="transferStep === 'error'" class="w-100">
+          <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary" (click)="closeTransferModal()">
+              <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" (click)="transferStep = 'form'">
+              <i class="bi bi-arrow-counterclockwise"></i> Intentar de nuevo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 </body>
