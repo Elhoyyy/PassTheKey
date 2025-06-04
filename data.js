@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 let users = {};//creamos un objeto para almacenar usuarios
 let challenges = {};//creamos un objeto para almacenar desafios
-const expectedOrigin = ['http://localhost:3000', 'https://teaching-modify-buyers-tri.trycloudflare.com'];//origen esperado
+const expectedOrigin = ['http://localhost:3000', 'https://passthekey.martinord.eu'];//origen esperado
 
 
 /*getNewChallenge: Genera un string único aleatorio como desafío.*/
