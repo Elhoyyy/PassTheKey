@@ -24,7 +24,7 @@
               <div class="account-actions">
                 <button class="action-btn" (click)="openTransferModal()">
                   <i class="bi bi-send"></i>
-                  Transferir
+                  Hacer Bizum
                 </button>
                 <button class="action-btn">
                   <i class="bi bi-cash-stack"></i>
@@ -134,10 +134,10 @@
                'bi-check-circle': transferStep === 'success',
                'bi-exclamation-circle': transferStep === 'error'
              }"></i> 
-          <span *ngIf="transferStep === 'form'">Nueva Transferencia</span>
+          <span *ngIf="transferStep === 'form'">Nuevo Bizum</span>
           <span *ngIf="transferStep === 'verification'">Verificación de Seguridad</span>
-          <span *ngIf="transferStep === 'success'">Transferencia Exitosa</span>
-          <span *ngIf="transferStep === 'error'">Error en la Transferencia</span>
+          <span *ngIf="transferStep === 'success'">Bizum Enviado</span>
+          <span *ngIf="transferStep === 'error'">Error en el Bizum</span>
         </h5>
         <button type="button" class="btn-close" (click)="closeTransferModal()" *ngIf="transferStep !== 'verification'">
           <i class="bi bi-x"></i>
@@ -171,7 +171,7 @@
           </div>
           
           <div class="transfer-summary">
-            <small class="text-muted">La transferencia se realizará desde tu cuenta principal.</small>
+            <small class="text-muted">El Bizum se realizará desde tu cuenta principal.</small>
             <div class="d-flex justify-content-between">
               <span>Comisión:</span>
               <span class="fw-bold">€0.00</span>
@@ -200,7 +200,7 @@
           <div class="success-animation">
             <i class="bi bi-check-circle"></i>
           </div>
-          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">¡Transferencia Realizada!</h5>
+          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">¡Bizum Realizado!</h5>
           <div class="transfer-details">
             <div class="row mb-2">
               <div class="col-5 text-start text-muted">Destinatario:</div>
@@ -226,7 +226,7 @@
           <div class="error-animation">
             <i class="bi bi-exclamation-circle"></i>
           </div>
-          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">No se pudo completar la transferencia</h5>
+          <h5 class="mb-3" style="font-weight: 600; color: #2c3e50;">No se pudo completar el Bizum</h5>
           <p class="text-danger">{{ transferErrorMessage }}</p>
         </div>
       </div>
