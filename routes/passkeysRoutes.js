@@ -18,7 +18,15 @@ const allowedDomains = [
   'lavabit.com',
   'mailfence.com',
   'hushmail.com',
-  'email.com'
+  'email.com',
+  'udc.es',
+  'gmail.es',
+  'hotmail.es',
+  'outlook.es',
+  'yahoo.es',
+  'icloud.es',
+  'protonmail.com',
+
 ];
 // Configure otplib
 authenticator.options = {
