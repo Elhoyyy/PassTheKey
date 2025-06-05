@@ -213,10 +213,75 @@ a, p{
   color: #2196F3;
   text-decoration: none;
   font-size: 0.9em;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  position: relative;
+  display: inline-block;
+  padding: 2px 4px;
 }
 
 .links-container a:hover {
-  text-decoration: underline;
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.links-container a::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  background-color: #0d6efd;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.links-container a:hover::after {
+  transform: scaleX(1);
+}
+
+.links-container .link-button {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: inline-block;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-family: inherit;
+  text-align: center;
+  margin: 5px auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.links-container .link-button:hover {
+  color: white;
+  background-color: #2196F3;
+  border-color: #2196F3;
+  text-decoration: none;
+  box-shadow: 0 3px 6px rgba(33, 150, 243, 0.2);
+  transform: translateY(-2px);
+}
+
+.links-container .link-button::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  background-color: transparent;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.links-container .link-button:hover::after {
+  transform: scaleX(0);
 }
 
 /* Estilos para el toggle de contraseña/passkey */
