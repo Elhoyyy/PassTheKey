@@ -1484,11 +1484,3 @@ body {
     align-self: flex-end;
   }
 }
-
-/* Ensure card has same width as profile component */
-.col-md-7 .card {
-  width: 700px !important;
-  max-width: 700px !important;
-  box-sizing: border-box !important;
-  padding: 30px !important;
-}
