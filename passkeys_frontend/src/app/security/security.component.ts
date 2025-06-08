@@ -82,6 +82,10 @@ export class SecurityComponent implements OnInit {
   newPasskeyName: string = '';
   detectedDeviceName: string = '';
 
+  // Add property for deletion confirmation dialog
+  showDeleteConfirmDialog: boolean = false;
+  deviceToDeleteIndex: number = -1;
+
   // Añadir variable para almacenar credencial temporal
   tempCredential: any = null;
   // Variable para opciones de creación de credenciales
@@ -736,6 +740,17 @@ export class SecurityComponent implements OnInit {
   }
 
   async deleteDevice(index: number) {
+    // Show confirmation dialog instead of deleting immediately
+    this.deviceToDeleteIndex = index;
+    this.showDeleteConfirmDialog = true;
+  }
+
+  // New method to confirm deletion
+  async confirmDeleteDevice() {
+    const index = this.deviceToDeleteIndex;
+    this.showDeleteConfirmDialog = false;
+    this.deviceToDeleteIndex = -1;
+    
     try {
         const response = await this.http.post<boolean>('/passkey/registro/passkey/delete', { 
             username: this.username,
@@ -770,6 +785,12 @@ export class SecurityComponent implements OnInit {
       } 
       this.hideError();
     }
+  }
+  
+  // Method to cancel deletion
+  cancelDeleteDevice() {
+    this.showDeleteConfirmDialog = false;
+    this.deviceToDeleteIndex = -1;
   }
 
   async hideError(){
