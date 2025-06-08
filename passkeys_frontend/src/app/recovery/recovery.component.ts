@@ -23,8 +23,8 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null; // Message to show to the user
   isProcessing: boolean = false;
-  // Update the stage type to include otp-verification
-  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' = 'initial'; // Removed OTP verification stage
+  // Update the stage type to include all verification methods
+  stage: 'initial' | 'otp-verification' | 'reset-options' | 'password-reset' | 'setup-totp' = 'initial';
   newPassword: string = '';
   confirmPassword: string = '';
   passwordCreationDate: string = 'Unknown'; // Date when password was last changed
@@ -60,6 +60,18 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   // Add new property for passkey verification
   isVerifyingPasskey: boolean = false;
   
+  // Propiedades para verificación con código de recuperación
+  recoveryCode: string = '';
+  isVerifyingRecoveryCode: boolean = false;
+  
+  // Add properties for TOTP setup
+  qrCodeUrl: string = '';
+  otpSecret: string = '';
+  copied: boolean = false; // For copy feedback
+  
+  // Add a temporary property to store password for login after TOTP verification
+  tempPasswordForLogin: string = '';
+  
   constructor(
     private http: HttpClient, 
     private router: Router,
@@ -88,6 +100,9 @@ export class RecoveryComponent implements OnDestroy, OnInit {
         this.requestOtpVerification();
       }
     });
+    
+    // Eliminar el código de prueba temporal que mostraba directamente la pantalla de recovery-code
+    // para permitir el flujo normal a través de otp-verification
   }
   
   // New method to request OTP verification
@@ -629,8 +644,6 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       return;
     }
     
-    
-    
     this.isProcessing = true;
     this.errorMessage = null;
     
@@ -643,54 +656,108 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       }).toPromise();
       
       if (response && response.passwordCreationDate) {
-        // Auto login after successful password reset
+        // Save password creation date
         this.savePasswordCreationDate(response.passwordCreationDate);
-        const loginResponse = await this.http.post<{ res: boolean, requireOtp: boolean, userProfile?: any }>('/auth/login/password', { 
-          username: this.username, 
-          password: this.newPassword,
-          recov: true  // Use the recov flag to indicate this is from recovery flow
-        }).toPromise();
         
-        if (loginResponse && loginResponse.res) {
-          this.appComponent.isLoggedIn = true;
-          this.profileService.setProfile(loginResponse.userProfile);
-          this.router.navigate(['/security'], {
-            state: { userProfile: loginResponse.userProfile }
-          });
-        }
+        // Save the password for later use in auto-login
+        this.tempPasswordForLogin = this.newPassword;
+        
+        // Instead of auto-login, now generate a new TOTP setup
+        await this.generateTotpQrCode();
+        
+        // Clear password fields
+        this.newPassword = '';
+        this.confirmPassword = '';
+        
+        // Move to TOTP setup stage
+        this.stage = 'setup-totp';
+        this.successMessage = 'Contraseña restablecida con éxito! Por favor configura la autenticación de dos factores.';
+        setTimeout(() => {
+          this.successMessage = null;
+        }, 5000);
       } else {
         this.errorMessage = "No se pudo restablecer la contraseña";
         this.hideError();
       }
-      this.successMessage = 'Contraseña restablecida con éxito!';
-      this.newPassword = '';
-      this.confirmPassword = '';
-      // Keep success message visible for 3 seconds
-      setTimeout(() => {
-        this.successMessage = null;
-      }, 3000);
 
     } catch (error: any) {
       console.error('Error restableciendo la contraseña:', error);
       this.errorMessage = error.error?.message || error.message || 'Error restableciendo la contraseña';
       this.hideError();
-      setTimeout(() => {
-        this.errorMessage = null;}, 3000);
     } finally {
       this.isProcessing = false;
     }
   }
 
-    // Add this method to handle input changes
-  onPasswordInput() {
-    this.evaluatePasswordStrength();
+  // Method to verify TOTP setup
+  async verifyTotpSetup() {
+    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+      this.errorMessage = "Por favor, ingresa un código de verificación válido de 6 dígitos";
+      this.hideError();
+      return;
+    }
+
+    this.isVerifyingOtp = true;
+    this.errorMessage = null;
+
+    try {
+      const response = await this.http.post<{ success: boolean }>('/passkey/verify-otp', {
+        username: this.username,
+        otpCode: this.otpCode
+      }).toPromise();
+
+      if (response && response.success) {
+        // Clear the timer
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
+        // Auto login after successful TOTP setup - use the saved temporary password
+        const loginResponse = await this.http.post<{ res: boolean, requireOtp: boolean, userProfile?: any }>('/auth/login/password', { 
+          username: this.username, 
+          password: this.tempPasswordForLogin,  // Use saved password instead of the cleared one
+          recov: true  // Use the recov flag to indicate this is from recovery flow
+        }).toPromise();
+        
+        if (loginResponse && loginResponse.res) {
+          // Clear the temporary password for security
+          this.tempPasswordForLogin = '';
+          
+          this.appComponent.isLoggedIn = true;
+          this.profileService.setProfile(loginResponse.userProfile);
+          this.router.navigate(['/security'], {
+            state: { userProfile: loginResponse.userProfile }
+          });
+        } else {
+          this.errorMessage = 'Error al iniciar sesión automáticamente. Por favor, inicia sesión manualmente.';
+          this.hideError();
+          setTimeout(() => {
+            this.router.navigate(['/auth']);
+          }, 2000);
+        }
+      } else {
+        throw new Error('Código de verificación incorrecto');
+      }
+    } catch (error: any) {
+      console.error('Error en la verificación TOTP:', error);
+      this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      this.hideError();
+    } finally {
+      this.isVerifyingOtp = false;
+    }
   }
-  
+
+  // Also update the cancelAndGoBack method to clear temporary password
   cancelAndGoBack() {
     if (this.stage === 'reset-options') {
       this.stage = 'initial';
     } else if (this.stage === 'password-reset') {
       this.stage = 'reset-options';
+    } else if (this.stage === 'setup-totp') {
+      // Clear the temporary password for security
+      this.tempPasswordForLogin = '';
+      // If canceling TOTP setup, redirect to login
+      this.router.navigate(['/auth']);
     }
   }
   
@@ -830,5 +897,57 @@ export class RecoveryComponent implements OnDestroy, OnInit {
     } finally {
       this.isVerifyingPasskey = false;
     }
+  }
+
+  // Add method to generate TOTP QR code
+  async generateTotpQrCode() {
+    try {
+      const response = await this.http.post<{
+        success: boolean,
+        qrCodeUrl: string,
+        secret: string,
+        currentToken: string,
+        expirySeconds: number
+      }>('/passkey/generate-totp-qr', {
+        username: this.username
+      }).toPromise();
+      
+      if (response && response.success) {
+        this.qrCodeUrl = response.qrCodeUrl;
+        this.otpSecret = response.secret;
+        this.demoOtpCode = response.currentToken;
+        this.expirySeconds = response.expirySeconds;
+        
+        // Update the timer
+        this.startExpiryTimer();
+      }
+    } catch (error) {
+      console.error('Error generando código QR TOTP:', error);
+      this.errorMessage = 'Error generando código QR para verificación';
+      this.hideError();
+    }
+  }
+
+  // Add method to copy text to clipboard
+  copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showCopyFeedback();
+    }, (err) => {
+      console.error('No se pudo copiar al portapapeles: ', err);
+      this.errorMessage = 'No se pudo copiar al portapapeles';
+      this.hideError();
+    });
+  }
+
+  // Show feedback when copy is successful
+  showCopyFeedback() {
+    this.copied = true;
+    this.successMessage = 'Código copiado al portapapeles';
+    
+    // Reset copy state and success message after 2 seconds
+    setTimeout(() => {
+      this.copied = false;
+      this.successMessage = null;
+    }, 2000);
   }
 }

@@ -41,12 +41,14 @@ router.post('/login/passkey/direct', (req, res) => {
         if (userData.credential && userData.credential.length > 0) {
             userData.credential.forEach(cred => {
                 if (cred && cred.id) {
-                    allCredentials.push({
+                    const credentialData = {
                         type: 'public-key',
                         id: cred.id, 
-                        transports: ['internal', 'ble', 'nfc', 'usb'],
-                    });
+                        transports: cred.transports || ['internal', 'ble', 'nfc', 'usb', 'hybrid']
+                    };
+                    allCredentials.push(credentialData);
                     credentialsCount++;
+                    console.log(`[${operationType}] Added credential with transports: ${JSON.stringify(credentialData.transports)}`);
                 }
             });
         }
@@ -353,10 +355,12 @@ router.post('/login/passkey/by-email', (req, res) => {
     const userCredentials = users[username].credential.map(cred => ({
         type: 'public-key',
         id: cred.id,
-        transports: ['internal', 'ble', 'nfc', 'usb'],
+        // Asegurarse de incluir 'hybrid' para habilitar autenticación cross-device
+        transports: cred.transports || ['internal', 'ble', 'nfc', 'usb', 'hybrid'],
     }));
     
     console.log(`[EMAIL-PASSKEY] Found ${userCredentials.length} credentials for user ${username}`);
+    console.log(`[EMAIL-PASSKEY] Credential transports: ${JSON.stringify(userCredentials.map(c => c.transports))}`);
     
     res.json({
         challenge: challenge,

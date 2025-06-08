@@ -7,6 +7,7 @@
         stage === 'initial' ? 'Recuperación de Cuenta' : 
         stage === 'otp-verification' ? 'Verificación de código' :
         stage === 'reset-options' ? 'Opciones de Recuperación' :
+        stage === 'setup-totp' ? 'Configurar Verificación en Dos Pasos' :
         'Restablecimiento de Contraseña'
       }}
     </p>
@@ -39,7 +40,7 @@
       </div>
     </div>
 
-    <!-- Nueva pantalla de verificación OTP -->
+    <!-- Nueva pantalla de verificación OTP - MODIFICADO -->
     <div *ngIf="stage === 'otp-verification'">
       
       <div class="info-message">
@@ -62,7 +63,6 @@
         <i class="bi bi-shield-lock"></i>
         <input 
           type="text" 
-          
           [(ngModel)]="otpCode" 
           name="otpCode" 
           placeholder="Código de verificación" 
@@ -73,11 +73,6 @@
       <div class="otp-description" *ngIf="hasPassword">
         <p>Introduce el código de verificación de 6 dígitos.</p>
         <p><span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
-        
-        <!-- Demo token always displayed for convenience during development 
-        <div class="demo-token-container">
-          <p *ngIf="demoOtpCode"><small>Código actual: <span class="demo-token">{{demoOtpCode}}</span></small></p>
-        </div>-->
       </div>
 
       <div class="dialog-footer" *ngIf="hasPassword"> 
@@ -112,6 +107,7 @@
           <span>{{ isVerifyingPasskey ? 'Verificando...' : 'Usar una llave de acceso' }}</span>
         </button>
       </div>
+
     </div>
 
     <!-- Pantalla de opciones de recuperación -->
@@ -150,7 +146,6 @@
         </button>
       </div>
     </div>
-
     <!-- Pantalla de restablecimiento de contraseña -->
     <div *ngIf="stage === 'password-reset'">
       <div class="input-group">
@@ -247,6 +242,69 @@
             <i class="bi bi-check-circle"></i>Continuar
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Nueva pantalla para configurar TOTP después de restablecer contraseña -->
+    <div *ngIf="stage === 'setup-totp'">
+      <div class="info-message">
+        <i class="bi bi-info-circle"></i>
+        <p>Para completar el restablecimiento de tu contraseña, es necesario configurar la verificación en dos pasos.</p>
+      </div>
+
+      <div class="otp-description">
+        <p>Escanea este código QR con tu aplicación de autenticación o ingresa el código manualmente.</p>
+        <p><span *ngIf="expirySeconds">Siguiente código en: {{ expirySeconds }}s</span></p>
+        
+        <!-- QR code section -->
+        <div class="qr-setup">
+          <h4>Configurar Autenticador</h4>
+          <img *ngIf="qrCodeUrl" [src]="qrCodeUrl" alt="QR Code" class="qr-code">
+          
+          <div class="manual-setup">
+            <p>O ingresa manualmente este código:</p>
+            <div class="secret-code">
+              {{ otpSecret }}
+              <button class="copy-button" (click)="copyToClipboard(otpSecret)" title="Copiar al portapapeles">
+                <i class="bi" [ngClass]="copied ? 'bi-clipboard-check' : 'bi-clipboard'"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="setup-warning">
+            <p class="warning"><i class="bi bi-exclamation-triangle"></i> IMPORTANTE: Esta información solo se mostrará una vez.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <i class="bi bi-shield-lock"></i>
+        <input 
+          type="text" 
+          [(ngModel)]="otpCode" 
+          name="otpCode" 
+          placeholder="Código de verificación" 
+          maxlength="6"
+          autocomplete="one-time-code" />
+      </div>
+
+      <div class="buttons-container">
+        <button 
+          class="btn-auth" 
+          (click)="verifyTotpSetup()"
+          [disabled]="isVerifyingOtp">
+          <i *ngIf="!isVerifyingOtp" class="bi bi-check-circle"></i>
+          <span *ngIf="isVerifyingOtp" class="spinner-border spinner-border-sm"></span>
+          <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar y continuar' }}</span>
+        </button>
+        
+        <button 
+          class="btn-cancel" 
+          (click)="cancelAndGoBack()"
+          [disabled]="isVerifyingOtp">
+          <i class="bi bi-x-circle"></i>
+          <span>Cancelar</span>
+        </button>
       </div>
     </div>
 
