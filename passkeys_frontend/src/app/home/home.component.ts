@@ -20,34 +20,29 @@ export class HomeComponent implements OnInit {
   
   features: Feature[] = [
     {
-      iconClass: 'bi bi-arrow-left-right',
-      title: 'Transferencias Seguras',
-      description: 'Realiza transferencias nacionales e internacionales con la máxima seguridad y velocidad.'
+      iconClass: 'bi bi-key',
+      title: 'Autenticación sin Contraseñas',
+      description: 'Olvídate de las contraseñas tradicionales y accede de forma segura con passkeys.'
     },
     {
-      iconClass: 'bi bi-graph-up',
-      title: 'Inversiones',
-      description: 'Accede a nuestras herramientas de inversión y crece tu patrimonio con asesoría personalizada.'
+      iconClass: 'bi bi-shield-lock',
+      title: 'Protección Avanzada',
+      description: 'Asegura tus cuentas con el mayor nivel de protección contra accesos no autorizados.'
     },
     {
-      iconClass: 'bi bi-credit-card',
-      title: 'Tarjetas Digitales',
-      description: 'Gestiona tus tarjetas virtuales para compras online más seguras y controladas.'
+      iconClass: 'bi bi-shield-check',
+      title: 'Anti-Phishing',
+      description: 'Protección completa contra intentos de suplantación de identidad y sitios fraudulentos.'
     },
     {
-      iconClass: 'bi bi-piggy-bank',
-      title: 'Ahorro Inteligente',
-      description: 'Crea metas de ahorro y alcánzalas con nuestras herramientas de planificación financiera.'
-    },
-    {
-      iconClass: 'bi bi-phone',
-      title: 'Banca Móvil',
-      description: 'Accede a todos nuestros servicios desde cualquier dispositivo con nuestra app móvil.'
+      iconClass: 'bi bi-globe',
+      title: 'Compatible con Todo',
+      description: 'Funciona en los principales navegadores y sistemas operativos sin instalaciones adicionales.'
     },
     {
       iconClass: 'bi bi-fingerprint',
       title: 'Autenticación Biométrica',
-      description: 'Olvídate de las contraseñas complejas y utiliza tu huella o rostro para acceder.'
+      description: 'Utiliza tu huella digital, reconocimiento facial o PIN para una verificación rápida y segura.'
     }
   ]
 

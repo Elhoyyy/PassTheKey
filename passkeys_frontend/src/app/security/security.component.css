@@ -43,6 +43,10 @@ body {
   min-height: 200px;
   transition: none;
   overflow-y: visible;
+  width: 100%;
+  max-width: 100%; /* Changed to 100% to fill container */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .card:before, .card:after {
@@ -1293,6 +1297,7 @@ body {
 
   .col-md-7 {
     min-width: 100%;
+    max-width: 100%;
     padding: 0;
     margin: 0;
   }
@@ -1478,4 +1483,12 @@ body {
     margin-top: 5px;
     align-self: flex-end;
   }
+}
+
+/* Ensure card has same width as profile component */
+.col-md-7 .card {
+  width: 700px !important;
+  max-width: 700px !important;
+  box-sizing: border-box !important;
+  padding: 30px !important;
 }

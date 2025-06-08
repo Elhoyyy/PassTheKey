@@ -129,6 +129,8 @@ export class SecurityComponent implements OnInit {
 
     // Check if user has password and 2FA
     this.checkPasswordAndTwoFactorStatus();
+    
+
   }
 
   // Update UI state based on passkeys availability
