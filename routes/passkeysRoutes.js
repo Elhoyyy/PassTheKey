@@ -5,6 +5,7 @@ const { users, challenges, getNewChallenge, expectedOrigin } = require('../data'
 const SimpleWebAuthnServer = require('@simplewebauthn/server');
 const { authenticator } = require('otplib');
 const qrcode = require('qrcode'); // Add QR code library
+const crypto = require('crypto'); // Add crypto for recovery code generation
 
 // Array of allowed email domains
 const allowedDomains = [
@@ -126,7 +127,7 @@ router.post('/registro/passkey', (req, res) => {
         timeout: 60000,
         attestation: 'none',
         authenticatorSelection: {
-            userVerification: 'required',
+            userVerification: 'preferred',
             residentKey: 'preferred',
             requireResidentKey: false
         }
@@ -547,6 +548,53 @@ router.post('/verify-otp', (req, res) => {
     } catch (error) {
         console.error('[OTP-VERIFY] Error verifying TOTP:', error);
         return res.status(500).json({ message: 'Error al verificar el código TOTP' });
+    }
+});
+
+// Endpoint to generate recovery codes for a user
+router.post('/generate-recovery-codes', (req, res) => {
+    const { username } = req.body;
+    console.log(`[RECOVERY-CODES] Generating recovery codes for user: ${username}`);
+    
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Usuario requerido' });
+    }
+    
+    if (!users[username]) {
+        console.log('[RECOVERY-CODES] User not found');
+        return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+    }
+    
+    try {
+        // Generate 10 unique recovery codes
+        const recoveryCodes = [];
+        for (let i = 0; i < 10; i++) {
+            // Generate a random 8-character alphanumeric code
+            const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+            // Format as XXXX-XXXX for better readability
+            const formattedCode = `${code.substring(0, 4)}-${code.substring(4, 8)}`;
+            recoveryCodes.push(formattedCode);
+        }
+        
+        // Store recovery codes with creation timestamp
+        users[username].recoveryCodes = {
+            codes: recoveryCodes,
+            createdAt: new Date().toISOString(),
+            used: [] // Track which codes have been used
+        };
+        
+        console.log(`[RECOVERY-CODES] Generated ${recoveryCodes.length} recovery codes for ${username}`);
+        
+        res.status(200).json({
+            success: true,
+            recoveryCodes: recoveryCodes
+        });
+    } catch (error) {
+        console.error('[RECOVERY-CODES] Error generating recovery codes:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error generando códigos de recuperación'
+        });
     }
 });
 

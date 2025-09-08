@@ -572,104 +572,6 @@ input:checked + .slider:before {
   color: #ffc107;
 }
 
-/* Password toggle icon */
-.password-tugle {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.password-tugle:hover {
-  color: #2196F3;
-}
-
-/* Password Requirements */
-.password-requirements {
-  background-color: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin: 15px 0;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.password-requirements p {
-  margin-bottom: 10px;
-  font-size: 0.9rem;
-  color: #495057;
-}
-
-.password-requirements ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.requirement {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
-  font-size: 0.85rem;
-  color: #6c757d;
-  transition: color 0.3s ease;
-}
-
-.requirement i {
-  margin-right: 8px;
-  transition: all 0.3s ease;
-}
-
-.requirement.met {
-  color: #28a745;
-}
-
-.requirement.met i {
-  color: #28a745;
-  animation: pulse 0.5s ease-in-out;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-/* 2FA Information Dialog */
-.info-message {
-  background-color: #e7f5ff;
-  border-radius: 8px;
-  padding: 15px;
-  margin: 15px 0;
-  border-left: 4px solid #2196F3;
-}
-
-.info-message i {
-  color: #2196F3;
-  font-size: 1.2rem;
-  margin-right: 8px;
-}
-
-.info-message p {
-  color: #495057;
-  margin: 5px 0;
-  font-size: 0.9rem;
-  text-align: left;
-}
-
-.info-message ul {
-  margin: 8px 0 8px 25px;
-  padding: 0;
-}
-
-.info-message li {
-  font-size: 0.85rem;
-  margin-bottom: 4px;
-  color: #495057;
-}
-
 /* Responsive styles - improved for better mobile experience */
 @media (max-width: 768px) {
   .wrapper {
@@ -782,5 +684,164 @@ input:checked + .slider:before {
   
   .setup-warning .warning {
     font-size: 0.8rem;
+  }
+}
+
+/* Recovery Codes Dialog Styles */
+.recovery-dialog {
+  max-width: 500px;
+  width: 100%;
+}
+
+.warning-section {
+  margin-bottom: 20px;
+}
+
+.warning-banner {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.warning-banner i {
+  color: #f39c12;
+  font-size: 1.5rem;
+  margin-top: 2px;
+}
+
+.warning-banner p {
+  margin: 0;
+  color: #856404;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.warning-list li {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.warning-list li::before {
+  content: '•';
+  color: #f39c12;
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.recovery-codes-container {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #e9ecef;
+}
+
+.codes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.recovery-code {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.recovery-code:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-color: #2196F3;
+}
+
+.code-number {
+  color: #6c757d;
+  font-weight: bold;
+  min-width: 20px;
+}
+
+.code-value {
+  color: #2c3e50;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-outline {
+  background-color: white;
+  border: 1px solid #2196F3;
+  color: #2196F3;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: #2196F3;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-outline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+  color: #6c757d;
+}
+
+/* Responsive styles for recovery codes */
+@media (max-width: 600px) {
+  .codes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .btn-outline {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .recovery-dialog {
+    max-width: 95%;
+    margin: 10px;
   }
 }

@@ -202,6 +202,56 @@
           </div>
         </div>
         
+        <!-- Recovery Codes Dialog -->
+        <div *ngIf="showRecoveryCodes" class="passkey-name-dialog">
+          <div class="dialog-content recovery-dialog">
+            <div class="dialog-header">
+              <h5><i class="bi bi-shield-check"></i>Códigos de Recuperación</h5>
+            </div>
+            <div class="dialog-body">
+              <div class="warning-section">
+                <div class="warning-banner">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  <p><strong>¡IMPORTANTE!</strong> Estos códigos te permitirán acceder a tu cuenta si pierdes tu dispositivo de autenticación.</p>
+                </div>
+                <ul class="warning-list">
+                  <li>Cada código solo puede usarse una vez</li>
+                  <li>Guárdalos en un lugar seguro</li>
+                  <li>No los compartas con nadie</li>
+                  <li>Esta es la única vez que verás estos códigos</li>
+                </ul>
+              </div>
+              
+              <div class="recovery-codes-container">
+                <div class="codes-grid">
+                  <div *ngFor="let code of recoveryCodes; let i = index" class="recovery-code">
+                    <span class="code-number">{{i + 1}}.</span>
+                    <span class="code-value">{{code}}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="action-buttons">
+                <button class="btn btn-outline" (click)="copyRecoveryCodes()" [disabled]="recoveryCodesCopied">
+                  <i class="bi" [ngClass]="recoveryCodesCopied ? 'bi-clipboard-check' : 'bi-clipboard'"></i>
+                  {{ recoveryCodesCopied ? 'Copiados' : 'Copiar Códigos' }}
+                </button>
+                <button class="btn btn-outline" (click)="downloadRecoveryCodes()" [disabled]="recoveryCodesDownloaded">
+                  <i class="bi" [ngClass]="recoveryCodesDownloaded ? 'bi-download' : 'bi-download'"></i>
+                  {{ recoveryCodesDownloaded ? 'Descargados' : 'Descargar Códigos' }}
+                </button>
+              </div>
+            </div>
+            <div class="dialog-footer">
+              <button class="btn btn-primary" (click)="continueToProfile()" 
+                      [disabled]="!recoveryCodesCopied && !recoveryCodesDownloaded">
+                <i class="bi bi-arrow-right-circle"></i>
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <div *ngIf="errorMessage" class="error-message" >
         <i class="bi bi-exclamation-triangle"></i>
         {{ errorMessage }}

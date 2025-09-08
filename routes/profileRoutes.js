@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { users } = require('../data');
 
 // Update password route - For changing existing passwords
@@ -130,6 +131,81 @@ router.post('/update-device-name', async (req, res) => {
         message: 'Device name updated successfully',
         devices: users[username].devices 
     });
+});
+
+// Endpoint to regenerate recovery codes
+router.post('/regenerate-recovery-codes', async (req, res) => {
+    const { username } = req.body;
+    
+    console.log('Received regenerate recovery codes request for user:', username);
+    
+    try {
+        if (!users[username]) {
+            console.log('User not found:', username);
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Generate 10 new unique recovery codes
+        const recoveryCodes = [];
+        for (let i = 0; i < 10; i++) {
+            // Generate a random 8-character alphanumeric code
+            const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+            // Format as XXXX-XXXX for better readability
+            const formattedCode = `${code.substring(0, 4)}-${code.substring(4, 8)}`;
+            recoveryCodes.push(formattedCode);
+        }
+        
+        // Replace old recovery codes with new ones
+        users[username].recoveryCodes = {
+            codes: recoveryCodes,
+            createdAt: new Date().toISOString(),
+            used: [] // Reset used codes
+        };
+        
+        console.log(`Regenerated ${recoveryCodes.length} recovery codes for user:`, username);
+        
+        return res.status(200).json({ 
+            success: true,
+            message: 'Códigos de recuperación regenerados correctamente',
+            recoveryCodes: recoveryCodes
+        });
+    } catch (error) {
+        console.error('Error regenerating recovery codes:', error);
+        return res.status(500).json({ message: 'Error al regenerar los códigos de recuperación' });
+    }
+});
+
+// Endpoint to check recovery codes status
+router.post('/check-recovery-codes', async (req, res) => {
+    const { username } = req.body;
+    
+    console.log('Checking recovery codes status for user:', username);
+    
+    try {
+        if (!users[username]) {
+            console.log('User not found:', username);
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        const hasRecoveryCodes = !!(users[username].recoveryCodes && users[username].recoveryCodes.codes);
+        const usedCount = hasRecoveryCodes ? users[username].recoveryCodes.used.length : 0;
+        const totalCount = hasRecoveryCodes ? users[username].recoveryCodes.codes.length : 0;
+        const createdAt = hasRecoveryCodes ? users[username].recoveryCodes.createdAt : null;
+        
+        console.log(`Recovery codes status for ${username}: ${usedCount}/${totalCount} used`);
+        
+        return res.status(200).json({ 
+            success: true,
+            hasRecoveryCodes,
+            usedCount,
+            totalCount,
+            availableCount: totalCount - usedCount,
+            createdAt
+        });
+    } catch (error) {
+        console.error('Error checking recovery codes status:', error);
+        return res.status(500).json({ message: 'Error al verificar el estado de los códigos de recuperación' });
+    }
 });
 
 function isValidPassword(password) {

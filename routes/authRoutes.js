@@ -490,4 +490,109 @@ router.post('/passkey/verify-otp', (req, res) => {
     console.log('=== END OTP VERIFICATION ===');
 });
 
+// Endpoint for recovery code validation
+router.post('/login/recovery-code', (req, res) => {
+    const { username, recoveryCode } = req.body;
+    console.log(`[RECOVERY-LOGIN] Attempting recovery login for user: ${username}`);
+    
+    if (!username || !recoveryCode) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Usuario y código de recuperación requeridos' 
+        });
+    }
+    
+    if (!users[username]) {
+        console.log('[RECOVERY-LOGIN] User not found');
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Usuario no encontrado' 
+        });
+    }
+    
+    if (!users[username].recoveryCodes || !users[username].recoveryCodes.codes) {
+        console.log('[RECOVERY-LOGIN] No recovery codes found for user');
+        return res.status(400).json({ 
+            success: false, 
+            message: 'No hay códigos de recuperación para este usuario' 
+        });
+    }
+    
+    const { codes, used } = users[username].recoveryCodes;
+    const codeIndex = codes.indexOf(recoveryCode.toUpperCase());
+    
+    if (codeIndex === -1) {
+        console.log('[RECOVERY-LOGIN] Invalid recovery code');
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Código de recuperación inválido' 
+        });
+    }
+    
+    if (used.includes(codeIndex)) {
+        console.log('[RECOVERY-LOGIN] Recovery code already used');
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Este código de recuperación ya ha sido utilizado' 
+        });
+    }
+    
+    // Mark the code as used
+    users[username].recoveryCodes.used.push(codeIndex);
+    
+    console.log(`[RECOVERY-LOGIN] Recovery code validated successfully for ${username}`);
+    
+    res.status(200).json({
+        success: true,
+        message: 'Código de recuperación válido',
+        userProfile: { username, ...users[username] }
+    });
+});
+
+// Also add endpoint for recovery code authentication in login flow
+router.post('/auth/login/with-recovery-code', (req, res) => {
+    const { recoveryCode } = req.body;
+    console.log(`[LOGIN-RECOVERY] Attempting login with recovery code`);
+    
+    if (!recoveryCode) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Código de recuperación requerido' 
+        });
+    }
+    
+    // Search for user by recovery code
+    let foundUser = null;
+    for (const [username, userData] of Object.entries(users)) {
+        if (userData.recoveryCodes && userData.recoveryCodes.codes) {
+            const { codes, used } = userData.recoveryCodes;
+            const codeIndex = codes.indexOf(recoveryCode.toUpperCase());
+            
+            if (codeIndex !== -1 && !used.includes(codeIndex)) {
+                foundUser = { username, codeIndex, userData };
+                break;
+            }
+        }
+    }
+    
+    if (!foundUser) {
+        console.log('[LOGIN-RECOVERY] Recovery code not found or already used');
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Código de recuperación inválido o ya utilizado' 
+        });
+    }
+    
+    // Mark the code as used
+    foundUser.userData.recoveryCodes.used.push(foundUser.codeIndex);
+    
+    console.log(`[LOGIN-RECOVERY] Recovery code validated successfully for ${foundUser.username}`);
+    
+    res.status(200).json({
+        success: true,
+        message: 'Acceso autorizado con código de recuperación',
+        userProfile: { username: foundUser.username, ...foundUser.userData }
+    });
+});
+
 module.exports = router;

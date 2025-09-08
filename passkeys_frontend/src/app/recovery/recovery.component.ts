@@ -63,6 +63,7 @@ export class RecoveryComponent implements OnDestroy, OnInit {
   // Propiedades para verificación con código de recuperación
   recoveryCode: string = '';
   isVerifyingRecoveryCode: boolean = false;
+  showRecoveryCodeInput: boolean = false;
   
   // Add properties for TOTP setup
   qrCodeUrl: string = '';
@@ -806,99 +807,6 @@ export class RecoveryComponent implements OnDestroy, OnInit {
     }
   }
 
-  // Add method to verify with passkey
-  async verifyWithPasskey() {
-    this.isVerifyingPasskey = true;
-    this.errorMessage = null;
-    
-    try {
-      // First check if user has passkeys
-      const checkResponse = await this.http.post<{ exists: boolean, hasPasskey: boolean }>('/auth/check-user-passkey', { 
-        username: this.username
-      }).toPromise();
-      
-      if (!checkResponse || !checkResponse.exists) {
-        throw new Error('Usuario no encontrado');
-      }
-      
-      if (!checkResponse.hasPasskey) {
-        throw new Error('No tienes llaves de acceso registradas. Por favor usa la verificación por código.');
-      }
-      
-      // Get passkey login options
-      const options = await this.http.post<PublicKeyCredentialRequestOptions>(
-        '/auth/login/passkey/by-email',
-        { username: this.username }
-      ).toPromise();
-      
-      console.log(`[RECOVERY-PASSKEY] Received options:`, options);
-      
-      if (!options || !options.allowCredentials || options.allowCredentials.length === 0) {
-        throw new Error('No hay llaves de acceso disponibles');
-      }
-      
-      // Convert challenge and credential IDs to ArrayBuffer
-      const publicKeyCredentialRequestOptions = this.processCredentialRequestOptions(options);
-      const getCredentialOptions: CredentialRequestOptions = {
-        publicKey: publicKeyCredentialRequestOptions
-      };
-      
-      // Prompt for passkey
-      const assertion = await navigator.credentials.get(getCredentialOptions) as PublicKeyCredential;
-      
-      // Convert response for server
-      const authData = {
-        id: assertion.id,
-        rawId: this.bufferToBase64URL(assertion.rawId),
-        response: {
-          authenticatorData: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).authenticatorData),
-          clientDataJSON: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).clientDataJSON),
-          signature: this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).signature),
-          userHandle: (assertion.response as AuthenticatorAssertionResponse).userHandle ? 
-            this.bufferToBase64URL((assertion.response as AuthenticatorAssertionResponse).userHandle as ArrayBuffer) : 
-            null
-        },
-        type: assertion.type
-      };
-      
-      // Verify passkey with server
-      const response = await this.http.post<{
-        res: boolean,
-        userProfile?: any
-      }>('/auth/login/passkey/fin', {
-        data: authData,
-        username: this.username,
-        isConditional: false
-      }).toPromise();
-      
-      if (response && response.res) {
-        console.log(`[RECOVERY-PASSKEY] Success:`, response);
-        
-        // Clear the TOTP timer
-        if (this.timerInterval) {
-          clearInterval(this.timerInterval);
-        }
-        
-        // Move to reset options stage
-        this.stage = 'reset-options';
-        this.successMessage = 'Verificación exitosa con llave de acceso. Puedes continuar con la recuperación de tu cuenta.';
-        setTimeout(() => this.successMessage = null, 3000);
-      } else {
-        throw new Error('Error en la verificación con llave de acceso');
-      }
-    } catch (error: any) {
-      console.error(`[RECOVERY-PASSKEY] Error:`, error);
-      if (error.name === 'NotAllowedError') {
-        this.errorMessage = 'Operación cancelada por el usuario';
-      } else {
-        this.errorMessage = error.error?.message || error.message || 'Error en la verificación con llave de acceso';
-      }
-      this.hideError();
-    } finally {
-      this.isVerifyingPasskey = false;
-    }
-  }
-
   // Add method to generate TOTP QR code
   async generateTotpQrCode() {
     try {
@@ -949,5 +857,62 @@ export class RecoveryComponent implements OnDestroy, OnInit {
       this.copied = false;
       this.successMessage = null;
     }, 2000);
+  }
+
+  // Add method to verify recovery code
+  async verifyRecoveryCode() {
+    if (!this.recoveryCode || this.recoveryCode.trim().length === 0) {
+      this.errorMessage = "Por favor, ingresa un código de recuperación válido";
+      this.hideError();
+      return;
+    }
+
+    // Validate format XXXX-XXXX
+    const codeFormat = /^[A-F0-9]{4}-[A-F0-9]{4}$/i;
+    if (!codeFormat.test(this.recoveryCode.trim())) {
+      this.errorMessage = "El formato del código debe ser XXXX-XXXX";
+      this.hideError();
+      return;
+    }
+
+    this.isVerifyingRecoveryCode = true;
+    this.errorMessage = null;
+
+    try {
+      const response = await this.http.post<{ 
+        success: boolean, 
+        message?: string,
+        userProfile?: any 
+      }>('/auth/login/recovery-code', {
+        username: this.username,
+        recoveryCode: this.recoveryCode.trim().toUpperCase()
+      }).toPromise();
+
+      if (response && response.success) {
+        console.log('[RECOVERY-CODE] Success:', response);
+        
+        // Clear the TOTP timer if running
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+        
+        // Move to reset options stage
+        this.stage = 'reset-options';
+        this.successMessage = 'Código de recuperación válido. Puedes continuar con la recuperación de tu cuenta.';
+        setTimeout(() => this.successMessage = null, 3000);
+        
+        // Clear the recovery code input
+        this.recoveryCode = '';
+        this.showRecoveryCodeInput = false;
+      } else {
+        throw new Error(response?.message || 'Código de recuperación inválido');
+      }
+    } catch (error: any) {
+      console.error('[RECOVERY-CODE] Error:', error);
+      this.errorMessage = error.error?.message || error.message || 'Código de recuperación inválido o ya utilizado';
+      this.hideError();
+    } finally {
+      this.isVerifyingRecoveryCode = false;
+    }
   }
 }

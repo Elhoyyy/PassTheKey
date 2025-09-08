@@ -57,6 +57,12 @@ export class RegisterComponent {
   
   // Add this property to track copy state
   copied: boolean = false;
+  
+  // Recovery codes properties
+  showRecoveryCodes: boolean = false;
+  recoveryCodes: string[] = [];
+  recoveryCodesCopied: boolean = false;
+  recoveryCodesDownloaded: boolean = false;
 
   constructor(
     private http: HttpClient, 
@@ -261,9 +267,10 @@ export class RegisterComponent {
         this.authService.login();
         this.appComponent.isLoggedIn = true;
         this.profileService.setProfile(response.userProfile);
-        this.router.navigate(['/profile'], { 
-          state: { userProfile: response.userProfile }
-        });
+        this.pendingUserProfile = response.userProfile;
+        
+        // Generate recovery codes after successful passkey registration
+        await this.generateRecoveryCodes();
       }
     } catch (error: any) {
       if (error.status === 400 || error.status === 409 || error.status === 401) {
@@ -437,7 +444,10 @@ export class RegisterComponent {
         };
         
         this.profileService.setProfile(userProfile);
-        this.router.navigate(['/profile'], { state: { userProfile } });
+        this.pendingUserProfile = userProfile;
+        
+        // Generate recovery codes after successful password registration
+        await this.generateRecoveryCodes();
       } else {
         throw new Error('Código de verificación incorrecto');
       }
@@ -567,5 +577,80 @@ export class RegisterComponent {
       this.copied = false;
       this.successMessage = null;
     }, 2000);
+  }
+
+  // Generate recovery codes after successful registration
+  async generateRecoveryCodes() {
+    try {
+      const response = await this.http.post<{ success: boolean, recoveryCodes: string[] }>(
+        '/passkey/generate-recovery-codes',
+        { username: this.username }
+      ).toPromise();
+      
+      if (response && response.success) {
+        this.recoveryCodes = response.recoveryCodes;
+        this.showRecoveryCodes = true;
+      }
+    } catch (error: any) {
+      console.error('Error generating recovery codes:', error);
+      this.errorMessage = 'Error generando códigos de recuperación';
+      this.hideError();
+    }
+  }
+
+  // Copy recovery codes to clipboard
+  copyRecoveryCodes() {
+    const codesText = this.recoveryCodes.join('\n');
+    navigator.clipboard.writeText(codesText).then(() => {
+      this.recoveryCodesCopied = true;
+      this.successMessage = 'Códigos de recuperación copiados al portapapeles';
+      setTimeout(() => {
+        this.successMessage = null;
+      }, 3000);
+    }, (err) => {
+      console.error('Error copying to clipboard:', err);
+      this.errorMessage = 'Error copiando códigos al portapapeles';
+      this.hideError();
+    });
+  }
+
+  // Download recovery codes as text file
+  downloadRecoveryCodes() {
+    const codesText = `Códigos de Recuperación - ${this.username}\n` +
+                      `Generados el: ${new Date().toLocaleString('es-ES')}\n\n` +
+                      `IMPORTANTE: Guarda estos códigos en un lugar seguro.\n` +
+                      `Cada código solo puede usarse una vez.\n\n` +
+                      this.recoveryCodes.join('\n') + '\n\n' +
+                      'PassTheKey - Sistema de Autenticación Segura';
+    
+    const blob = new Blob([codesText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `recovery-codes-${this.username}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    this.recoveryCodesDownloaded = true;
+    this.successMessage = 'Códigos de recuperación descargados';
+    setTimeout(() => {
+      this.successMessage = null;
+    }, 3000);
+  }
+
+  // Continue to profile after handling recovery codes
+  continueToProfile() {
+    if (!this.recoveryCodesCopied && !this.recoveryCodesDownloaded) {
+      this.errorMessage = 'Por favor, copia o descarga los códigos de recuperación antes de continuar';
+      this.hideError();
+      return;
+    }
+    
+    this.showRecoveryCodes = false;
+    this.router.navigate(['/profile'], { 
+      state: { userProfile: this.pendingUserProfile }
+    });
   }
 }
