@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const { users, challenges, getNewChallenge, expectedOrigin } = require('../data');
+const { users, challenges, getNewChallenge, expectedOrigin, dbUtils } = require('../data');
 const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
 const { authenticator } = require('otplib'); // Import otplib authenticator
 const crypto = require('crypto');
@@ -14,7 +14,7 @@ authenticator.options = {
 };
 
 // Endpoint unificado para direct passkey login y autofill
-router.post('/login/passkey/direct', (req, res) => {
+router.post('/login/passkey/direct', async (req, res) => {
     const rpId = req.hostname;
     const isConditional = req.body.isConditional === true;
     const operationType = isConditional ? 'AUTOFILL' : 'DIRECT-LOGIN';
@@ -33,48 +33,72 @@ router.post('/login/passkey/direct', (req, res) => {
     const challenge = challenges['_direct'];
     console.log(`[${operationType}] Using challenge: ${challenge}`);
 
-    // Recopilar todas las credenciales registradas de todos los usuarios
-    const allCredentials = [];
-    let credentialsCount = 0;
+    try {
+        // Recopilar todas las credenciales registradas de todos los usuarios desde la base de datos
+        const allCredentials = [];
+        let credentialsCount = 0;
 
-    for (const [username, userData] of Object.entries(users)) {
-        if (userData.credential && userData.credential.length > 0) {
-            userData.credential.forEach(cred => {
-                if (cred && cred.id) {
-                    const credentialData = {
-                        type: 'public-key',
-                        id: cred.id, 
-                        transports: cred.transports || ['internal', 'ble', 'nfc', 'usb', 'hybrid']
-                    };
-                    allCredentials.push(credentialData);
-                    credentialsCount++;
-                    console.log(`[${operationType}] Added credential with transports: ${JSON.stringify(credentialData.transports)}`);
+        // Obtener todas las credenciales de la base de datos
+        const { db } = require('../database');
+        const credentials = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM credentials', (err, rows) => {
+                if (err) reject(err);
+                else {
+                    // Parse JSON fields like getUserCredentials does
+                    const parsedCredentials = (rows || []).map(row => ({
+                        ...row,
+                        transports: (() => {
+                            try {
+                                return row.transports ? JSON.parse(row.transports) : ['internal', 'ble', 'nfc', 'usb', 'hybrid'];
+                            } catch (parseError) {
+                                console.error('Error parsing transports for credential:', row.credentialId, parseError);
+                                return ['internal']; // Default fallback
+                            }
+                        })()
+                    }));
+                    resolve(parsedCredentials);
                 }
             });
+        });
+
+        credentials.forEach(cred => {
+            if (cred && cred.credentialId) {
+                const credentialData = {
+                    type: 'public-key',
+                    id: cred.credentialId, 
+                    transports: Array.isArray(cred.transports) ? cred.transports : ['internal', 'ble', 'nfc', 'usb', 'hybrid']
+                };
+                allCredentials.push(credentialData);
+                credentialsCount++;
+                console.log(`[${operationType}] Added credential with transports: ${JSON.stringify(credentialData.transports)}`);
+            }
+        });
+
+        console.log(`[${operationType}] Found ${credentialsCount} total credentials`);
+        
+        if (credentialsCount === 0) {
+            console.log(`[${operationType}] No credentials found, cannot offer authentication`);
+            return res.status(400).json({ message: 'No hay llaves de acceso registradas' });
         }
+
+        // Registrar una muestra de las credenciales
+        console.log(`[${operationType}] Credential samples:`, allCredentials.slice(0, 2));
+
+        // Ajustar timeout según el tipo
+        const timeout = isConditional ? 120000 : 60000;
+
+        res.json({
+            challenge: challenge,
+            rpId: rpId,
+            allowCredentials: allCredentials,
+            timeout: timeout,
+            userVerification: 'preferred'
+        });
+        console.log(`=== END ${operationType} CHALLENGE GENERATION ===`);
+    } catch (error) {
+        console.error(`[${operationType}] Error loading credentials:`, error);
+        res.status(500).json({ message: 'Error interno del servidor' });
     }
-
-    console.log(`[${operationType}] Found ${credentialsCount} total credentials`);
-    
-    if (credentialsCount === 0) {
-        console.log(`[${operationType}] No credentials found, cannot offer authentication`);
-        return res.status(400).json({ message: 'No hay llaves de acceso registradas' });
-    }
-
-    // Registrar una muestra de las credenciales
-    console.log(`[${operationType}] Credential samples:`, allCredentials.slice(0, 2));
-
-    // Ajustar timeout según el tipo
-    const timeout = isConditional ? 120000 : 60000;
-
-    res.json({
-        challenge: challenge,
-        rpId: rpId,
-        allowCredentials: allCredentials,
-        timeout: timeout,
-        userVerification: 'preferred'
-    });
-    console.log(`=== END ${operationType} CHALLENGE GENERATION ===`);
 });
 
 // Simplificar y mejorar la verificación para manejar ambos tipos de autenticación
@@ -108,47 +132,49 @@ router.post('/login/passkey/fin', async (req, res) => {
                 return res.status(400).json({ message: 'Sesión inválida o expirada' });
             }
 
-            // Buscar el usuario que posee esta credencial
-            let found = false;
-            for (const [user, userData] of Object.entries(users)) {
-                if (userData.credential) {
-                    const credentialIndex = userData.credential.findIndex(cred => cred.id === credentialId);
-                    if (credentialIndex !== -1) {
-                        username = user;
-                        found = true;
-                        console.log(`[LOGIN-VERIFY] Found matching user: ${username}`);
-                        break;
-                    }
-                }
-            }
-
-            if (!found) {
+            // Buscar el usuario que posee esta credencial en la base de datos
+            const credential = await new Promise((resolve, reject) => {
+                const { db } = require('../database');
+                db.get('SELECT username FROM credentials WHERE credentialId = ?', [credentialId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (credential) {
+                username = credential.username;
+                console.log(`[LOGIN-VERIFY] Found matching user: ${username}`);
+            } else {
                 console.log('[LOGIN-VERIFY] No matching credential found');
                 return res.status(400).json({ message: 'Credencial no encontrada' });
             }
         }
 
-        if (!users[username]) {
+        // Verificar que el usuario existe en la base de datos
+        const user = await dbUtils.getUser(username);
+        if (!user) {
             console.log(`[LOGIN-VERIFY] User ${username} not found`);
             return res.status(400).json({ message: 'Usuario no encontrado' });
         }
 
         console.log(`[LOGIN-VERIFY] Verifying login for user ${username}`);
         
-        // Encontrar el índice del dispositivo y la credencial
-        const deviceIndex = users[username].credential.findIndex(cred => 
-            cred.id === credentialId
-        );
+        // Obtener credenciales del usuario desde la base de datos
+        const userCredentials = await dbUtils.getUserCredentials(username);
+        const matchingCredential = userCredentials.find(cred => cred.credentialId === credentialId);
         
-        console.log(`[LOGIN-VERIFY] Matching credential index:`, deviceIndex);
-        
-        if (deviceIndex === -1) {
+        if (!matchingCredential) {
             console.log(`[LOGIN-VERIFY] No matching credential found`);
             throw new Error('Dispositivo no encontrado');
         }
 
-        const device = users[username].devices[deviceIndex];
-        console.log(`[LOGIN-VERIFY] Found matching device:`, device.name);
+        // Obtener dispositivos del usuario
+        const userDevices = await dbUtils.getUserDevices(username);
+        const credentialIndex = userCredentials.findIndex(cred => cred.credentialId === credentialId);
+        const device = userDevices.find(d => d.credentialIndex === credentialIndex);
+        
+        console.log(`[LOGIN-VERIFY] Matching credential index: ${credentialIndex}`);
+        console.log(`[LOGIN-VERIFY] Found matching device: ${device ? device.name : 'Unknown'}`);
 
         // Usar el challenge adecuado para la verificación
         if (!expectedChallenge) {
@@ -156,10 +182,44 @@ router.post('/login/passkey/fin', async (req, res) => {
             return res.status(400).json({ message: 'Sesión inválida o expirada' });
         }
 
+        // Preparar credencial para la verificación
+        console.log(`[LOGIN-VERIFY] Raw publicKey from DB:`, typeof matchingCredential.publicKey, matchingCredential.publicKey?.slice?.(0, 50));
+        
+        let publicKey;
+        try {
+            if (typeof matchingCredential.publicKey === 'string') {
+                // Check if it's base64 or comma-separated numbers
+                if (matchingCredential.publicKey.includes(',')) {
+                    // Old format: comma-separated numbers
+                    console.log(`[LOGIN-VERIFY] Old format detected: comma-separated numbers`);
+                    const numbers = matchingCredential.publicKey.split(',').map(n => parseInt(n.trim()));
+                    publicKey = new Uint8Array(numbers);
+                } else {
+                    // New format: base64
+                    console.log(`[LOGIN-VERIFY] New format detected: base64`);
+                    publicKey = new Uint8Array(Buffer.from(matchingCredential.publicKey, 'base64'));
+                }
+            } else {
+                // Si ya es buffer o uint8array, usarlo directamente
+                publicKey = matchingCredential.publicKey;
+            }
+            console.log(`[LOGIN-VERIFY] Processed publicKey:`, typeof publicKey, publicKey?.constructor?.name, publicKey?.slice?.(0, 10));
+        } catch (error) {
+            console.error(`[LOGIN-VERIFY] Error processing publicKey:`, error);
+            throw new Error('Error procesando clave pública');
+        }
+        
+        const credentialForVerification = {
+            id: matchingCredential.credentialId,
+            publicKey: publicKey,
+            counter: matchingCredential.counter,
+            transports: matchingCredential.transports
+        };
+
         const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
             expectedChallenge: expectedChallenge,
             response: req.body.data,
-            credential: users[username].credential[deviceIndex],
+            credential: credentialForVerification,
             expectedRPID: rpId,
             expectedOrigin,
             requireUserVerification: false
@@ -169,17 +229,54 @@ router.post('/login/passkey/fin', async (req, res) => {
 
         if (verification.verified) {
             console.log(`[LOGIN-VERIFY] ✅ Authentication successful`);
-            // Actualizar lastUsed al momento actual
-            users[username].devices[deviceIndex].lastUsed = new Date().toISOString();
+            
+            // Actualizar contador de la credencial
+            await dbUtils.updateCredentialCounter(credentialId, verification.authenticationInfo.newCounter);
+            
+            // Actualizar lastUsed del dispositivo si existe
+            if (device) {
+                const deviceIndex = userDevices.indexOf(device);
+                await new Promise((resolve, reject) => {
+                    const { db } = require('../database');
+                    db.run('UPDATE devices SET lastUsed = ? WHERE id = ?', 
+                        [new Date().toISOString(), device.id], 
+                        (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                });
+            }
+            
+            // Obtener datos actualizados del usuario
+            const devices = await dbUtils.getUserDevices(username);
+            const credentials = await dbUtils.getUserCredentials(username);
+            const recoveryCodes = await dbUtils.getRecoveryCodes(username);
+            
+            const userProfile = {
+                username: user.username,
+                password: user.password,
+                passwordCreationDate: user.passwordCreationDate,
+                otpSecret: user.otpSecret,
+                isOtpVerified: user.isOtpVerified,
+                devices: devices.map(d => ({ name: d.name, creationDate: d.creationDate, lastUsed: d.lastUsed })),
+                credential: credentials.map(c => ({
+                    id: c.credentialId,
+                    publicKey: new Uint8Array(Buffer.from(c.publicKey, 'base64')),
+                    counter: c.counter,
+                    transports: typeof c.transports === 'string' ? JSON.parse(c.transports) : c.transports
+                })),
+                recoveryCodes: recoveryCodes.length > 0 ? {
+                    codes: recoveryCodes.filter(rc => !rc.isUsed).map(rc => rc.code),
+                    used: recoveryCodes.filter(rc => rc.isUsed).map(rc => rc.code),
+                    createdAt: recoveryCodes[0]?.createdAt
+                } : null,
+                lastUsedDevice: device ? device.name : 'Unknown'
+            };
             
             return res.status(200).send({
                 res: true,
                 redirectUrl: '/profile',
-                userProfile: { 
-                    username, 
-                    ...users[username],
-                    lastUsedDevice: device.name 
-                }
+                userProfile
             });
         }
 
@@ -196,14 +293,17 @@ router.post('/login/passkey/fin', async (req, res) => {
 });
 
 // Endpoint for password login with TOTP verification
-router.post('/login/password', (req, res) => {
+router.post('/login/password', async (req, res) => {
     let { username, password, recov } = req.body;
-    if (!users[username]) {
-        console.log('user not found');
-        return res.status(400).json({ message: 'Usuario no encontrado' });
-    }
     
-    bcrypt.compare(password, users[username].password, (err, result) => {
+    try {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            console.log('user not found');
+            return res.status(400).json({ message: 'Usuario no encontrado' });
+        }
+        
+        bcrypt.compare(password, user.password, async (err, result) => {
         if (err || !result) {
             console.log('incorrect password');
             return res.status(401).json({ message: 'Contraseña Incorrecta' });
@@ -216,23 +316,50 @@ router.post('/login/password', (req, res) => {
             console.log('REQUIRING OTP VERIFICATION')
             
             // Check if user has OTP secret; if not, generate one
-            if (!users[username].otpSecret) {
-                users[username].otpSecret = authenticator.generateSecret();
+            if (!user.otpSecret) {
+                const otpSecret = authenticator.generateSecret();
+                await dbUtils.updateUser(username, { otpSecret });
+                user.otpSecret = otpSecret;
                 console.log(`Generated new OTP secret for ${username}`);
             }
             
             // Generate current TOTP code using otplib
-            const currentToken = authenticator.generate(users[username].otpSecret);
+            const currentToken = authenticator.generate(user.otpSecret);
             
             // Calculate seconds until this token expires
             const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
             
             console.log(`Current TOTP for ${username}: ${currentToken} (expires in ${secondsRemaining}s)`);
             
+            // Get user related data
+            const devices = await dbUtils.getUserDevices(username);
+            const credentials = await dbUtils.getUserCredentials(username);
+            const recoveryCodes = await dbUtils.getRecoveryCodes(username);
+            
+            const userProfile = {
+                username: user.username,
+                password: user.password,
+                passwordCreationDate: user.passwordCreationDate,
+                otpSecret: user.otpSecret,
+                isOtpVerified: user.isOtpVerified,
+                devices: devices.map(d => ({ name: d.name, creationDate: d.creationDate, lastUsed: d.lastUsed })),
+                credential: credentials.map(c => ({
+                    id: c.credentialId,
+                    publicKey: new Uint8Array(Buffer.from(c.publicKey, 'base64')),
+                    counter: c.counter,
+                    transports: typeof c.transports === 'string' ? JSON.parse(c.transports) : c.transports
+                })),
+                recoveryCodes: recoveryCodes.length > 0 ? {
+                    codes: recoveryCodes.filter(rc => !rc.isUsed).map(rc => rc.code),
+                    used: recoveryCodes.filter(rc => rc.isUsed).map(rc => rc.code),
+                    createdAt: recoveryCodes[0]?.createdAt
+                } : null
+            };
+            
             res.status(200).send({
                 res: true,
                 requireOtp: true,
-                userProfile: { username, ...users[username] },
+                userProfile,
                 // For demo purposes, send the current token and expiry
                 demoToken: currentToken,
                 expirySeconds: secondsRemaining,
@@ -241,46 +368,82 @@ router.post('/login/password', (req, res) => {
         } else {
             console.log('NO OTP VERIFICATION REQUIRED - RECOVERY MODE');
             // Skip OTP verification for recovery flow
+            const devices = await dbUtils.getUserDevices(username);
+            const credentials = await dbUtils.getUserCredentials(username);
+            const recoveryCodes = await dbUtils.getRecoveryCodes(username);
+            
+            const userProfile = {
+                username: user.username,
+                password: user.password,
+                passwordCreationDate: user.passwordCreationDate,
+                otpSecret: user.otpSecret,
+                isOtpVerified: user.isOtpVerified,
+                devices: devices.map(d => ({ name: d.name, creationDate: d.creationDate, lastUsed: d.lastUsed })),
+                credential: credentials.map(c => ({
+                    id: c.credentialId,
+                    publicKey: new Uint8Array(Buffer.from(c.publicKey, 'base64')),
+                    counter: c.counter,
+                    transports: typeof c.transports === 'string' ? JSON.parse(c.transports) : c.transports
+                })),
+                recoveryCodes: recoveryCodes.length > 0 ? {
+                    codes: recoveryCodes.filter(rc => !rc.isUsed).map(rc => rc.code),
+                    used: recoveryCodes.filter(rc => rc.isUsed).map(rc => rc.code),
+                    createdAt: recoveryCodes[0]?.createdAt
+                } : null
+            };
+            
             res.status(200).send({
                 res: true,
                 requireOtp: false,
-                userProfile: { username, ...users[username] }
+                userProfile
             });
         }
-    });
+        });
+    } catch (error) {
+        console.error('Error in password login:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
 });
 
-router.post('/asign-otp', (req, res) => {
+router.post('/asign-otp', async (req, res) => {
     let { username } = req.body;
-    if (!users[username]) {
-        console.log('user not found');
-        return res.status(400).json({ message: 'Usuario no encontrado' });
+    
+    try {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            console.log('user not found');
+            return res.status(400).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Generate or reuse the OTP secret
+        if (!user.otpSecret) {
+            user.otpSecret = authenticator.generateSecret();
+            await dbUtils.updateUser(username, { otpSecret: user.otpSecret });
+            console.log(`Generated new OTP secret for ${username}`);
+        }
+        
+        // Generate current TOTP code and calculate expiry time
+        const currentToken = authenticator.generate(user.otpSecret);
+        const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+        
+        console.log(`Current TOTP for ${username}: ${currentToken} (expires in ${secondsRemaining}s)`);
+        
+        res.status(200).send({
+            res: true,
+            requireOtp: true,
+            userProfile: { username, ...user },
+            demoToken: currentToken,
+            expirySeconds: secondsRemaining,
+            needsQrSetup: true // Indicate that the user might need to set up QR code
+        });
+    } catch (error) {
+        console.error('Database error in asign-otp:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
     }
-    
-    // Generate or reuse the OTP secret
-    if (!users[username].otpSecret) {
-        users[username].otpSecret = authenticator.generateSecret();
-        console.log(`Generated new OTP secret for ${username}`);
-    }
-    
-    // Generate current TOTP code and calculate expiry time
-    const currentToken = authenticator.generate(users[username].otpSecret);
-    const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
-    
-    console.log(`Current TOTP for ${username}: ${currentToken} (expires in ${secondsRemaining}s)`);
-    
-    res.status(200).send({
-        res: true,
-        requireOtp: true,
-        userProfile: { username, ...users[username] },
-        demoToken: currentToken,
-        expirySeconds: secondsRemaining,
-        needsQrSetup: true // Indicate that the user might need to set up QR code
-    });
 });
 
 // Endpoint to check if user exists and has passkeys
-router.post('/check-user-passkey', (req, res) => {
+router.post('/check-user-passkey', async (req, res) => {
     const { username } = req.body;
     console.log(`[CHECK] Checking if user ${username} exists and has passkeys`);
     
@@ -288,15 +451,26 @@ router.post('/check-user-passkey', (req, res) => {
         return res.status(400).json({ message: 'Usuario requerido' });
     }
     
-    const exists = !!users[username];
-    const hasPasskey = exists && Array.isArray(users[username].credential) && users[username].credential.length > 0;
-    
-    console.log(`[CHECK] User exists: ${exists}, has passkey: ${hasPasskey}`);
-    
-    res.status(200).json({ exists, hasPasskey });
+    try {
+        const user = await dbUtils.getUser(username);
+        const exists = !!user;
+        
+        let hasPasskey = false;
+        if (exists) {
+            const credentials = await dbUtils.getUserCredentials(username);
+            hasPasskey = credentials.length > 0;
+        }
+        
+        console.log(`[CHECK] User exists: ${exists}, has passkey: ${hasPasskey}`);
+        
+        res.status(200).json({ exists, hasPasskey });
+    } catch (error) {
+        console.error('Error checking user passkey:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
 
-router.post('/check-user', (req, res) => {
+router.post('/check-user', async (req, res) => {
     const { username } = req.body;
     console.log(`[CHECK] Checking if user ${username} exists`);
     
@@ -304,15 +478,21 @@ router.post('/check-user', (req, res) => {
         return res.status(400).json({ message: 'Usuario requerido' });
     }
     
-    const exists = !!users[username];
-    
-    console.log(`[CHECK] User exists: ${exists}`);
-    
-    res.status(200).json({ exists });
+    try {
+        const user = await dbUtils.getUser(username);
+        const exists = !!user;
+        
+        console.log(`[CHECK] User exists: ${exists}`);
+        
+        res.status(200).json({ exists });
+    } catch (error) {
+        console.error('Error checking user:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
 
 // New endpoint to check if user has a password
-router.post('/check-user-password', (req, res) => {
+router.post('/check-user-password', async (req, res) => {
     const { username } = req.body;
     console.log(`[CHECK] Checking if user ${username} has a password`);
     
@@ -320,58 +500,73 @@ router.post('/check-user-password', (req, res) => {
         return res.status(400).json({ message: 'Usuario requerido' });
     }
     
-    const exists = !!users[username];
-    const hasPassword = exists && !!users[username].password;
-    
-    console.log(`[CHECK] User exists: ${exists}, has password: ${hasPassword}`);
-    
-    res.status(200).json({ exists, hasPassword });
+    try {
+        const user = await dbUtils.getUser(username);
+        const exists = !!user;
+        const hasPassword = exists && !!user.password;
+        
+        console.log(`[CHECK] User exists: ${exists}, has password: ${hasPassword}`);
+        
+        res.status(200).json({ exists, hasPassword });
+    } catch (error) {
+        console.error('[CHECK] Error checking user password:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
 });
 
 // Endpoint for login with passkey by email
-router.post('/login/passkey/by-email', (req, res) => {
+router.post('/login/passkey/by-email', async (req, res) => {
     const rpId = req.hostname;
     const { username } = req.body;
     
     console.log('=== START EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
     console.log(`[EMAIL-PASSKEY] User: ${username}`);
     
-    if (!username || !users[username]) {
-        console.log('[EMAIL-PASSKEY] User not found');
-        return res.status(400).json({ message: 'Usuario no encontrado' });
+    try {
+        // Verificar que el usuario existe en la base de datos
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            console.log('[EMAIL-PASSKEY] User not found');
+            return res.status(400).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Obtener credenciales del usuario desde la base de datos
+        const userCredentials = await dbUtils.getUserCredentials(username);
+        if (!userCredentials || userCredentials.length === 0) {
+            console.log('[EMAIL-PASSKEY] No passkeys for this user');
+            return res.status(400).json({ message: 'No hay passkeys registradas para este usuario' });
+        }
+        
+        // Generate a new challenge
+        let challenge = getNewChallenge();
+        console.log(`[EMAIL-PASSKEY] Generated challenge: ${challenge}`);
+        challenges[username] = challenge;
+        
+        // Collect all credentials for this user
+        const credentials = userCredentials.map(cred => ({
+            type: 'public-key',
+            id: cred.credentialId,
+            // Asegurarse de incluir 'hybrid' para habilitar autenticación cross-device
+            transports: cred.transports || ['internal', 'ble', 'nfc', 'usb', 'hybrid'],
+        }));
+        
+        console.log(`[EMAIL-PASSKEY] Found ${credentials.length} credentials for user ${username}`);
+        console.log(`[EMAIL-PASSKEY] Credential transports: ${JSON.stringify(credentials.map(c => c.transports))}`);
+        
+        res.json({
+            challenge: challenge,
+            rpId: rpId,
+            allowCredentials: credentials,
+            timeout: 60000,
+            userVerification: 'preferred'
+        });
+        
+        console.log(`[EMAIL-PASSKEY] ✅ Challenge generation complete`);
+        console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
+    } catch (error) {
+        console.error('[EMAIL-PASSKEY] Error:', error);
+        return res.status(500).json({ message: 'Error interno del servidor' });
     }
-    
-    if (!users[username].credential || users[username].credential.length === 0) {
-        console.log('[EMAIL-PASSKEY] No passkeys for this user');
-        return res.status(400).json({ message: 'No hay passkeys registradas para este usuario' });
-    }
-    
-    // Generate a new challenge
-    let challenge = getNewChallenge();
-    console.log(`[EMAIL-PASSKEY] Generated challenge: ${challenge}`);
-    challenges[username] = challenge;
-    
-    // Collect all credentials for this user
-    const userCredentials = users[username].credential.map(cred => ({
-        type: 'public-key',
-        id: cred.id,
-        // Asegurarse de incluir 'hybrid' para habilitar autenticación cross-device
-        transports: cred.transports || ['internal', 'ble', 'nfc', 'usb', 'hybrid'],
-    }));
-    
-    console.log(`[EMAIL-PASSKEY] Found ${userCredentials.length} credentials for user ${username}`);
-    console.log(`[EMAIL-PASSKEY] Credential transports: ${JSON.stringify(userCredentials.map(c => c.transports))}`);
-    
-    res.json({
-        challenge: challenge,
-        rpId: rpId,
-        allowCredentials: userCredentials,
-        timeout: 60000,
-        userVerification: 'preferred'
-    });
-    
-    console.log(`[EMAIL-PASSKEY] ✅ Challenge generation complete`);
-    console.log('=== END EMAIL-PASSKEY LOGIN CHALLENGE GENERATION ===');
 });
 
 // Enhanced endpoint for email recovery link generation
@@ -384,7 +579,8 @@ router.post('/generate-recovery-link', async (req, res) => {
     
     try {
         // Check if user exists but don't reveal this information in response
-        const userExists = !!users[username];
+        const user = await dbUtils.getUser(username);
+        const userExists = !!user;
         
         // Generate a unique token for recovery that expires in 24 hours
         const recoveryToken = crypto.randomBytes(32).toString('hex');
@@ -392,20 +588,22 @@ router.post('/generate-recovery-link', async (req, res) => {
         
         // Store the token for verification later (if user exists)
         if (userExists) {
-            if (!users[username].recoveryTokens) {
-                users[username].recoveryTokens = [];
+            if (!user.recoveryTokens) {
+                user.recoveryTokens = [];
             }
             
             // Remove any expired tokens
-            users[username].recoveryTokens = users[username].recoveryTokens.filter(
+            user.recoveryTokens = user.recoveryTokens.filter(
                 token => token.expiry > Date.now()
             );
             
             // Add new token
-            users[username].recoveryTokens.push({
+            user.recoveryTokens.push({
                 token: recoveryToken,
                 expiry: tokenExpiry
             });
+            
+            await dbUtils.updateUser(username, { recoveryTokens: user.recoveryTokens });
             
             console.log(`[RECOVERY] Generated token for ${username}, expires: ${new Date(tokenExpiry).toISOString()}`);
         }
@@ -453,45 +651,51 @@ router.post('/generate-recovery-link', async (req, res) => {
 
 
 // Endpoint for OTP verification
-router.post('/passkey/verify-otp', (req, res) => {
+router.post('/passkey/verify-otp', async (req, res) => {
     console.log('=== START OTP VERIFICATION ===');
     let { username, otpCode } = req.body;
     
-    if (!username || !users[username]) {
-        console.log('[OTP-VERIFY] User not found');
-        return res.status(400).json({ message: 'Usuario no encontrado' });
-    }
-    
-    if (!users[username].otpSecret) {
-        console.log('[OTP-VERIFY] No OTP secret for this user');
-        return res.status(400).json({ message: 'La verificación OTP no está configurada para este usuario' });
-    }
-    
-    console.log(`[OTP-VERIFY] Verifying code ${otpCode} for user ${username}`);
-    
-    const isValid = authenticator.verify({
-        token: otpCode,
-        secret: users[username].otpSecret
-    });
-    
-    if (isValid) {
-        console.log('[OTP-VERIFY] ✅ OTP verification successful');
-        res.status(200).json({ 
-            success: true, 
-            message: 'Verificación exitosa'
+    try {
+        const user = await dbUtils.getUser(username);
+        if (!username || !user) {
+            console.log('[OTP-VERIFY] User not found');
+            return res.status(400).json({ message: 'Usuario no encontrado' });
+        }
+        
+        if (!user.otpSecret) {
+            console.log('[OTP-VERIFY] No OTP secret for this user');
+            return res.status(400).json({ message: 'La verificación OTP no está configurada para este usuario' });
+        }
+        
+        console.log(`[OTP-VERIFY] Verifying code ${otpCode} for user ${username}`);
+        
+        const isValid = authenticator.verify({
+            token: otpCode,
+            secret: user.otpSecret
         });
-    } else {
-        console.log('[OTP-VERIFY] ❌ OTP verification failed');
-        res.status(400).json({ 
-            success: false, 
-            message: 'Código de verificación incorrecto'
-        });
+        
+        if (isValid) {
+            console.log('[OTP-VERIFY] ✅ OTP verification successful');
+            res.status(200).json({ 
+                success: true, 
+                message: 'Verificación exitosa'
+            });
+        } else {
+            console.log('[OTP-VERIFY] ❌ OTP verification failed');
+            res.status(400).json({ 
+                success: false, 
+                message: 'Código de verificación incorrecto'
+            });
+        }
+    } catch (error) {
+        console.error('[OTP-VERIFY] Database error:', error);
+        return res.status(500).json({ message: 'Error interno del servidor' });
     }
     console.log('=== END OTP VERIFICATION ===');
 });
 
 // Endpoint for recovery code validation
-router.post('/login/recovery-code', (req, res) => {
+router.post('/login/recovery-code', async (req, res) => {
     const { username, recoveryCode } = req.body;
     console.log(`[RECOVERY-LOGIN] Attempting recovery login for user: ${username}`);
     
@@ -502,51 +706,58 @@ router.post('/login/recovery-code', (req, res) => {
         });
     }
     
-    if (!users[username]) {
-        console.log('[RECOVERY-LOGIN] User not found');
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Usuario no encontrado' 
+    try {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            console.log('[RECOVERY-LOGIN] User not found');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Usuario no encontrado' 
+            });
+        }
+        
+        if (!user.recoveryCodes || !user.recoveryCodes.codes) {
+            console.log('[RECOVERY-LOGIN] No recovery codes found for user');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No hay códigos de recuperación para este usuario' 
+            });
+        }
+        
+        const { codes, used } = user.recoveryCodes;
+        const codeIndex = codes.indexOf(recoveryCode.toUpperCase());
+        
+        if (codeIndex === -1) {
+            console.log('[RECOVERY-LOGIN] Invalid recovery code');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Código de recuperación inválido' 
+            });
+        }
+        
+        if (used.includes(codeIndex)) {
+            console.log('[RECOVERY-LOGIN] Recovery code already used');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Este código de recuperación ya ha sido utilizado' 
+            });
+        }
+        
+        // Mark the code as used
+        user.recoveryCodes.used.push(codeIndex);
+        await dbUtils.updateUser(username, { recoveryCodes: user.recoveryCodes });
+        
+        console.log(`[RECOVERY-LOGIN] Recovery code validated successfully for ${username}`);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Código de recuperación válido',
+            userProfile: { username, ...user }
         });
+    } catch (error) {
+        console.error('[RECOVERY-LOGIN] Database error:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
     }
-    
-    if (!users[username].recoveryCodes || !users[username].recoveryCodes.codes) {
-        console.log('[RECOVERY-LOGIN] No recovery codes found for user');
-        return res.status(400).json({ 
-            success: false, 
-            message: 'No hay códigos de recuperación para este usuario' 
-        });
-    }
-    
-    const { codes, used } = users[username].recoveryCodes;
-    const codeIndex = codes.indexOf(recoveryCode.toUpperCase());
-    
-    if (codeIndex === -1) {
-        console.log('[RECOVERY-LOGIN] Invalid recovery code');
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Código de recuperación inválido' 
-        });
-    }
-    
-    if (used.includes(codeIndex)) {
-        console.log('[RECOVERY-LOGIN] Recovery code already used');
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Este código de recuperación ya ha sido utilizado' 
-        });
-    }
-    
-    // Mark the code as used
-    users[username].recoveryCodes.used.push(codeIndex);
-    
-    console.log(`[RECOVERY-LOGIN] Recovery code validated successfully for ${username}`);
-    
-    res.status(200).json({
-        success: true,
-        message: 'Código de recuperación válido',
-        userProfile: { username, ...users[username] }
-    });
 });
 
 // Also add endpoint for recovery code authentication in login flow

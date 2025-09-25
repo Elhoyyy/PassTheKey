@@ -1,23 +1,23 @@
-const crypto = require('crypto');
+// Este archivo ahora importa desde database.js para mantener compatibilidad
+const { dbUtils, challenges, expectedOrigin, getNewChallenge } = require('./database');
 
-let users = {};//creamos un objeto para almacenar usuarios
-let challenges = {};//creamos un objeto para almacenar desafios
-const expectedOrigin = ['http://localhost:3000', 'https://passthekey.martinord.eu'];//origen esperado
-
-
-/*getNewChallenge: Genera un string único aleatorio como desafío.*/
-function getNewChallenge() {
-    // Generate a random challenge and return it in Base64URL format
-    const randomBytes = crypto.randomBytes(32);
-    return randomBytes.toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-}
+// Objeto proxy para mantener compatibilidad con el código existente
+const users = new Proxy({}, {
+    get: function(target, prop) {
+        // Para operaciones síncronas, necesitamos simular el comportamiento anterior
+        // pero en la práctica, deberemos migrar a operaciones asíncronas
+        return target[prop];
+    },
+    set: function(target, prop, value) {
+        target[prop] = value;
+        return true;
+    }
+});
 
 module.exports = {
     users,
     challenges,
     expectedOrigin,
-    getNewChallenge
+    getNewChallenge,
+    dbUtils
 };

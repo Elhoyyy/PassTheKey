@@ -686,8 +686,17 @@ export class SecurityComponent implements OnInit {
       ).toPromise();
       
       if (response && response.res) {
-        // Update local devices list
+        // Update local devices list with the response from server
+        // The server may have applied smart device detection
         this.devices = response.userProfile.devices;
+        
+        // Check if the server applied smart detection and inform the user
+        const newDevice = this.devices[this.devices.length - 1];
+        if (newDevice && newDevice.name !== deviceName && newDevice.name === 'Dispositivo Móvil') {
+          this.successMessage = 'Llave de acceso registrada correctamente. Se detectó automáticamente como dispositivo móvil.';
+        } else {
+          this.successMessage = 'Llave de acceso registrada correctamente';
+        }
         
         // Update profile service with new data
         const currentProfile = this.profileService.getProfile();
@@ -701,8 +710,7 @@ export class SecurityComponent implements OnInit {
         this.updatePasskeyUIState();
         
         // Show success message
-        this.successMessage = 'Llave de acceso registrada correctamente';
-        setTimeout(() => this.successMessage = null, 3000);
+        setTimeout(() => this.successMessage = null, 4000);
         
         // Identify the last used device
         this.identifyLastUsedDevice();
@@ -718,25 +726,52 @@ export class SecurityComponent implements OnInit {
     }
   }
 
-  // Method to detect device name
+  // Method to detect device name with smart cross-device detection
   detectDeviceName() {
     const userAgent = navigator.userAgent;
+    
+    // Default detection based on browser
+    let browserDeviceName = '';
     if (userAgent.includes('Windows')) {
       const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
+      browserDeviceName = version ? `Windows ${version[1]}` : 'Windows';
     } else if (userAgent.includes('iPhone')) {
       const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
+      browserDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
     } else if (userAgent.includes('Android')) {
       const version = userAgent.match(/Android (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
+      browserDeviceName = version ? `Android ${version[1]}` : 'Android';
     } else if (userAgent.includes('Linux')) {
-      this.detectedDeviceName = 'Linux';
+      browserDeviceName = 'Linux';
     } else if (userAgent.includes('Mac')) {
-      this.detectedDeviceName = 'Mac';
+      browserDeviceName = 'Mac';
     } else {
-      this.detectedDeviceName = 'Dispositivo';
+      browserDeviceName = 'Dispositivo';
     }
+    
+    // Smart detection for cross-device scenarios
+    // If we're on desktop and already have devices, it's likely a cross-device registration
+    if (this.isDesktopEnvironment() && this.devices && this.devices.length > 0) {
+      // Check if we already have a device with the current browser name
+      const hasCurrentDevice = this.devices.some(device => 
+        device.name.toLowerCase().includes(browserDeviceName.toLowerCase())
+      );
+      
+      if (hasCurrentDevice) {
+        // If we already have this device type, suggest mobile device
+        this.detectedDeviceName = 'Dispositivo Móvil';
+      } else {
+        this.detectedDeviceName = browserDeviceName;
+      }
+    } else {
+      this.detectedDeviceName = browserDeviceName;
+    }
+  }
+  
+  // Helper method to detect if we're in a desktop environment
+  private isDesktopEnvironment(): boolean {
+    const userAgent = navigator.userAgent;
+    return userAgent.includes('Windows') || userAgent.includes('Mac') || userAgent.includes('Linux');
   }
 
   async deleteDevice(index: number) {

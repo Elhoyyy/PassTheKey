@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const passkeyRoutes = require('./routes/passkeysRoutes');
 const { initEmailService } = require('./utils/emailService');
+const { initializeDatabase } = require('./init-db');
 
 app.use(cors({ origin: '*' }));//habilitamos cors, permite solicitudes desde cualquier origen
 app.use(bodyParser.urlencoded({ extended: false }));//habilitamos bodyparser
@@ -20,14 +21,23 @@ app.use('/profile', profileRoutes);
 app.use('/passkey', passkeyRoutes);
 
 
-// Initialize email service
-initEmailService()
-    .then(success => {
-        if (success) {
-            console.log('Email service initialized successfully');
-        } else {
-            console.warn('Failed to initialize email service, recovery emails will not be sent');
-        }
+// Initialize database and email service
+Promise.all([
+    initializeDatabase(),
+    initEmailService()
+])
+.then(([dbInitialized, emailInitialized]) => {
+    if (dbInitialized) {
+        console.log('✅ Database initialized successfully');
+    } else {
+        console.error('❌ Failed to initialize database');
+    }
+    
+    if (emailInitialized) {
+        console.log('✅ Email service initialized successfully');
+    } else {
+        console.warn('⚠️ Failed to initialize email service, recovery emails will not be sent');
+    }
     });
 
 //iniciamos el servidor, escucha en el puerto

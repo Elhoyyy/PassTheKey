@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { users } = require('../data');
+const { users, dbUtils } = require('../data');
 
 // Update password route - For changing existing passwords
 router.post('/update-password', async (req, res) => {
@@ -11,7 +11,8 @@ router.post('/update-password', async (req, res) => {
     console.log('Received update password request for user:', username);
     
     try {
-        if (!users[username]) {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
             console.log('User not found:', username);
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
@@ -27,9 +28,8 @@ router.post('/update-password', async (req, res) => {
         }
 
         // Verify the current password if provided
-        
         if (currentPassword && currentPassword !== undefined ) {
-            const isPasswordCorrect = await bcrypt.compare(currentPassword, users[username].password);
+            const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
             if (!isPasswordCorrect) {
                 console.log('Current password verification failed');
                 return res.status(400).json({ message: 'La contraseña actual es incorrecta' });
@@ -47,8 +47,11 @@ router.post('/update-password', async (req, res) => {
             year: 'numeric'
         });
         
-        users[username].password = hashedPassword;
-        users[username].passwordCreationDate = passwordCreationDate; // Update password creation date
+        // Update password in database
+        await dbUtils.updateUser(username, {
+            password: hashedPassword,
+            passwordCreationDate: passwordCreationDate
+        });
         
         console.log('Password updated successfully for user:', username);
         console.log('New password creation date:', passwordCreationDate);
@@ -74,13 +77,14 @@ router.post('/add-password', async (req, res) => {
     }
 
     try {
-        if (!users[username]) {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
             console.log('User not found:', username);
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
         
         // Check if user has OTP secret (2FA is set up)
-        if (!users[username].otpSecret) {
+        if (!user.otpSecret) {
             console.log('User does not have 2FA set up');
             return res.status(400).json({ message: 'Debe configurar 2FA antes de añadir contraseña' });
         }
@@ -96,8 +100,11 @@ router.post('/add-password', async (req, res) => {
             year: 'numeric'
         });
         
-        users[username].password = hashedPassword;
-        users[username].passwordCreationDate = passwordCreationDate; // Add password creation date
+        // Add password to database
+        await dbUtils.updateUser(username, {
+            password: hashedPassword,
+            passwordCreationDate: passwordCreationDate
+        });
         
         console.log('Password added successfully for user:', username);
         console.log('Password creation date:', passwordCreationDate);
@@ -115,22 +122,29 @@ router.post('/add-password', async (req, res) => {
 router.post('/update-device-name', async (req, res) => {
     const { username, deviceIndex, newDeviceName } = req.body;
     
-    if (!users[username]) {
-        return res.status(404).json({ message: 'User not found' });
+    try {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (deviceIndex < 0 || deviceIndex >= user.devices.length) {
+            return res.status(400).json({ message: 'Invalid device index' });
+        }
+        
+        // Update the device name
+        user.devices[deviceIndex].name = newDeviceName;
+        await dbUtils.updateUser(username, { devices: user.devices });
+        
+        console.log('Device name updated');
+        res.status(200).json({ 
+            message: 'Device name updated successfully',
+            devices: user.devices 
+        });
+    } catch (error) {
+        console.error('Error updating device name:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-    
-    if (deviceIndex < 0 || deviceIndex >= users[username].devices.length) {
-        return res.status(400).json({ message: 'Invalid device index' });
-    }
-    
-    // Update the device name
-    users[username].devices[deviceIndex].name = newDeviceName;
-    
-    console.log('Device name updated');
-    res.status(200).json({ 
-        message: 'Device name updated successfully',
-        devices: users[username].devices 
-    });
 });
 
 // Endpoint to regenerate recovery codes
@@ -140,7 +154,8 @@ router.post('/regenerate-recovery-codes', async (req, res) => {
     console.log('Received regenerate recovery codes request for user:', username);
     
     try {
-        if (!users[username]) {
+        const user = await dbUtils.getUser(username);
+        if (!user) {
             console.log('User not found:', username);
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
@@ -156,11 +171,13 @@ router.post('/regenerate-recovery-codes', async (req, res) => {
         }
         
         // Replace old recovery codes with new ones
-        users[username].recoveryCodes = {
+        const recoveryCodesData = {
             codes: recoveryCodes,
             createdAt: new Date().toISOString(),
             used: [] // Reset used codes
         };
+        
+        await dbUtils.updateUser(username, { recoveryCodes: recoveryCodesData });
         
         console.log(`Regenerated ${recoveryCodes.length} recovery codes for user:`, username);
         
