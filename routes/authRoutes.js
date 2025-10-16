@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const { users, challenges, getNewChallenge, expectedOrigin, dbUtils } = require('../data');
-const SimpleWebAuthnServer = require('@simplewebauthn/server');//modulo para manejar autenticacion WebAuthn
-const { authenticator } = require('otplib'); // Import otplib authenticator
 const crypto = require('crypto');
-const { sendEmail, sendRecoveryEmail } = require('../utils/emailService');
+const { users, challenges, getNewChallenge, expectedOrigin, dbUtils } = require('../data');
+const SimpleWebAuthnServer = require('@simplewebauthn/server');
+const { sendRecoveryEmail } = require('../utils/emailService');
+const { handleError, createError, validateUser, validateRequiredFields } = require('../utils/errorHandler');
+const { isValidEmail, isValidPassword } = require('../utils/validation');
+const { buildUserProfile, verifyOTPCode, generateRecoveryCodes, formatDate, authenticator } = require('../utils/auth');
+const { processPublicKey } = require('../utils/webauthn');
+const { ERROR_MESSAGES, HTTP_STATUS } = require('../config/constants');
 
 // Configure otplib
 authenticator.options = {

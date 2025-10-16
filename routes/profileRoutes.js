@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const { users, dbUtils } = require('../data');
+const { handleError, createError, validateUser } = require('../utils/errorHandler');
+const { isValidPassword } = require('../utils/validation');
+const { generateRecoveryCodes, formatDate } = require('../utils/auth');
+const { ERROR_MESSAGES, HTTP_STATUS } = require('../config/constants');
 
 // Update password route - For changing existing passwords
 router.post('/update-password', async (req, res) => {
@@ -37,6 +40,10 @@ router.post('/update-password', async (req, res) => {
         }
         
         console.log('Password validation passed, hashing password...');
+        
+        // Check if user already had a password (to determine if TOTP setup is needed)
+        const hadPasswordBefore = !!user.password;
+        
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         
         // Get current date in DD/MM/YYYY format
@@ -55,10 +62,13 @@ router.post('/update-password', async (req, res) => {
         
         console.log('Password updated successfully for user:', username);
         console.log('New password creation date:', passwordCreationDate);
+        console.log('Had password before:', hadPasswordBefore);
         
         return res.status(200).json({ 
             message: 'Contraseña actualizada correctamente',
-            passwordCreationDate: passwordCreationDate // Return the new date to client
+            passwordCreationDate: passwordCreationDate, // Return the new date to client
+            hadPasswordBefore: hadPasswordBefore, // Indicate if user already had a password
+            hasOtpSecret: !!user.otpSecret // Indicate if user already has OTP configured
         });
     } catch (error) {
         console.error('Error updating password:', error);
@@ -225,30 +235,6 @@ router.post('/check-recovery-codes', async (req, res) => {
     }
 });
 
-function isValidPassword(password) {
-  // Enhanced password validation
 
-
-  if (password.length < 8) {
-    return false;  // Password must be at least 8 characters long
-  }
-  
-  // Check for uppercase letter
-  if (!/[A-Z]/.test(password)) {
-    return false;
-  }
-  
-  // Check for numbers
-  if (!/\d/.test(password)) {
-    return false;
-  }
-  
-  // Check for special characters
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return false;
-  }
-  
-  return true;  // All conditions passed, password is valid
-}
 
 module.exports = router;

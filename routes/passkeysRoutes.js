@@ -3,39 +3,12 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const { users, challenges, getNewChallenge, expectedOrigin, dbUtils } = require('../data');
 const SimpleWebAuthnServer = require('@simplewebauthn/server');
-const { authenticator } = require('otplib');
-const qrcode = require('qrcode'); // Add QR code library
-const crypto = require('crypto'); // Add crypto for recovery code generation
-
-// Array of allowed email domains
-const allowedDomains = [
-  'gmail.com',
-  'hotmail.com',
-  'outlook.com',
-  'yahoo.com',
-  'icloud.com',
-  'proton.me',
-  'tutanota.com',
-  'lavabit.com',
-  'mailfence.com',
-  'hushmail.com',
-  'email.com',
-  'udc.es',
-  'gmail.es',
-  'hotmail.es',
-  'outlook.es',
-  'yahoo.es',
-  'icloud.es',
-  'protonmail.com',
-
-];
-
-// Configure otplib
-authenticator.options = {
-    window: 1, // Allow 1 step before/after for clock skew
-    digits: 6,  // 6-digit OTP code
-    step: 30    // 30 seconds validity period (default)
-};
+const qrcode = require('qrcode');
+const { handleError, createError, validateUser, validateRequiredFields } = require('../utils/errorHandler');
+const { isValidEmail, isValidPassword, ALLOWED_EMAIL_DOMAINS } = require('../utils/validation');
+const { generateRecoveryCodes, generateOTPSecret, generateOTPCode, generateQRCodeURL, formatDate, authenticator } = require('../utils/auth');
+const { createCredentialCreationOptions } = require('../utils/webauthn');
+const { ERROR_MESSAGES, HTTP_STATUS } = require('../config/constants');
 
 router.post('/registro/passkey/delete', async (req, res) => {
     const { username, deviceIndex } = req.body;
@@ -374,12 +347,7 @@ router.post('/registro/passkey/fin', async (req, res) => {
             // Generate recovery codes automatically for new users
             if (!user.recoveryCodes) {
                 console.log(`[FIRST-REGISTER] Generating recovery codes for new user: ${username}`);
-                const recoveryCodes = [];
-                for (let i = 0; i < 10; i++) {
-                    const code = crypto.randomBytes(4).toString('hex').toUpperCase();
-                    const formattedCode = `${code.substring(0, 4)}-${code.substring(4, 8)}`;
-                    recoveryCodes.push(formattedCode);
-                }
+                const recoveryCodes = generateRecoveryCodes();
                 
                 const recoveryCodesData = {
                     codes: recoveryCodes,
@@ -482,7 +450,9 @@ router.post('/registro/passkey/additional', async (req, res) => {
         attestation: 'none',
         excludeCredentials: existingCredentials,
         authenticatorSelection: {
-            userVerification: 'required'
+            userVerification: 'required',
+            residentKey: 'preferred',
+            requireResidentKey: false
         }
     };
 
@@ -735,14 +705,7 @@ router.post('/generate-recovery-codes', async (req, res) => {
         }
         
         // Generate 10 unique recovery codes
-        const recoveryCodes = [];
-        for (let i = 0; i < 10; i++) {
-            // Generate a random 8-character alphanumeric code
-            const code = crypto.randomBytes(4).toString('hex').toUpperCase();
-            // Format as XXXX-XXXX for better readability
-            const formattedCode = `${code.substring(0, 4)}-${code.substring(4, 8)}`;
-            recoveryCodes.push(formattedCode);
-        }
+        const recoveryCodes = generateRecoveryCodes();
         
         // Store recovery codes in database with proper format
         const recoveryCodesData = {
@@ -788,12 +751,7 @@ router.post('/generate-initial-recovery-codes', async (req, res) => {
         }
         
         // Generate 10 new recovery codes
-        const recoveryCodes = [];
-        for (let i = 0; i < 10; i++) {
-            const code = crypto.randomBytes(4).toString('hex').toUpperCase();
-            const formattedCode = `${code.substring(0, 4)}-${code.substring(4, 8)}`;
-            recoveryCodes.push(formattedCode);
-        }
+        const recoveryCodes = generateRecoveryCodes();
         
         const recoveryCodesData = {
             codes: recoveryCodes,
@@ -819,46 +777,6 @@ router.post('/generate-initial-recovery-codes', async (req, res) => {
     }
 });
 
- 
 
-function isValidEmail(email){
-    // First check email format
-    if (!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-        return false;
-    }
-    
-    // Then check if domain is in allowed list
-    const domain = email.split('@')[1];
-    return allowedDomains.includes(domain);
-}
-
-function isValidPassword(password) {
-  // Enhanced password validation
-
-  if (!password || typeof password !== 'string') {
-    return false;
-  }
-
-  if (password.lenght < 8) {
-    return false;
-  }
-  
-  // Check for uppercase letter
-  if (!/[A-Z]/.test(password)) {
-    return false;
-  }
-  
-  // Check for numbers
-  if (!/\d/.test(password)) {
-    return false;
-  }
-  
-  // Check for special characters
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return false;
-  }
-  
-  return true;  // All conditions passed, password is valid
-}
 
 module.exports = router;

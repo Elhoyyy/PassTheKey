@@ -649,7 +649,13 @@ export class RecoveryComponent implements OnDestroy, OnInit {
     this.errorMessage = null;
     
     try {
-      const response = await this.http.post<{success: boolean, userProfile?: any, passwordCreationDate?: string}>('/profile/update-password', {
+      const response = await this.http.post<{
+        success: boolean, 
+        userProfile?: any, 
+        passwordCreationDate?: string,
+        hadPasswordBefore?: boolean,
+        hasOtpSecret?: boolean
+      }>('/profile/update-password', {
         username: this.username, 
         currentPassword: undefined,
         newPassword: this.newPassword,
@@ -663,19 +669,56 @@ export class RecoveryComponent implements OnDestroy, OnInit {
         // Save the password for later use in auto-login
         this.tempPasswordForLogin = this.newPassword;
         
-        // Instead of auto-login, now generate a new TOTP setup
-        await this.generateTotpQrCode();
-        
         // Clear password fields
         this.newPassword = '';
         this.confirmPassword = '';
         
-        // Move to TOTP setup stage
-        this.stage = 'setup-totp';
-        this.successMessage = 'Contraseña restablecida con éxito! Por favor configura la autenticación de dos factores.';
-        setTimeout(() => {
-          this.successMessage = null;
-        }, 5000);
+        // Only require TOTP setup if user didn't have password before OR doesn't have OTP configured
+        if (!response.hadPasswordBefore || !response.hasOtpSecret) {
+          // Generate a new TOTP setup
+          await this.generateTotpQrCode();
+          
+          // Move to TOTP setup stage
+          this.stage = 'setup-totp';
+          this.successMessage = 'Contraseña restablecida con éxito! Por favor configura la autenticación de dos factores.';
+          setTimeout(() => {
+            this.successMessage = null;
+          }, 5000);
+        } else {
+          // User already had password and OTP configured, auto-login directly
+          console.log('[RECOVERY] User already has password and OTP configured, auto-login');
+          
+          const loginResponse = await this.http.post<{ 
+            res: boolean, 
+            requireOtp: boolean, 
+            userProfile?: any 
+          }>('/auth/login/password', { 
+            username: this.username, 
+            password: this.tempPasswordForLogin,
+            recov: true  // Use the recov flag to indicate this is from recovery flow
+          }).toPromise();
+          
+          if (loginResponse && loginResponse.res) {
+            // Clear the temporary password for security
+            this.tempPasswordForLogin = '';
+            
+            this.successMessage = 'Contraseña restablecida con éxito!';
+            setTimeout(() => {
+              this.authService.login();
+              this.appComponent.isLoggedIn = true;
+              this.profileService.setProfile(loginResponse.userProfile);
+              this.router.navigate(['/security'], {
+                state: { userProfile: loginResponse.userProfile }
+              });
+            }, 1500);
+          } else {
+            this.errorMessage = 'Error al iniciar sesión automáticamente. Por favor, inicia sesión manualmente.';
+            this.hideError();
+            setTimeout(() => {
+              this.router.navigate(['/auth']);
+            }, 2000);
+          }
+        }
       } else {
         this.errorMessage = "No se pudo restablecer la contraseña";
         this.hideError();

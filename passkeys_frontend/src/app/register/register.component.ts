@@ -6,6 +6,9 @@ import { Router, RouterModule } from '@angular/router';
 import { AppComponent } from '../app.component';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
+import { ValidationService } from '../services/validation.service';
+import { WebAuthnService } from '../services/webauthn.service';
+import { UtilsService } from '../services/utils.service';
 
 @Component({
   selector: 'app-register',
@@ -69,21 +72,16 @@ export class RegisterComponent {
     private router: Router, 
     private appComponent: AppComponent, 
     private authService: AuthService, 
-    private profileService: ProfileService
+    private profileService: ProfileService,
+    private validationService: ValidationService,
+    private webAuthnService: WebAuthnService,
+    private utilsService: UtilsService
   ) {}
 
   evaluatePasswordStrength() {
-    const password = this.password;
-    
-    // Reset requirements
-    this.passwordRequirements = {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      number: /\d/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-    };
-    
-
+    const result = this.validationService.evaluatePasswordStrength(this.password);
+    this.passwordStrength = result.strength;
+    this.passwordRequirements = result.requirements;
   }
   // Method to handle the registration
   async handleRegistration() {
@@ -92,7 +90,7 @@ export class RegisterComponent {
       // Only validate email before showing the dialog
       await this.registerWithPassword();
     } else {
-      if (!this.username || !this.validateEmail(this.username)) {
+      if (!this.username || !this.validationService.validateEmail(this.username)) {
         this.errorMessage = 'Por favor, introduce un correo electrónico válido';
         this.hideError();
         return;
@@ -111,22 +109,7 @@ export class RegisterComponent {
 
   // Method to detect device name from user agent
   detectDeviceName() {
-    const userAgent = navigator.userAgent;
-    console.log('User Agent:', userAgent);
-    if (userAgent.includes('Windows')) {
-      const version = userAgent.match(/Windows NT (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Windows ${version[1]}` : 'Windows';
-    } else if (userAgent.includes('iPhone')) {
-      const version = userAgent.match(/iPhone OS (\d+_\d+)/);
-      this.detectedDeviceName = version ? `iPhone iOS ${version[1].replace('_', '.')}` : 'iPhone';
-    } else if (userAgent.includes('Android')) {
-      const version = userAgent.match(/Android (\d+\.\d+)/);
-      this.detectedDeviceName = version ? `Android ${version[1]}` : 'Android';
-    } else if (userAgent.includes('Linux')) {
-      this.detectedDeviceName = 'Linux';
-    } else if (userAgent.includes('Mac')) {
-      this.detectedDeviceName = 'Mac';
-    }
+    this.detectedDeviceName = this.webAuthnService.detectDeviceName();
   }
 
 
@@ -152,7 +135,7 @@ export class RegisterComponent {
     this.isRegistering = true;
     
     try {
-      if (!this.username || !this.validateEmail(this.username)) {
+      if (!this.username || !this.validationService.validateEmail(this.username)) {
         throw new Error('Por favor, introduce un correo electrónico válido');
       }
       
@@ -170,10 +153,10 @@ export class RegisterComponent {
       // El challenge y user.id ya vienen en Base64URL, solo necesitamos convertirlos a ArrayBuffer
       this.publicKeyCredentialCreationOptions = {
         ...options,
-        challenge: this.base64URLToBuffer(options.challenge as unknown as string),
+        challenge: this.webAuthnService.base64URLToBuffer(options.challenge as unknown as string),
         user: {
           ...options.user,
-          id: this.base64URLToBuffer(options.user.id as unknown as string),
+          id: this.webAuthnService.base64URLToBuffer(options.user.id as unknown as string),
         }
       };
 
@@ -244,10 +227,10 @@ export class RegisterComponent {
       const attestationResponse = {
         data: {  // Wrap in data object to match SimpleWebAuthn expectations
           id: this.tempCredential.id,
-          rawId: this.bufferToBase64URL(this.tempCredential.rawId),
+          rawId: this.webAuthnService.bufferToBase64URL(this.tempCredential.rawId),
           response: {
-            attestationObject: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).attestationObject),
-            clientDataJSON: this.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).clientDataJSON),
+            attestationObject: this.webAuthnService.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).attestationObject),
+            clientDataJSON: this.webAuthnService.bufferToBase64URL((this.tempCredential.response as AuthenticatorAttestationResponse).clientDataJSON),
           },
           type: this.tempCredential.type
         },
@@ -297,7 +280,7 @@ export class RegisterComponent {
         throw new Error('La contraseña debe tener al menos 4 caracteres');
       }
       
-      if (!this.username || !this.validateEmail(this.username)) {
+      if (!this.username || !this.validationService.validateEmail(this.username)) {
         throw new Error('Por favor, introduce un correo electrónico válido');
       }
       
@@ -479,30 +462,9 @@ export class RegisterComponent {
     setTimeout(() => this.errorMessage = null, 3000);
   }
 
-  // Validador simple de email
-  private validateEmail(email: string): boolean {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  }
 
-  // Utility methods for converting between ArrayBuffer and Base64URL
-  private bufferToBase64URL(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    const base64 = btoa(String.fromCharCode(...bytes));
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  }
 
-  private base64URLToBuffer(base64URL: string): ArrayBuffer {
-    const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-    const binary = atob(padded);
-    const buffer = new ArrayBuffer(binary.length);
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return buffer;
-  }
+
 
   // Start countdown timer for TOTP expiry
   startExpiryTimer() {
@@ -555,16 +517,14 @@ export class RegisterComponent {
   }
 
   // Add method to copy text to clipboard
-  copyToClipboard(text: string) {
-
-    
-    navigator.clipboard.writeText(text).then(() => {
+  async copyToClipboard(text: string) {
+    const success = await this.utilsService.copyToClipboard(text);
+    if (success) {
       this.showCopyFeedback();
-    }, (err) => {
-      console.error('No se pudo copiar al portapapeles: ', err);
+    } else {
       this.errorMessage = 'No se pudo copiar al portapapeles';
       this.hideError();
-    });
+    }
   }
 
   // Show feedback when copy is successful

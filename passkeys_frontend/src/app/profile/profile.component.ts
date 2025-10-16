@@ -76,28 +76,4 @@ export class ProfileComponent implements OnInit {
   navigateToSecurity() {  
     this.router.navigate(['/security']);
   }
-
-  // Utilidades para la conversión de formatos para WebAuthn
-  private base64UrlToArrayBuffer(base64Url: string): ArrayBuffer {
-    const padding = '='.repeat((4 - base64Url.length % 4) % 4);
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/') + padding;
-    const rawData = atob(base64);
-    const buffer = new ArrayBuffer(rawData.length);
-    const array = new Uint8Array(buffer);
-    
-    for (let i = 0; i < rawData.length; i++) {
-      array[i] = rawData.charCodeAt(i);
-    }
-    return buffer;
-  }
-  
-  private arrayBufferToBase64Url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  }
 }
