@@ -409,18 +409,52 @@ export class AuthComponent implements OnDestroy {
       }
     } catch (error: any) {
       console.error(`[EMAIL-PASSKEY] Error:`, error);
-      this.errorMessage = 'Error durante el inicio de sesión';
-     // Check if the user has a password - make a server-side request instead of relying on localStorage
-      const passwordCheckResponse = await this.http.post<{ hasPassword: boolean }>('/auth/check-user-password', {
-        username: this.username
-      }).toPromise();
       
-      if (passwordCheckResponse) {
-        this.hasPassword = passwordCheckResponse.hasPassword;
-        this.showLoginPasswordField = this.hasPassword;
+      // Check if user cancelled the passkey authentication
+      const wasCancelled = error.name === 'NotAllowedError' || 
+                          error.name === 'AbortError' || 
+                          error.message?.includes('cancel') ||
+                          error.message?.includes('abort');
+      
+      if (wasCancelled) {
+        console.log('[EMAIL-PASSKEY] User cancelled passkey authentication, checking for password option');
+      } else {
+        this.errorMessage = 'Error durante el inicio de sesión con passkey';
       }
       
-      this.hideError();
+      // Always check if the user has a password when passkey auth fails or is cancelled
+      try {
+        const passwordCheckResponse = await this.http.post<{ exists: boolean, hasPassword: boolean }>('/auth/check-user-password', {
+          username: this.username
+        }).toPromise();
+        
+        if (passwordCheckResponse && passwordCheckResponse.exists) {
+          this.hasPassword = passwordCheckResponse.hasPassword;
+          this.showLoginPasswordField = this.hasPassword;
+          
+          if (this.hasPassword) {
+            console.log('[EMAIL-PASSKEY] User has password, showing password field');
+            if (wasCancelled) {
+              // Don't show error message if cancelled, just silently show password field
+              this.errorMessage = null;
+            }
+          } else {
+            console.log('[EMAIL-PASSKEY] User does not have password, only passkey available');
+            if (wasCancelled) {
+              this.errorMessage = 'Debes usar tu passkey para iniciar sesión. No hay contraseña configurada.';
+            }
+          }
+        }
+      } catch (checkError) {
+        console.error('[EMAIL-PASSKEY] Error checking password:', checkError);
+        if (!wasCancelled) {
+          this.errorMessage = 'Error durante el inicio de sesión. Intenta de nuevo.';
+        }
+      }
+      
+      if (this.errorMessage) {
+        this.hideError();
+      }
     } finally {
       this.isAuthenticating = false;
     }
@@ -452,11 +486,23 @@ export class AuthComponent implements OnDestroy {
         this.authService.login();
         this.appComponent.isLoggedIn = true;
 
+        // Use pendingUserProfile which contains all the user data (devices, credentials, etc.)
+        // from the initial password login response
         const userProfile = {
           ...this.pendingUserProfile,
-          ...response.userProfile,
-          plainPassword: this.password
+          plainPassword: this.password,
+          isOtpVerified: 1 // Mark OTP as verified
         };
+
+        console.log('[VERIFY-ACCOUNT] User profile being saved:', {
+          username: userProfile.username,
+          hasDevices: !!(userProfile.devices && userProfile.devices.length > 0),
+          deviceCount: userProfile.devices?.length || 0,
+          hasCredentials: !!(userProfile.credential && userProfile.credential.length > 0),
+          credentialCount: userProfile.credential?.length || 0,
+          hasPassword: !!userProfile.password,
+          has2FA: !!userProfile.otpSecret
+        });
 
         this.profileService.setProfile(userProfile);
         this.router.navigate(['/profile'], { state: { userProfile } });

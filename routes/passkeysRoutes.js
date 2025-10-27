@@ -230,6 +230,8 @@ router.post('/generate-totp-qr', async (req, res) => {
             console.log(`[TOTP-QR] Generated new OTP secret for ${username}`);
         }
         
+        console.log(`[TOTP-QR] Using OTP secret for ${username}: ${otpSecret.substring(0, 5)}...`);
+        
         // Generate OTP Auth URI for QR code
         const otpAuth = authenticator.keyuri(
             username,               // User name/email
@@ -237,12 +239,20 @@ router.post('/generate-totp-qr', async (req, res) => {
             otpSecret               // Secret key
         );
         
+        console.log(`[TOTP-QR] OTP Auth URI: ${otpAuth}`);
+        
         // Generate QR code as data URL
         const qrCodeUrl = await qrcode.toDataURL(otpAuth);
         
-        // Generate current token for display
+        // Generate current token for display/testing
         const currentToken = authenticator.generate(otpSecret);
+        const currentTime = Math.floor(Date.now() / 1000);
+        const expirySeconds = 30 - (currentTime % 30);
         
+        console.log(`[TOTP-QR] Generated token: ${currentToken}`);
+        console.log(`[TOTP-QR] Current time (seconds): ${currentTime}`);
+        console.log(`[TOTP-QR] TOTP window: ${Math.floor(currentTime / 30)}`);
+        console.log(`[TOTP-QR] Expires in: ${expirySeconds}s`);
         console.log(`[TOTP-QR] QR code generated for ${username}`);
         
         res.status(200).json({
@@ -250,7 +260,7 @@ router.post('/generate-totp-qr', async (req, res) => {
             qrCodeUrl: qrCodeUrl,
             secret: otpSecret,  // For manual entry
             currentToken: currentToken,          // Current valid token
-            expirySeconds: 30 - (Math.floor(Date.now() / 1000) % 30) // Seconds until expiry
+            expirySeconds: expirySeconds // Seconds until expiry
         });
     } catch (error) {
         console.error('[TOTP-QR] Error generating QR code:', error);
@@ -628,6 +638,7 @@ router.post('/cancel-otp-verification', async (req, res) => {
 router.post('/verify-otp', async (req, res) => {
     const { username, otpCode } = req.body;
     console.log(`[OTP-VERIFY] Starting verification for user: ${username}`);
+    console.log(`[OTP-VERIFY] Received OTP code: ${otpCode}`);
     
     try {
         const user = await dbUtils.getUser(username);
@@ -652,26 +663,35 @@ router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ message: 'Usuario no tiene configuración OTP' });
         }
         
-        // Verify the OTP code using otplib's authenticator
+        console.log(`[OTP-VERIFY] User OTP Secret exists: ${!!user.otpSecret}`);
+        console.log(`[OTP-VERIFY] Current server time (seconds): ${Math.floor(Date.now() / 1000)}`);
+        console.log(`[OTP-VERIFY] Current TOTP window: ${Math.floor(Math.floor(Date.now() / 1000) / 30)}`);
+        
+        // Verify the OTP code using otplib's authenticator with tolerance window
         const isValid = authenticator.verify({
-            token: otpCode,
+            token: otpCode.toString().trim(),
             secret: user.otpSecret
         });
+        
+        console.log(`[OTP-VERIFY] TOTP verification result: ${isValid}`);
         
         if (isValid) {
             console.log('[OTP-VERIFY] TOTP verification successful');
             
-            // Update user to mark as verified
+            // Update user to mark OTP as verified
+            const updateData = { isOtpVerified: 1 };
+            
+            // Also clear pendingVerification if it exists
             if (user.pendingVerification) {
-                const updatedUserData = { ...user };
-                updatedUserData.pendingVerification = null;
-                delete updatedUserData.verificationTimestamp;
-                await dbUtils.updateUser(username, updatedUserData);
+                updateData.pendingVerification = null;
             }
+            
+            await dbUtils.updateUser(username, updateData);
+            console.log(`[OTP-VERIFY] User ${username} marked as OTP verified`);
             
             return res.status(200).json({
                 success: true,
-                userProfile: { username, ...user }
+                userProfile: { username, ...user, isOtpVerified: 1 }
             });
         } else {
             // Calculate seconds until next code

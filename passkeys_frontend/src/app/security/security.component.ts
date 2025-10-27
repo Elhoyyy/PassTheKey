@@ -103,6 +103,7 @@ export class SecurityComponent implements OnInit {
     const state = navigation?.extras.state as { userProfile: any };
     
     if (state && state.userProfile) {
+      console.log('[SECURITY] Setting profile from navigation state');
       this.profileService.setProfile(state.userProfile);
     }
     
@@ -112,7 +113,17 @@ export class SecurityComponent implements OnInit {
       this.email = profile.email || '';
       this.devices = profile.devices || [];
       this.device_creationDate = profile.device_creationDate || '';
+      
+      console.log('[SECURITY] Profile loaded:', {
+        username: this.username,
+        deviceCount: this.devices.length,
+        credentialCount: profile.credential?.length || 0,
+        hasPassword: !!profile.password,
+        has2FA: !!profile.otpSecret,
+        passwordCreationDate: profile.passwordCreationDate
+      });
     } else {
+      console.log('[SECURITY] No profile found, redirecting to auth');
       this.router.navigate(['/auth']);
     }
   }
@@ -361,7 +372,10 @@ export class SecurityComponent implements OnInit {
 
   // Verify OTP code and complete password addition - updated for dialog approach
   async verifyOtp() {
-    if (!this.otpCode || this.otpCode.length !== 6 || !/^\d+$/.test(this.otpCode)) {
+    // Clean and validate the OTP code
+    const cleanedCode = this.otpCode.toString().trim();
+    
+    if (!cleanedCode || cleanedCode.length !== 6 || !/^\d+$/.test(cleanedCode)) {
       this.passwordError = "Por favor, ingresa un código de verificación válido de 6 dígitos";
       setTimeout(() => this.passwordError = null, 3000);
       return;
@@ -370,11 +384,15 @@ export class SecurityComponent implements OnInit {
     this.isVerifyingOtp = true;
     this.passwordError = null;
     
+    console.log('[VERIFY-OTP] Sending code to backend:', cleanedCode);
+    
     try {
       const verifyResponse = await this.http.post<{ success: boolean }>('/passkey/verify-otp', {
         username: this.username,
-        otpCode: this.otpCode
+        otpCode: cleanedCode
       }).toPromise();
+      
+      console.log('[VERIFY-OTP] Response from backend:', verifyResponse);
       
       if (verifyResponse && verifyResponse.success) {
         // OTP verified, now add the password
@@ -398,6 +416,7 @@ export class SecurityComponent implements OnInit {
         if (currentProfile) {
           // Save the OTP secret in the profile
           currentProfile.otpSecret = this.otpSecret || true;
+          currentProfile.isOtpVerified = 1;
           this.profileService.setProfile(currentProfile);
           
           // Also save in localStorage for cross-tab persistence
@@ -491,6 +510,13 @@ export class SecurityComponent implements OnInit {
     const hasPassword = this.passwordCreationDate !== "Not changed yet";
     const passkeysCount = this.devices.length;
     
+    console.log('[SECURITY] Calculating security score:', {
+      hasPassword,
+      passwordCreationDate: this.passwordCreationDate,
+      passkeysCount,
+      has2FA: this.has2FA
+    });
+    
     if (hasPassword && passkeysCount > 1) {
       // Has password and multiple passkeys: 100%
       this.securityScore = 100;
@@ -507,6 +533,8 @@ export class SecurityComponent implements OnInit {
       // New account with no security features: 0%
       this.securityScore = 0;
     }
+    
+    console.log('[SECURITY] Calculated security score:', this.securityScore);
   }
 
   // Add this method to determine the color based on security score

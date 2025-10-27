@@ -340,6 +340,13 @@ router.post('/login/password', async (req, res) => {
             const credentials = await dbUtils.getUserCredentials(username);
             const recoveryCodes = await dbUtils.getRecoveryCodes(username);
             
+            console.log(`[PASSWORD-LOGIN] User data for ${username}:`);
+            console.log(`  - Devices: ${devices.length}`);
+            console.log(`  - Credentials: ${credentials.length}`);
+            console.log(`  - Recovery codes: ${recoveryCodes.length}`);
+            console.log(`  - Has password: ${!!user.password}`);
+            console.log(`  - Has OTP secret: ${!!user.otpSecret}`);
+            
             const userProfile = {
                 username: user.username,
                 password: user.password,
@@ -359,6 +366,8 @@ router.post('/login/password', async (req, res) => {
                     createdAt: recoveryCodes[0]?.createdAt
                 } : null
             };
+            
+            console.log(`[PASSWORD-LOGIN] Sending profile with ${userProfile.devices.length} devices and ${userProfile.credential.length} credentials`);
             
             res.status(200).send({
                 res: true,

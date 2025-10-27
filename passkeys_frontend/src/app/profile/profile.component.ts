@@ -47,6 +47,7 @@ export class ProfileComponent implements OnInit {
     const state = navigation?.extras.state as { userProfile: any };
     
     if (state && state.userProfile) {
+      console.log('[PROFILE] Setting profile from navigation state');
       this.profileService.setProfile(state.userProfile);
     }
     
@@ -55,7 +56,17 @@ export class ProfileComponent implements OnInit {
       this.username = profile.username || '';
       // Verificar si el usuario tiene passkeys registradas
       this.hasPasskeys = profile.credential && profile.credential.length > 0;
+      
+      console.log('[PROFILE] Profile loaded:', {
+        username: this.username,
+        hasPasskeys: this.hasPasskeys,
+        credentialCount: profile.credential?.length || 0,
+        deviceCount: profile.devices?.length || 0,
+        hasPassword: !!profile.password,
+        has2FA: !!profile.otpSecret
+      });
     } else {
+      console.log('[PROFILE] No profile found, redirecting to auth');
       this.router.navigate(['/auth']);
     }
   }

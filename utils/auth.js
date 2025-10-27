@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 // Configure otplib
 authenticator.options = {
-    window: 1,
+    window: 2, // Allow 2 time steps before and after (60 seconds tolerance total)
     digits: 6,
     step: 30
 };
