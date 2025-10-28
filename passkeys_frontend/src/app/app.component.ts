@@ -5,6 +5,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { routes } from './app.routes';
 import { filter } from 'rxjs/operators';
 import { Component, HostListener } from '@angular/core';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -20,9 +21,19 @@ export class AppComponent {
   isDropdownOpen = false;
   isMobileMenuOpen = false;
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private authService: AuthService) {
     // Check login status on init
     this.checkLoginStatus();
+    
+    // Subscribe to storage changes to detect login/logout from other components
+    window.addEventListener('storage', () => {
+      this.checkLoginStatus();
+    });
+    
+    // Poll for login status changes every second (simple solution)
+    setInterval(() => {
+      this.checkLoginStatus();
+    }, 1000);
     
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -37,9 +48,10 @@ export class AppComponent {
   }
   
   checkLoginStatus() {
-    // Check if user has a token in localStorage
+    // Check both token and isLoggedIn flag
     const token = localStorage.getItem('token');
-    this.isLoggedIn = !!token;
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    this.isLoggedIn = !!(token || isLoggedIn);
   }
   
   toggleDropdown() {
@@ -75,7 +87,9 @@ export class AppComponent {
 
   logout() {
     this.isLoggedIn = false;
-    localStorage.removeItem('token'); // Limpiar el token si lo estás usando
+    localStorage.removeItem('token');
+    localStorage.removeItem('isLoggedIn');
+    this.authService.logout();
     this.isMobileMenuOpen = false;
     // Re-enable body scroll
     document.body.style.overflow = '';

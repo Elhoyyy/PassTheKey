@@ -12,12 +12,13 @@
     
     <!-- Navigation Menu -->
     <div class="nav-menu" [class.active]="isMobileMenuOpen">
+      <!-- Botón Inicio -->
       <button (click)="navigateTo('home')" [class.active]="currentRoute === '/home'">
         <i class="bi bi-house"></i>
         <span>Inicio</span>
       </button>
 
-      <!-- Desktop Dropdowns -->
+      <!-- Desktop Dropdowns (solo visible en desktop) -->
       <div *ngIf="!isLoggedIn" class="dropdown desktop-only">
         <button class="dropdown-toggle" (click)="toggleDropdown()" 
                 [class.active]="currentRoute === '/auth' || currentRoute === '/register'">
@@ -52,29 +53,26 @@
         </div>
       </div>
 
-      <!-- Mobile Only Buttons -->
-      <ng-container *ngIf="!isLoggedIn" class="mobile-only">
-        <button class="mobile-only" (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'">
-          <i class="bi bi-box-arrow-in-right"></i>
-          <span>Iniciar Sesión</span>
-        </button>
-        <button class="mobile-only" (click)="navigateTo('register')" [class.active]="currentRoute === '/register'">
-          <i class="bi bi-person-plus"></i>
-          <span>Registrarse</span>
-        </button>
-      </ng-container>
+      <!-- Mobile Only Buttons (solo visible en móvil) -->
+      <button *ngIf="!isLoggedIn" class="mobile-only" (click)="navigateTo('auth')" [class.active]="currentRoute === '/auth'">
+        <i class="bi bi-box-arrow-in-right"></i>
+        <span>Iniciar Sesión</span>
+      </button>
+      <button *ngIf="!isLoggedIn" class="mobile-only" (click)="navigateTo('register')" [class.active]="currentRoute === '/register'">
+        <i class="bi bi-person-plus"></i>
+        <span>Registrarse</span>
+      </button>
       
-      <ng-container *ngIf="isLoggedIn" class="mobile-only">
-        <button class="mobile-only" (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'">
-          <i class="bi bi-person-badge"></i>
-          <span>Perfil</span>
-        </button>
-        <button class="mobile-only" (click)="navigateTo('security')" [class.active]="currentRoute === '/security'">
-          <i class="bi bi-shield-lock"></i>
-          <span>Ajustes</span>
-        </button>
-      </ng-container>
+      <button *ngIf="isLoggedIn" class="mobile-only" (click)="navigateTo('profile')" [class.active]="currentRoute === '/profile'">
+        <i class="bi bi-person-badge"></i>
+        <span>Perfil</span>
+      </button>
+      <button *ngIf="isLoggedIn" class="mobile-only" (click)="navigateTo('security')" [class.active]="currentRoute === '/security'">
+        <i class="bi bi-shield-lock"></i>
+        <span>Ajustes</span>
+      </button>
       
+      <!-- Botón Logout (se muestra en ambas vistas) -->
       <button *ngIf="isLoggedIn" class="logout" (click)="logout()">
         <i class="bi bi-person-x-fill"></i>
         <span>Cerrar Sesión</span>

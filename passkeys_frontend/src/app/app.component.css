@@ -152,7 +152,12 @@
 
 /* Hide mobile-only elements on desktop */
 .mobile-only {
-  display: none;
+  display: none !important;
+}
+
+/* Show desktop-only elements on desktop */
+.desktop-only {
+  display: flex;
 }
 
 body {
