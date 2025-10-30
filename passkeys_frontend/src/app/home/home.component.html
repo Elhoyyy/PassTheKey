@@ -9,35 +9,64 @@
             <!-- Logo y botones de autenticación -->
             <div class="card-header">
               <div class="logo">
-                <h1>PassTheKey</h1>
-                <p>Autenticación avanzada con passkeys</p>
+                <h1>SecureBank</h1>
+                <p>Tu banca digital con seguridad avanzada</p>
+              </div>
+              <div class="auth-buttons">
+                <button class="btn btn-login" (click)="navigateToLogin()">Acceder</button>
+                <button class="btn btn-register" (click)="navigateToRegister()">Abrir Cuenta</button>
               </div>
             </div>
             
             <!-- Hero Section -->
             <div class="hero-content">
               <div class="hero-text">
-                <h2>Autenticación segura sin contraseñas</h2>
-                <p>Sistema revolucionario de autenticación con Passkeys para proteger tu identidad</p>
-                <div class="com-ahora">
-                <button class="btn btn-primary" (click)="navigateToRegister()">Comenzar Ahora</button>
-                </div>
+                <h2>Banca digital segura sin contraseñas</h2>
+                <p>Gestiona tus finanzas con la máxima seguridad usando tecnología Passkeys. Sin contraseñas, sin complicaciones.</p>
               </div>
               <div class="hero-image">
-                <img src="https://img.freepik.com/free-vector/privacy-policy-concept-illustration_114360-7853.jpg?t=st=1746445637~exp=1746449237~hmac=24e56225bbd231d76b17e7e06447fb5dd334e780ae6caf15023d364493480948&w=826" alt="Autenticación Segura">
+                <img src="https://img.freepik.com/free-vector/privacy-policy-concept-illustration_114360-7853.jpg?t=st=1746445637~exp=1746449237~hmac=24e56225bbd231d76b17e7e06447fb5dd334e780ae6caf15023d364493480948&w=826" alt="Banca Segura">
               </div>
             </div>
             
             <!-- Features Section -->
             <div class="section">
-              <h3 class="section-title">Características de Seguridad</h3>
+              <h3 class="section-title">Servicios Bancarios</h3>
               <div class="features-grid">
-                <div class="feature-card" *ngFor="let feature of features">
+                <div class="feature-card">
                   <div class="feature-icon">
-                    <i [class]="feature.iconClass"></i>
+                    <i class="bi bi-credit-card"></i>
                   </div>
-                  <h4>{{feature.title}}</h4>
-                  <p>{{feature.description}}</p>
+                  <h4>Tarjetas Virtuales</h4>
+                  <p>Crea y gestiona tarjetas virtuales para tus compras online con máxima seguridad</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-icon">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </div>
+                  <h4>Transferencias Instantáneas</h4>
+                  <p>Envía dinero al instante a cualquier cuenta bancaria sin comisiones</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                  </div>
+                  <h4>Inversiones</h4>
+                  <p>Accede a fondos de inversión y gestiona tu cartera desde tu móvil</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-icon">
+                    <i class="bi bi-piggy-bank"></i>
+                  </div>
+                  <h4>Ahorro Inteligente</h4>
+                  <p>Herramientas automáticas para alcanzar tus objetivos de ahorro</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-icon">
+                    <i class="bi bi-phone"></i>
+                  </div>
+                  <h4>App Móvil</h4>
+                  <p>Gestiona todo desde tu smartphone con nuestra app avanzada</p>
                 </div>
               </div>
             </div>
@@ -45,18 +74,18 @@
             <!-- Security Section -->
             <div class="section security-section">
               <div class="section-header">
-                <h3 class="section-title">Seguridad de última generación</h3>
+                <h3 class="section-title">Seguridad Bancaria de Última Generación</h3>
               </div>
               <div class="security-content">
-                <p>Nuestro sistema de passkeys elimina la necesidad de contraseñas, ofreciéndote:</p>
+                <p>Tu dinero protegido con la tecnología más avanzada del mercado:</p>
                 <ul class="security-list">
-                  <li><i class="bi bi-shield-shaded"></i> Protección biométrica avanzada</li>
-                  <li><i class="bi bi-lock-fill"></i> Autenticación sin contraseñas</li>
-                  <li><i class="bi bi-shield-fill-check"></i> Prevención de phishing y suplantación</li>
-                  <li><i class="bi bi-globe"></i> Acceso desde cualquier dispositivo</li>
+                  <li><i class="bi bi-shield-fill-check"></i> Autenticación biométrica sin contraseñas</li>
+                  <li><i class="bi bi-lock-fill"></i> Cifrado de nivel bancario en todas las transacciones</li>
+                  <li><i class="bi bi-shield-shaded"></i> Protección contra fraude en tiempo real</li>
+                  <li><i class="bi bi-bell-fill"></i> Alertas instantáneas de movimientos en tu cuenta</li>
                 </ul>
                 <div class="security-image">
-                  <img src="https://img.freepik.com/free-vector/two-factor-authentication-concept-illustration_114360-5488.jpg?t=st=1746446510~exp=1746450110~hmac=51b500df0c8e04c6a3182ee3e1994f35dd8c68fc436cac16046142cf87b08b9d&w=826" alt="Seguridad Passkeys">
+                  <img src="https://img.freepik.com/free-vector/two-factor-authentication-concept-illustration_114360-5488.jpg?t=st=1746446510~exp=1746450110~hmac=51b500df0c8e04c6a3182ee3e1994f35dd8c68fc436cac16046142cf87b08b9d&w=826" alt="Seguridad Bancaria">
                 </div>
               </div>
             </div>
@@ -64,11 +93,11 @@
             <!-- CTA Section -->
             <div class="section cta-section">
               <div class="cta-card">
-                <h3>¿Listo para una autenticación más segura?</h3>
-                <p>Únete a miles de usuarios que ya disfrutan de nuestra tecnología de passkeys</p>
+                <h3>¿Listo para la banca del futuro?</h3>
+                <p>Únete a miles de clientes que ya confían en SecureBank para gestionar sus finanzas</p>
                 <div class="cta-buttons">
-                  <button class="btn btn-primary" (click)="navigateToRegister()">Crear Cuenta</button>
-                  <button class="btn btn-secondary" (click)="navigateToLogin()">Acceder</button>
+                  <button class="btn btn-primary" (click)="navigateToRegister()">Abrir Cuenta Gratis</button>
+                  <button class="btn btn-secondary" (click)="navigateToLogin()">Iniciar Sesión</button>
                 </div>
               </div>
             </div>
@@ -77,8 +106,8 @@
             <div class="card-footer">
               <div class="footer-content">
                 <div class="footer-info">
-                  <h4>SecurePass</h4>
-                  <p>Tu seguridad es nuestra prioridad</p>
+                  <h4>SecureBank</h4>
+                  <p>Banca digital segura y confiable</p>
                 </div>
                 <div class="footer-links">
                   <div class="links-group">
@@ -91,7 +120,7 @@
                 </div>
               </div>
               <div class="footer-bottom">
-                <p>&copy; {{currentYear}} SecurePass. Todos los derechos reservados.</p>
+                <p>&copy; {{currentYear}} SecureBank. Todos los derechos reservados.</p>
               </div>
             </div>
           </div>
