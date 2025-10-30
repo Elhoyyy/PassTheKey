@@ -22,25 +22,22 @@ export class AppComponent {
   isMobileMenuOpen = false;
 
   constructor(private router: Router, private authService: AuthService) {
-    // Check login status on init
-    this.checkLoginStatus();
-    
-    // Subscribe to storage changes to detect login/logout from other components
-    window.addEventListener('storage', () => {
-      this.checkLoginStatus();
+    // Verificar sesión al cargar la aplicación
+    this.authService.checkSessionAsync().then(authenticated => {
+      this.isLoggedIn = authenticated;
+      console.log('[APP-COMPONENT] Initial session check:', authenticated);
     });
     
-    // Poll for login status changes every second (simple solution)
-    setInterval(() => {
-      this.checkLoginStatus();
-    }, 1000);
+    // Suscribirse al estado de autenticación
+    this.authService.getAuthState().subscribe(authenticated => {
+      this.isLoggedIn = authenticated;
+      console.log('[APP-COMPONENT] Auth state changed:', authenticated);
+    });
     
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
       this.currentRoute = event.urlAfterRedirects;
-      // Update login status on route change
-      this.checkLoginStatus();
       // Close mobile menu and dropdown on route change
       this.isMobileMenuOpen = false;
       this.isDropdownOpen = false;
@@ -48,10 +45,10 @@ export class AppComponent {
   }
   
   checkLoginStatus() {
-    // Check both token and isLoggedIn flag
-    const token = localStorage.getItem('token');
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    this.isLoggedIn = !!(token || isLoggedIn);
+    // Verificar con el servidor
+    this.authService.checkSessionAsync().then(authenticated => {
+      this.isLoggedIn = authenticated;
+    });
   }
   
   toggleDropdown() {
@@ -86,10 +83,7 @@ export class AppComponent {
   }
 
   logout() {
-    this.isLoggedIn = false;
-    localStorage.removeItem('token');
-    localStorage.removeItem('isLoggedIn');
-    this.authService.logout();
+    this.authService.logout(); // Esto manejará la limpieza de la sesión en el servidor
     this.isMobileMenuOpen = false;
     // Re-enable body scroll
     document.body.style.overflow = '';

@@ -234,6 +234,11 @@ router.post('/login/passkey/fin', async (req, res) => {
         if (verification.verified) {
             console.log(`[LOGIN-VERIFY] ✅ Authentication successful`);
             
+            // Establecer la sesión del usuario
+            req.session.username = username;
+            req.session.authenticated = true;
+            console.log(`[LOGIN-VERIFY] Session created for user: ${username}`);
+            
             // Actualizar contador de la credencial
             await dbUtils.updateCredentialCounter(credentialId, verification.authenticationInfo.newCounter);
             
@@ -381,6 +386,12 @@ router.post('/login/password', async (req, res) => {
         } else {
             console.log('NO OTP VERIFICATION REQUIRED - RECOVERY MODE');
             // Skip OTP verification for recovery flow
+            
+            // Establecer la sesión del usuario
+            req.session.username = username;
+            req.session.authenticated = true;
+            console.log(`[PASSWORD-LOGIN] Session created for user: ${username} (recovery mode)`);
+            
             const devices = await dbUtils.getUserDevices(username);
             const credentials = await dbUtils.getUserCredentials(username);
             const recoveryCodes = await dbUtils.getRecoveryCodes(username);
@@ -665,36 +676,34 @@ router.post('/generate-recovery-link', async (req, res) => {
 
 // Endpoint for OTP verification
 router.post('/passkey/verify-otp', async (req, res) => {
-    console.log('=== START OTP VERIFICATION ===');
     let { username, otpCode } = req.body;
     
     try {
         const user = await dbUtils.getUser(username);
         if (!username || !user) {
-            console.log('[OTP-VERIFY] User not found');
             return res.status(400).json({ message: 'Usuario no encontrado' });
         }
         
         if (!user.otpSecret) {
-            console.log('[OTP-VERIFY] No OTP secret for this user');
             return res.status(400).json({ message: 'La verificación OTP no está configurada para este usuario' });
         }
         
-        console.log(`[OTP-VERIFY] Verifying code ${otpCode} for user ${username}`);
-        
         const isValid = authenticator.verify({
             token: otpCode,
-            secret: user.otpSecret
+            secret: user.otpSecret,
+            window: 2 // Allow codes from 2 periods before/after (±60 seconds tolerance)
         });
         
         if (isValid) {
-            console.log('[OTP-VERIFY] ✅ OTP verification successful');
+            // Establecer la sesión del usuario
+            req.session.username = username;
+            req.session.authenticated = true;
+            
             res.status(200).json({ 
                 success: true, 
                 message: 'Verificación exitosa'
             });
         } else {
-            console.log('[OTP-VERIFY] ❌ OTP verification failed');
             res.status(400).json({ 
                 success: false, 
                 message: 'Código de verificación incorrecto'
@@ -760,6 +769,11 @@ router.post('/login/recovery-code', async (req, res) => {
         user.recoveryCodes.used.push(codeIndex);
         await dbUtils.updateUser(username, { recoveryCodes: user.recoveryCodes });
         
+        // Establecer la sesión del usuario
+        req.session.username = username;
+        req.session.authenticated = true;
+        console.log(`[RECOVERY-LOGIN] Session created for user: ${username}`);
+        
         console.log(`[RECOVERY-LOGIN] Recovery code validated successfully for ${username}`);
         
         res.status(200).json({
@@ -810,12 +824,55 @@ router.post('/auth/login/with-recovery-code', (req, res) => {
     // Mark the code as used
     foundUser.userData.recoveryCodes.used.push(foundUser.codeIndex);
     
+    // Establecer la sesión del usuario
+    req.session.username = foundUser.username;
+    req.session.authenticated = true;
+    
     console.log(`[LOGIN-RECOVERY] Recovery code validated successfully for ${foundUser.username}`);
     
     res.status(200).json({
         success: true,
         message: 'Acceso autorizado con código de recuperación',
         userProfile: { username: foundUser.username, ...foundUser.userData }
+    });
+});
+
+// Endpoint para verificar si hay una sesión activa
+router.get('/check-session', (req, res) => {
+    if (req.session && req.session.username) {
+        console.log(`[CHECK-SESSION] Active session for user: ${req.session.username}`);
+        res.status(200).json({
+            authenticated: true,
+            username: req.session.username
+        });
+    } else {
+        console.log('[CHECK-SESSION] No active session');
+        res.status(401).json({
+            authenticated: false
+        });
+    }
+});
+
+// Endpoint para cerrar sesión
+router.post('/logout', (req, res) => {
+    const username = req.session.username;
+    
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('[LOGOUT] Error destroying session:', err);
+            return res.status(500).json({ 
+                success: false,
+                message: 'Error al cerrar sesión' 
+            });
+        }
+        
+        res.clearCookie('connect.sid'); // Nombre por defecto de la cookie de express-session
+        console.log(`[LOGOUT] Session destroyed for user: ${username}`);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Sesión cerrada correctamente'
+        });
     });
 });
 

@@ -9,8 +9,10 @@ const { isValidEmail, isValidPassword, ALLOWED_EMAIL_DOMAINS } = require('../uti
 const { generateRecoveryCodes, generateOTPSecret, generateOTPCode, generateQRCodeURL, formatDate, authenticator } = require('../utils/auth');
 const { createCredentialCreationOptions } = require('../utils/webauthn');
 const { ERROR_MESSAGES, HTTP_STATUS } = require('../config/constants');
+const { requireSession } = require('../middleware/sessionMiddleware');
 
-router.post('/registro/passkey/delete', async (req, res) => {
+// Rutas que requieren autenticación (después del login)
+router.post('/registro/passkey/delete', requireSession, async (req, res) => {
     const { username, deviceIndex } = req.body;
     console.log(`[DELETE] Attempting to delete device index ${deviceIndex} for user ${username}`);
     
@@ -211,13 +213,11 @@ router.post('/registro/usuario', async (req, res) => {
 // New endpoint to generate QR code for authenticator app setup
 router.post('/generate-totp-qr', async (req, res) => {
     const { username } = req.body;
-    console.log(`[TOTP-QR] Generating QR code for user: ${username}`);
     
     try {
         // Check if user exists in database
         const user = await dbUtils.getUser(username);
         if (!user) {
-            console.log('[TOTP-QR] User not found');
             return res.status(400).json({ message: 'Usuario no encontrado' });
         }
         
@@ -227,10 +227,7 @@ router.post('/generate-totp-qr', async (req, res) => {
         if (!otpSecret) {
             otpSecret = authenticator.generateSecret();
             await dbUtils.updateUser(username, { otpSecret });
-            console.log(`[TOTP-QR] Generated new OTP secret for ${username}`);
         }
-        
-        console.log(`[TOTP-QR] Using OTP secret for ${username}: ${otpSecret.substring(0, 5)}...`);
         
         // Generate OTP Auth URI for QR code
         const otpAuth = authenticator.keyuri(
@@ -239,8 +236,6 @@ router.post('/generate-totp-qr', async (req, res) => {
             otpSecret               // Secret key
         );
         
-        console.log(`[TOTP-QR] OTP Auth URI: ${otpAuth}`);
-        
         // Generate QR code as data URL
         const qrCodeUrl = await qrcode.toDataURL(otpAuth);
         
@@ -248,12 +243,6 @@ router.post('/generate-totp-qr', async (req, res) => {
         const currentToken = authenticator.generate(otpSecret);
         const currentTime = Math.floor(Date.now() / 1000);
         const expirySeconds = 30 - (currentTime % 30);
-        
-        console.log(`[TOTP-QR] Generated token: ${currentToken}`);
-        console.log(`[TOTP-QR] Current time (seconds): ${currentTime}`);
-        console.log(`[TOTP-QR] TOTP window: ${Math.floor(currentTime / 30)}`);
-        console.log(`[TOTP-QR] Expires in: ${expirySeconds}s`);
-        console.log(`[TOTP-QR] QR code generated for ${username}`);
         
         res.status(200).json({
             success: true,
@@ -354,6 +343,11 @@ router.post('/registro/passkey/fin', async (req, res) => {
 
             console.log(`[FIRST-REGISTER] Registration successful for user: ${username}`);
             
+            // Establecer la sesión del usuario
+            req.session.username = username;
+            req.session.authenticated = true;
+            console.log(`[FIRST-REGISTER] Session created for user: ${username}`);
+            
             // Generate recovery codes automatically for new users
             if (!user.recoveryCodes) {
                 console.log(`[FIRST-REGISTER] Generating recovery codes for new user: ${username}`);
@@ -402,7 +396,7 @@ router.post('/registro/passkey/fin', async (req, res) => {
 });
 
 // Endpoint for additional passkey registration
-router.post('/registro/passkey/additional', async (req, res) => {
+router.post('/registro/passkey/additional', requireSession, async (req, res) => {
     console.log('=== START ADDITIONAL PASSKEY REGISTRATION CHALLENGE GENERATION ===');
     const rpId = req.hostname;
     let { username } = req.body;
@@ -481,7 +475,7 @@ router.post('/registro/passkey/additional', async (req, res) => {
     res.json(response);
 });
 
-router.post('/registro/passkey/additional/fin', async (req, res) => {
+router.post('/registro/passkey/additional/fin', requireSession, async (req, res) => {
     console.log('=== START ADDITIONAL PASSKEY REGISTRATION VERIFICATION ===');
     const { username, deviceName, device_creationDate } = req.body;
     const userAgent = req.headers['user-agent'];
@@ -637,13 +631,10 @@ router.post('/cancel-otp-verification', async (req, res) => {
 // Updated endpoint to verify OTP using proper TOTP verification
 router.post('/verify-otp', async (req, res) => {
     const { username, otpCode } = req.body;
-    console.log(`[OTP-VERIFY] Starting verification for user: ${username}`);
-    console.log(`[OTP-VERIFY] Received OTP code: ${otpCode}`);
     
     try {
         const user = await dbUtils.getUser(username);
         if (!user) {
-            console.log('[OTP-VERIFY] User not found');
             return res.status(400).json({ message: 'Usuario no encontrado' });
         }
         
@@ -651,7 +642,6 @@ router.post('/verify-otp', async (req, res) => {
         if (user.pendingVerification && user.verificationTimestamp) {
             const verificationAge = Date.now() - user.verificationTimestamp;
             if (verificationAge > 300000) { // 5 minutes timeout
-                console.log('[OTP-VERIFY] Verification timeout, removing user');
                 await dbUtils.deleteUser(username);
                 return res.status(400).json({ message: 'Tiempo de verificación expirado. Por favor, regístrese de nuevo.' });
             }
@@ -659,24 +649,20 @@ router.post('/verify-otp', async (req, res) => {
         
         // Check if the user has an OTP secret
         if (!user.otpSecret) {
-            console.log('[OTP-VERIFY] User does not have an OTP secret');
             return res.status(400).json({ message: 'Usuario no tiene configuración OTP' });
         }
-        
-        console.log(`[OTP-VERIFY] User OTP Secret exists: ${!!user.otpSecret}`);
-        console.log(`[OTP-VERIFY] Current server time (seconds): ${Math.floor(Date.now() / 1000)}`);
-        console.log(`[OTP-VERIFY] Current TOTP window: ${Math.floor(Math.floor(Date.now() / 1000) / 30)}`);
         
         // Verify the OTP code using otplib's authenticator with tolerance window
         const isValid = authenticator.verify({
             token: otpCode.toString().trim(),
-            secret: user.otpSecret
+            secret: user.otpSecret,
+            window: 2 // Allow codes from 2 periods before/after (±60 seconds tolerance)
         });
         
-        console.log(`[OTP-VERIFY] TOTP verification result: ${isValid}`);
-        
         if (isValid) {
-            console.log('[OTP-VERIFY] TOTP verification successful');
+            // Establecer la sesión del usuario
+            req.session.username = username;
+            req.session.authenticated = true;
             
             // Update user to mark OTP as verified
             const updateData = { isOtpVerified: 1 };
@@ -687,29 +673,28 @@ router.post('/verify-otp', async (req, res) => {
             }
             
             await dbUtils.updateUser(username, updateData);
-            console.log(`[OTP-VERIFY] User ${username} marked as OTP verified`);
             
             return res.status(200).json({
                 success: true,
                 userProfile: { username, ...user, isOtpVerified: 1 }
             });
         } else {
-            // Calculate seconds until next code
-            const secondsRemaining = 30 - (Math.floor(Date.now() / 1000) % 30);
-            console.log(`[OTP-VERIFY] Incorrect TOTP code. Next code in: ${secondsRemaining}s`);
-            
             return res.status(400).json({ 
-                message: `Código incorrecto. Inténtalo de nuevo. El código cambia en ${secondsRemaining} segundos.`
+                success: false,
+                message: `Código incorrecto. Inténtalo de nuevo.`
             });
         }
     } catch (error) {
         console.error('[OTP-VERIFY] Error verifying TOTP:', error);
-        return res.status(500).json({ message: 'Error al verificar el código TOTP' });
+        return res.status(500).json({ 
+            success: false,
+            message: 'Error al verificar el código TOTP' 
+        });
     }
 });
 
 // Endpoint to generate recovery codes for a user
-router.post('/generate-recovery-codes', async (req, res) => {
+router.post('/generate-recovery-codes', requireSession, async (req, res) => {
     const { username } = req.body;
     console.log(`[RECOVERY-CODES] Generating recovery codes for user: ${username}`);
     
@@ -752,7 +737,7 @@ router.post('/generate-recovery-codes', async (req, res) => {
 });
 
 // Endpoint to generate initial recovery codes for existing users who don't have them
-router.post('/generate-initial-recovery-codes', async (req, res) => {
+router.post('/generate-initial-recovery-codes', requireSession, async (req, res) => {
     const { username } = req.body;
     console.log(`[INITIAL-RECOVERY] Generating initial recovery codes for user: ${username}`);
     

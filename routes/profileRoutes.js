@@ -6,6 +6,49 @@ const { handleError, createError, validateUser } = require('../utils/errorHandle
 const { isValidPassword } = require('../utils/validation');
 const { generateRecoveryCodes, formatDate } = require('../utils/auth');
 const { ERROR_MESSAGES, HTTP_STATUS } = require('../config/constants');
+const { requireSession } = require('../middleware/sessionMiddleware');
+
+// Aplicar middleware de sesión a todas las rutas de perfil
+router.use(requireSession);
+
+// GET endpoint to retrieve user profile
+router.get('/', async (req, res) => {
+    try {
+        const username = req.session.username;
+        console.log('[PROFILE-GET] Fetching profile for user:', username);
+        
+        const user = await dbUtils.getUser(username);
+        if (!user) {
+            console.log('[PROFILE-GET] User not found:', username);
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        
+        // Return user profile without sensitive data like password hash
+        const profile = {
+            username: user.username,
+            email: user.email,
+            credential: user.credential || [],
+            devices: user.devices || [],
+            password: user.password, // Include hashed password for backend verification
+            otpSecret: user.otpSecret, // Include OTP secret for 2FA status
+            passwordCreationDate: user.passwordCreationDate,
+            device_creationDate: user.device_creationDate,
+            recoveryCodes: user.recoveryCodes
+        };
+        
+        console.log('[PROFILE-GET] Profile sent:', {
+            username: profile.username,
+            hasPassword: profile.password,
+            has2FA: profile.otpSecret,
+            deviceCount: profile.devices.length
+        });
+        
+        return res.status(200).json(profile);
+    } catch (error) {
+        console.error('[PROFILE-GET] Error fetching profile:', error);
+        return res.status(500).json({ message: 'Error al obtener el perfil' });
+    }
+});
 
 // Update password route - For changing existing passwords
 router.post('/update-password', async (req, res) => {

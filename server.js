@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const session = require('express-session');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
@@ -13,15 +14,30 @@ const { initializeDatabase } = require('./init-db');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: '*' }));
+app.use(cors({ 
+    origin: true, // Permitir el mismo origen
+    credentials: true // Permitir envío de cookies
+}));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-// Routes
+// Configurar sesiones
+app.use(session({
+    secret: 'tu-secreto-super-seguro-cambialo-en-produccion', // Cambiar en producción
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: false, // Cambiar a true en producción con HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        sameSite: 'lax' // Permitir cookies en navegación entre páginas
+    }
+}));
+
+// Routes - IMPORTANTE: Las rutas API deben estar ANTES del static files y catch-all
 app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);
 app.use('/passkey', passkeyRoutes);
-
 
 // Initialize database and email service
 Promise.all([
@@ -40,12 +56,12 @@ Promise.all([
     } else {
         console.warn('⚠️ Failed to initialize email service, recovery emails will not be sent');
     }
-    });
+});
 
-// Static files
+// Static files - Después de las rutas API
 app.use(express.static(path.join(__dirname, 'passkeys_frontend/dist/passkey-frontend/browser')));
 
-// Catch-all route to handle Angular routing
+// Catch-all route to handle Angular routing - DEBE SER LA ÚLTIMA
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'passkeys_frontend/dist/passkey-frontend/browser/index.html'));
 });

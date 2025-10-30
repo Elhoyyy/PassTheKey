@@ -74,6 +74,7 @@ export class SecurityComponent implements OnInit {
     number: false,
     special: false
   };
+  passwordsMatch: boolean = true; // Track if passwords match
 
   lastUsedDeviceIndex: number = -1; // Track which device was last used
 
@@ -98,54 +99,45 @@ export class SecurityComponent implements OnInit {
     private appComponent: AppComponent,
     private authService: AuthService,
     private profileService: ProfileService
-  ) {
-    const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras.state as { userProfile: any };
-    
-    if (state && state.userProfile) {
-      console.log('[SECURITY] Setting profile from navigation state');
-      this.profileService.setProfile(state.userProfile);
-    }
-    
-    const profile = this.profileService.getProfile();
-    if (profile) {
-      this.username = profile.username || '';
-      this.email = profile.email || '';
-      this.devices = profile.devices || [];
-      this.device_creationDate = profile.device_creationDate || '';
-      
-      console.log('[SECURITY] Profile loaded:', {
-        username: this.username,
-        deviceCount: this.devices.length,
-        credentialCount: profile.credential?.length || 0,
-        hasPassword: !!profile.password,
-        has2FA: !!profile.otpSecret,
-        passwordCreationDate: profile.passwordCreationDate
-      });
-    } else {
-      console.log('[SECURITY] No profile found, redirecting to auth');
-      this.router.navigate(['/auth']);
-    }
-  }
+  ) {}
 
 
   ngOnInit() {
-    // Check if user has no passkeys and update UI accordingly
-    this.updatePasskeyUIState();
+    console.log('[SECURITY] Initializing, fetching profile from server...');
     
-    // Initialize password creation date from localStorage or set to today if not available
-    this.loadPasswordCreationDate();
-    
-    // Calculate initial security score
-    this.calculateSecurityScore();
-    
-    // Identify the last used device
-    this.identifyLastUsedDevice();
-
-    // Check if user has password and 2FA
-    this.checkPasswordAndTwoFactorStatus();
-    
-
+    // Fetch profile from server using session cookie
+    this.http.get<any>('http://localhost:3000/profile', { withCredentials: true })
+      .subscribe({
+        next: (profile) => {
+          console.log('[SECURITY] Profile fetched from server:', profile);
+          this.profileService.setProfile(profile);
+          this.username = profile.username || '';
+          this.email = profile.email || '';
+          this.devices = profile.devices || [];
+          this.device_creationDate = profile.device_creationDate || '';
+          this.passwordCreationDate = profile.passwordCreationDate || 'Not changed yet';
+          
+          console.log('[SECURITY] Profile loaded:', {
+            username: this.username,
+            deviceCount: this.devices.length,
+            credentialCount: profile.credential?.length || 0,
+            hasPassword: !!profile.password,
+            has2FA: !!profile.otpSecret,
+            passwordCreationDate: this.passwordCreationDate
+          });
+          
+          // Now that we have the profile, continue with initialization
+          this.updatePasskeyUIState();
+          this.calculateSecurityScore();
+          this.identifyLastUsedDevice();
+          this.checkPasswordAndTwoFactorStatus();
+        },
+        error: (error) => {
+          console.error('[SECURITY] Error fetching profile:', error);
+          console.log('[SECURITY] Redirecting to auth due to error');
+          this.router.navigate(['/auth']);
+        }
+      });
   }
 
   // Update UI state based on passkeys availability
@@ -201,6 +193,15 @@ export class SecurityComponent implements OnInit {
       this.passwordStrength = 'moderada'; // Changed from 'moderada' to match CSS class name
     } else if (metRequirements >= 3) {
       this.passwordStrength = 'fuerte' ; // Changed from 'fuerte' to match CSS class name
+    }
+  }
+  
+  // Check if passwords match
+  checkPasswordsMatch() {
+    if (this.confirmPassword.length > 0) {
+      this.passwordsMatch = this.newPassword === this.confirmPassword;
+    } else {
+      this.passwordsMatch = true; // Don't show error if confirm field is empty
     }
   }
 
@@ -267,9 +268,33 @@ export class SecurityComponent implements OnInit {
       return;
     }
     
-    
-    // If user doesn't have a password yet, require 2FA setup
+    // If user doesn't have a password yet, validate password confirmation before showing OTP setup
     if (!this.hasPassword) {
+      // Validate password confirmation is not empty
+      if (!this.confirmPassword) {
+        this.passwordError = 'Por favor, confirma tu contraseña';
+        setTimeout(() => this.passwordError = null, 3000);
+        return;
+      }
+      
+      // Validate passwords match
+      if (this.newPassword !== this.confirmPassword) {
+        this.passwordError = 'Las contraseñas no coinciden';
+        setTimeout(() => this.passwordError = null, 3000);
+        return;
+      }
+      
+      // Validate password strength requirements
+      if (!this.passwordRequirements.length || 
+          !this.passwordRequirements.uppercase || 
+          !this.passwordRequirements.number || 
+          !this.passwordRequirements.special) {
+        this.passwordError = 'La contraseña no cumple con los requisitos de seguridad';
+        setTimeout(() => this.passwordError = null, 3000);
+        return;
+      }
+      
+      // All validations passed, now show OTP setup
       await this.startOtpSetup();
       return;
     }
@@ -376,23 +401,20 @@ export class SecurityComponent implements OnInit {
     const cleanedCode = this.otpCode.toString().trim();
     
     if (!cleanedCode || cleanedCode.length !== 6 || !/^\d+$/.test(cleanedCode)) {
-      this.passwordError = "Por favor, ingresa un código de verificación válido de 6 dígitos";
-      setTimeout(() => this.passwordError = null, 3000);
+      this.errorMessageModal = "Por favor, ingresa un código de verificación válido de 6 dígitos";
+      setTimeout(() => this.errorMessageModal = null, 3000);
       return;
     }
     
     this.isVerifyingOtp = true;
-    this.passwordError = null;
-    
-    console.log('[VERIFY-OTP] Sending code to backend:', cleanedCode);
+    this.errorMessageModal = null;
+    this.successMessageModal = null;
     
     try {
-      const verifyResponse = await this.http.post<{ success: boolean }>('/passkey/verify-otp', {
+      const verifyResponse = await this.http.post<{ success: boolean, message?: string }>('/passkey/verify-otp', {
         username: this.username,
         otpCode: cleanedCode
       }).toPromise();
-      
-      console.log('[VERIFY-OTP] Response from backend:', verifyResponse);
       
       if (verifyResponse && verifyResponse.success) {
         // OTP verified, now add the password
@@ -439,12 +461,12 @@ export class SecurityComponent implements OnInit {
           clearInterval(this.timerInterval);
         }
       } else {
-        throw new Error('Código de verificación incorrecto');
+        throw new Error(verifyResponse?.message || 'Código de verificación incorrecto');
       }
     } catch (error: any) {
       console.error('Error en la verificación:', error);
-      this.passwordError = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
-      setTimeout(() => this.passwordError = null, 3000);
+      this.errorMessageModal = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
+      setTimeout(() => this.errorMessageModal = null, 5000);
     } finally {
       this.isVerifyingOtp = false;
     }

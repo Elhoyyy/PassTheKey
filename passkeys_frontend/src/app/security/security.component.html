@@ -221,6 +221,7 @@
                         <i class="bi bi-eye-slash"></i>
                       </span>
                     </div>
+                    
                     <div class="password-requirements">
                       <p>La contraseña debe contener:</p>
                       <ul>
@@ -243,7 +244,8 @@
                       </ul>
                     </div>
                     <div class="text-center">
-                      <button class="btn btn-primary mt-3 centered-btn" (click)="updatePassword()" [disabled]="isPasswordLoading">
+                      <button class="btn btn-primary mt-3 centered-btn" (click)="updatePassword()" 
+                        [disabled]="isPasswordLoading">
                         <span *ngIf="isPasswordLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         {{ isPasswordLoading ? 'Actualizando...' : hasPassword ? 'Actualizar contraseña' : 'Añadir contraseña' }}
                       </button>

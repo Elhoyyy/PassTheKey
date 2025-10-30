@@ -118,7 +118,28 @@ const dbUtils = {
                         row.recoveryTokens = [];
                         row.pendingVerification = null;
                     }
-                    resolve(row);
+                    
+                    // Fetch devices from devices table
+                    db.all('SELECT * FROM devices WHERE username = ? ORDER BY id', [username], (devErr, devices) => {
+                        if (devErr) {
+                            console.error('Error fetching devices for user:', username, devErr);
+                            row.devices = [];
+                        } else {
+                            row.devices = devices || [];
+                        }
+                        
+                        // Fetch credentials from credentials table
+                        db.all('SELECT * FROM credentials WHERE username = ? ORDER BY id', [username], (credErr, credentials) => {
+                            if (credErr) {
+                                console.error('Error fetching credentials for user:', username, credErr);
+                                row.credential = [];
+                            } else {
+                                row.credential = credentials || [];
+                            }
+                            
+                            resolve(row);
+                        });
+                    });
                 } else {
                     resolve(null);
                 }
