@@ -10,7 +10,7 @@ import { of } from 'rxjs';
 })
 export class AuthService {
   private isAuthenticated = new BehaviorSubject<boolean>(false);
-  private apiUrl = 'http://localhost:3000/auth';
+  private apiUrl = '/auth'; // URL relativa
   private sessionChecked = false;
 
   constructor(private http: HttpClient) {

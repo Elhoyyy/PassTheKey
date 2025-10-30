@@ -445,7 +445,12 @@ const dbUtils = {
     }
 };
 
-const expectedOrigin = ['http://localhost:3000', 'https://passthekey.martinord.eu'];
+const expectedOrigin = [
+    'http://localhost:3000',
+    'http://localhost:4000',
+    'https://passthekey.martinord.eu',
+    'https://passthekey.martinord.eu:4000'
+];
 
 module.exports = {
     db,

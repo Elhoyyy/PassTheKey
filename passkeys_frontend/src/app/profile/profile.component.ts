@@ -48,7 +48,7 @@ export class ProfileComponent implements OnInit {
     console.log('[PROFILE] Initializing, fetching profile from server...');
     
     // Intentar obtener el perfil desde el servidor usando la sesión
-    this.http.get<any>('http://localhost:3000/profile', { withCredentials: true })
+    this.http.get<any>('/profile', { withCredentials: true })
       .subscribe({
         next: (profile) => {
           console.log('[PROFILE] Profile fetched from server:', profile);

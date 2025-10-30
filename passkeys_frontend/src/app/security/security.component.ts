@@ -106,7 +106,7 @@ export class SecurityComponent implements OnInit {
     console.log('[SECURITY] Initializing, fetching profile from server...');
     
     // Fetch profile from server using session cookie
-    this.http.get<any>('http://localhost:3000/profile', { withCredentials: true })
+    this.http.get<any>('/profile', { withCredentials: true })
       .subscribe({
         next: (profile) => {
           console.log('[SECURITY] Profile fetched from server:', profile);

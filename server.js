@@ -14,23 +14,52 @@ const { initializeDatabase } = require('./init-db');
 const app = express();
 
 // Middleware
-app.use(cors({ 
-    origin: true, // Permitir el mismo origen
-    credentials: true // Permitir envío de cookies
-}));
+// Configuración de CORS para permitir cookies
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Permitir requests sin origin (como mobile apps o curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Dominios permitidos
+        const allowedDomains = [
+            'http://localhost:3000',
+            'http://localhost:4000',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:4000',
+            'https://passthekey.martinord.eu',
+            'https://passthekey.martinord.eu:4000'
+        ];
+        
+        // Verificar si el origin está permitido
+        if (allowedDomains.includes(origin) ||
+            origin.startsWith('http://localhost:') ||
+            origin.startsWith('http://127.0.0.1:')) {
+            callback(null, true);
+        } else {
+            callback(null, false);
+        }
+    },
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // Configurar sesiones
 app.use(session({
-    secret: 'tu-secreto-super-seguro-cambialo-en-produccion', // Cambiar en producción
+    secret: process.env.SESSION_SECRET || 'tu-secreto-super-seguro-cambialo-en-produccion',
     resave: false,
     saveUninitialized: false,
+    name: 'sessionId',
     cookie: { 
-        secure: false, // Cambiar a true en producción con HTTPS
+        secure: process.env.COOKIE_SECURE === 'true' || false, // true para HTTPS, false para HTTP
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        sameSite: 'lax' // Permitir cookies en navegación entre páginas
+        sameSite: process.env.COOKIE_SAMESITE || 'lax',
+        path: '/',
+        domain: undefined
     }
 }));
 

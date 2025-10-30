@@ -53,6 +53,47 @@ app.listen( 3000, '0.0.0.0', err => {
 
 ---
 
+## Ejecución con Docker
+
+### Para desarrollo local (HTTP)
+
+```bash
+# Construir la imagen
+docker build -t passkeys-app .
+
+# Ejecutar el contenedor
+docker run -p 4000:3000 passkeys-app
+```
+
+Acceder en: [http://localhost:4000](http://localhost:4000)
+
+### Para producción con dominio HTTPS
+
+Si vas a exponer la aplicación con HTTPS (por ejemplo, `https://passthekey.martinord.eu:4000`), necesitas configurar las cookies como seguras:
+
+```bash
+# Construir la imagen
+docker build -t passkeys-app .
+
+# Ejecutar con variables de entorno para HTTPS
+docker run -p 4000:3000 \
+  -e COOKIE_SECURE=true \
+  -e COOKIE_SAMESITE=none \
+  passkeys-app
+```
+
+**Importante para HTTPS:**
+- Las cookies requieren `secure: true` cuando se usa HTTPS
+- `sameSite: none` permite cookies cross-site con HTTPS
+- El frontend usa URLs relativas, funcionará automáticamente en cualquier dominio
+- Asegúrate que tu proxy/reverse proxy (Cloudflare, nginx, etc.) pase correctamente las cabeceras de CORS
+
+**Nota:** Los dominios permitidos ya están configurados en `database.js` y `server.js`:
+- `http://localhost:3000` y `http://localhost:4000` (desarrollo)
+- `https://passthekey.martinord.eu` y `https://passthekey.martinord.eu:4000` (producción)
+
+---
+
 ## Ejecución en Servidor HTTPS de Cloudflare:
 
 Podremos levantar un servidor que apunte hacia un puerto de nuestra red local para así permitir acceso a cualqueir usuario gracias a la siguiente extensión: 

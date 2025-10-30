@@ -37,5 +37,8 @@ RUN rm -rf node_modules
 RUN npm install --only=production
 RUN npm rebuild bcrypt --build-from-source
 
+# Expose the port
+EXPOSE 3000
+
 # Run the application
 CMD ["node", "server.js"]
