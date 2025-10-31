@@ -1448,3 +1448,199 @@
   width: 100%;
   line-height: 1.6; /* Mejorar legibilidad */
 }
+
+/* 2FA Dialog - New Design */
+.otp-dialog .info-box {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196F3;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+.otp-dialog .info-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.otp-dialog .info-header i {
+  font-size: 1.5rem;
+  color: #2196F3;
+}
+
+.otp-dialog .info-header h6 {
+  margin: 0;
+  color: #1976D2;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.otp-dialog .info-box p {
+  margin-bottom: 15px;
+  color: #424242;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.otp-dialog .qr-container {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.otp-dialog .qr-code {
+  width: 200px;
+  height: 200px;
+  display: inline-block;
+  border: 3px solid #2196F3;
+  border-radius: 12px;
+  padding: 10px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.otp-dialog .manual-setup {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #90CAF9;
+}
+
+.otp-dialog .manual-setup p {
+  font-size: 0.9rem;
+  color: #616161;
+  margin-bottom: 8px;
+}
+
+.otp-dialog .secret-code {
+  background: white;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #1976D2;
+  border: 2px dashed #2196F3;
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.otp-dialog .copy-button {
+  background: #2196F3;
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.otp-dialog .copy-button:hover {
+  background: #1976D2;
+  transform: scale(1.05);
+}
+
+.otp-dialog .app-list-box {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.otp-dialog .app-list-box h6 {
+  margin: 0 0 15px 0;
+  color: #424242;
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.otp-dialog .app-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.otp-dialog .app-item {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.otp-dialog .app-item:hover {
+  border-color: #2196F3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.otp-dialog .app-item i {
+  font-size: 2rem;
+  color: #2196F3;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.otp-dialog .app-item span {
+  display: block;
+  font-size: 0.85rem;
+  color: #616161;
+  font-weight: 500;
+}
+
+.otp-dialog .how-it-works {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-left: 4px solid #ff9800;
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(255, 152, 0, 0.1);
+}
+
+.otp-dialog .how-it-works i {
+  font-size: 1.5rem;
+  color: #f57c00;
+  flex-shrink: 0;
+}
+
+.otp-dialog .how-it-works strong {
+  color: #e65100;
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.95rem;
+}
+
+.otp-dialog .how-it-works p {
+  margin: 0;
+  color: #5d4037;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.otp-dialog .verification-section {
+  text-align: center;
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.otp-dialog .verification-section p {
+  margin: 0;
+  color: #616161;
+  font-size: 0.9rem;
+}
+
+.otp-dialog .verification-section span {
+  color: #f57c00;
+  font-weight: 600;
+}

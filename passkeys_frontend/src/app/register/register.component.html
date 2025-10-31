@@ -177,26 +177,50 @@
         <div *ngIf="show2FAConfirmationDialog" class="passkey-name-dialog">
           <div class="dialog-content">
             <div class="dialog-header">
-              <h5><i class="bi bi-shield-lock"></i>Configuración de Segundo Factor</h5>
+              <h5><i class="bi bi-shield-lock"></i> Configuración de Segundo Factor</h5>
             </div>
             <div class="dialog-body">
-              <p><strong>Autenticación de Dos Factores Requerida</strong></p>
-              <p>Para aumentar la seguridad de tu cuenta, se configurará un segundo factor de autenticación (2FA) tras el registro.</p>
-              <div class="info-message">
-                <i class="bi bi-info-circle"></i>
-                <p>Necesitarás una aplicación móvil como:</p>
-                <ul>
-                  <li>Google Authenticator</li>
-                  <li>Microsoft Authenticator</li>
-                  <li>Authy</li>
-                  <li>1Password</li>
-                </ul>
-                <p>Esta aplicación generará códigos de verificación cada 30 segundos que deberás usar cada vez que inicies sesión.</p>
+              <div class="info-box">
+                <div class="info-header">
+                  <i class="bi bi-shield-check-fill"></i>
+                  <h6>Autenticación de Dos Factores Requerida</h6>
+                </div>
+                <p class="info-text">Para aumentar la seguridad de tu cuenta, se configurará un segundo factor de autenticación (2FA) tras el registro.</p>
+              </div>
+
+              <div class="app-list-box">
+                <div class="app-list-header">
+                  <i class="bi bi-phone-fill"></i>
+                  <span>Aplicaciones Compatibles</span>
+                </div>
+                <div class="app-grid">
+                  <div class="app-item">
+                    <i class="bi bi-google"></i>
+                    <span>Google Authenticator</span>
+                  </div>
+                  <div class="app-item">
+                    <i class="bi bi-microsoft"></i>
+                    <span>Microsoft Authenticator</span>
+                  </div>
+                  <div class="app-item">
+                    <i class="bi bi-shield-fill-check"></i>
+                    <span>Authy</span>
+                  </div>
+                  <div class="app-item">
+                    <i class="bi bi-key-fill"></i>
+                    <span>1Password</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="how-it-works">
+                <i class="bi bi-info-circle-fill"></i>
+                <p>La aplicación generará códigos de verificación cada 30 segundos que deberás usar cada vez que inicies sesión.</p>
               </div>
             </div>
             <div class="dialog-footer">
               <button class="btn btn-primary" (click)="confirm2FASetup()">
-                <i class="bi bi-check-circle"></i>Entendido
+                <i class="bi bi-check-circle"></i> Entendido, Continuar
               </button>
             </div>
           </div>

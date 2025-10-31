@@ -289,76 +289,24 @@ export class RegisterComponent {
         password: this.password
       }).toPromise();
       
-      if (response && response.success) {
-        // Save password creation date to localStorage
-        if (response.passwordCreationDate) {
-          localStorage.setItem(`${this.username}_passwordDate`, response.passwordCreationDate);
-        }
+      if (response && response.success && response.requireOtp) {
+        // Registration pending TOTP verification
+        // Show QR code and TOTP verification dialog
+        this.qrCodeUrl = response.qrCodeUrl;
+        this.otpSecret = response.otpSecret;
+        this.demoOtpCode = response.currentToken || '';
+        this.expirySeconds = response.expirySeconds || 30;
+        this.startExpiryTimer();
         
-        // Try to login automatically
-        try {
-          const loginResponse = await this.http.post<{ 
-            res: boolean, 
-            userProfile?: any, 
-            requireOtp?: boolean,
-            demoToken?: string,
-            expirySeconds?: number,
-            needsQrSetup?: boolean
-          }>('/auth/login/password', { 
-            username: this.username, 
-            password: this.password,
-            recovery: false
-          }).toPromise();
-          
-          if (loginResponse && loginResponse.res && loginResponse.requireOtp) {
-            // Store demo token and start countdown timer
-            this.demoOtpCode = loginResponse.demoToken || '';
-            this.expirySeconds = loginResponse.expirySeconds || 30;
-            this.startExpiryTimer();
-            
-            // Store pending user profile
-            this.pendingUserProfile = {
-              ...loginResponse.userProfile,
-              passwordCreationDate: response.passwordCreationDate
-            };
-            this.showOtpVerification = true;
-            this.isRegistering = false;
-            this.show2FAConfirmationDialog = true;
-            const otpresponse = await this.http.post<{
-              success: boolean,
-              qrCodeUrl: string,
-              secret: string,
-              currentToken: string,
-              expirySeconds: number
-            }>('/passkey/generate-totp-qr', {
-              username: this.username
-            }).toPromise();
-            
-            if (otpresponse && otpresponse.success) {
-              this.qrCodeUrl = otpresponse.qrCodeUrl;
-              this.otpSecret = otpresponse.secret;
-              this.demoOtpCode = otpresponse.currentToken;
-              this.expirySeconds = otpresponse.expirySeconds;
-              
-              // Update the timer
-              this.startExpiryTimer();
-            }
-          } else {
-            throw new Error('Error en el inicio de sesión automático');
-          }
-        } catch (loginError) {
-          console.error('Error en el inicio de sesión automático:', loginError);
-          this.errorMessage = 'Registro exitoso, pero no se pudo iniciar sesión automáticamente. Por favor, inicie sesión manualmente.';
-          this.hideError();
-          this.isRegistering = false;
-          this.goToLogin();
-        }
+        this.showOtpVerification = true;
+        this.show2FAConfirmationDialog = true;
+        this.isRegistering = false;
       } else {
         throw new Error('Error en el registro');
       }
     } catch (error: any) {
-      console.error('Error en el registro con contraseña:', error);
-      this.errorMessage = error.error?.message || error.message || 'Error en el registro';
+      console.error('Error en el registro:', error);
+      this.errorMessage = error.error?.message || error.message || 'Error al registrar el usuario';
       this.hideError();
       this.isRegistering = false;
     }
@@ -371,20 +319,19 @@ export class RegisterComponent {
       clearInterval(this.timerInterval);
     }
     
-    // Call the server to cancel the registration and delete the pending user
-    if (this.username) {
-      this.http.post('/passkey/cancel-otp-verification', { username: this.username })
-        .subscribe({
-          next: (response: any) => {
-            console.log('Registration canceled:', response);
-          },
-          error: (error) => {
-            console.error('Error canceling registration:', error);
-          }
-        });
-    }
+    // Call the server to clear pending registration from session
+    this.http.post('/passkey/cancel-otp-verification', {})
+      .subscribe({
+        next: (response: any) => {
+          console.log('Registration canceled:', response);
+        },
+        error: (error) => {
+          console.error('Error canceling registration:', error);
+        }
+      });
     
     this.showOtpVerification = false;
+    this.show2FAConfirmationDialog = false;
     this.otpCode = '';
     this.pendingUserProfile = null;
   }
@@ -400,8 +347,12 @@ export class RegisterComponent {
     this.errorMessage = null;
     
     try {
-      const response = await this.http.post<{ success: boolean, userProfile?: any }>('/passkey/verify-otp', {
-        username: this.username,
+      // Call the new endpoint to complete registration
+      const response = await this.http.post<{ 
+        success: boolean, 
+        userProfile?: any,
+        message?: string 
+      }>('/passkey/registro/usuario/completar', {
         otpCode: this.otpCode
       }).toPromise();
       
@@ -409,6 +360,11 @@ export class RegisterComponent {
         // Mark authenticator as configured when verification succeeds
         this.authenticatorConfigured = true;
         localStorage.setItem(`${this.username}_authenticatorConfigured`, 'true');
+        
+        // Save password creation date to localStorage
+        if (response.userProfile?.passwordCreationDate) {
+          localStorage.setItem(`${this.username}_passwordDate`, response.userProfile.passwordCreationDate);
+        }
         
         // Stop the timer when verification is successful
         if (this.timerInterval) {
@@ -419,9 +375,8 @@ export class RegisterComponent {
         this.authService.login();
         this.appComponent.isLoggedIn = true;
         
-        // Combinar el perfil pendiente con cualquier información adicional de la verificación
+        // Set user profile
         const userProfile = {
-          ...this.pendingUserProfile,
           ...response.userProfile,
           plainPassword: this.password // Mantener la contraseña sin hashear
         };
@@ -432,21 +387,11 @@ export class RegisterComponent {
         // Generate recovery codes after successful password registration
         await this.generateRecoveryCodes();
       } else {
-        throw new Error('Código de verificación incorrecto');
+        throw new Error((response && response.message) || 'Código de verificación incorrecto');
       }
     } catch (error: any) {
       console.error('Error en la verificación:', error);
-      
-      // Specifically handle verification timeout
-      if (error.error?.message?.includes('Tiempo de verificación expirado')) {
-        this.errorMessage = 'El tiempo para verificar su cuenta ha expirado. Por favor, regístrese nuevamente.';
-        this.showOtpVerification = false;
-        this.otpCode = '';
-        this.pendingUserProfile = null;
-      } else {
-        this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
-      }
-      
+      this.errorMessage = error.error?.message || error.message || 'Código de verificación incorrecto. Inténtalo de nuevo.';
       this.hideError();
     } finally {
       this.isVerifyingOtp = false;

@@ -181,27 +181,43 @@ router.post('/registro/usuario', async (req, res) => {
                 // Generate a secret key for TOTP
                 const otpSecret = authenticator.generateSecret();
                 
-                // Create user in database
-                await dbUtils.createUser({
+                // DO NOT create user yet - store temporarily in session
+                req.session.pendingRegistration = {
                     username,
-                    password: hash,
+                    passwordHash: hash,
                     passwordCreationDate,
-                    otpSecret,
-                    isOtpVerified: 0 // Mark as pending verification
-                });
+                    otpSecret
+                };
                 
-                console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate}), pendiente de verificación`);
+                console.log(`${username} - Datos de registro guardados temporalmente, esperando verificación TOTP`);
                 
-                // Ya estamos preparados para la verificación OTP cuando el usuario inicie sesión
+                // Generate OTP Auth URI for QR code
+                const otpAuth = authenticator.keyuri(
+                    username,
+                    'PasskeyApp',
+                    otpSecret
+                );
+                
+                // Generate QR code as data URL
+                const qrCodeUrl = await qrcode.toDataURL(otpAuth);
+                
+                // Generate current token for testing/display
+                const currentToken = authenticator.generate(otpSecret);
+                const expirySeconds = 30 - (Math.floor(Date.now() / 1000) % 30);
+                
                 res.status(200).json({ 
                     success: true, 
-                    message: 'Usuario registrado correctamente',
-                    passwordCreationDate: passwordCreationDate, // Return the creation date to the client
-                    otpSecret: otpSecret // Send secret for immediate QR code generation
+                    message: 'Validación pendiente',
+                    requireOtp: true,
+                    qrCodeUrl,
+                    otpSecret,
+                    currentToken,
+                    expirySeconds,
+                    passwordCreationDate
                 });
             } catch (dbError) {
                 console.error('Database error:', dbError);
-                res.status(500).json({ message: 'Error al registrar el usuario en la base de datos' });
+                res.status(500).json({ message: 'Error al procesar el registro' });
             }
         });
     } catch (error) {
@@ -254,6 +270,75 @@ router.post('/generate-totp-qr', async (req, res) => {
     } catch (error) {
         console.error('[TOTP-QR] Error generating QR code:', error);
         return res.status(500).json({ message: 'Error generando código QR' });
+    }
+});
+
+// New endpoint to complete registration after TOTP verification
+router.post('/registro/usuario/completar', async (req, res) => {
+    const { otpCode } = req.body;
+    
+    try {
+        // Check if there's a pending registration in session
+        if (!req.session.pendingRegistration) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No hay registro pendiente' 
+            });
+        }
+        
+        const { username, passwordHash, passwordCreationDate, otpSecret } = req.session.pendingRegistration;
+        
+        // Verify the OTP code
+        const isValid = authenticator.verify({
+            token: otpCode,
+            secret: otpSecret
+        });
+        
+        if (!isValid) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Código de verificación incorrecto' 
+            });
+        }
+        
+        // OTP is valid, now create the user in database
+        await dbUtils.createUser({
+            username,
+            password: passwordHash,
+            passwordCreationDate,
+            otpSecret,
+            isOtpVerified: 1 // Mark as verified
+        });
+        
+        console.log(`${username} - USUARIO REGISTRADO CON CONTRASEÑA (creada: ${passwordCreationDate}) - TOTP VERIFICADO`);
+        
+        // Clear pending registration from session
+        delete req.session.pendingRegistration;
+        
+        // Create user session
+        req.session.username = username;
+        req.session.isLoggedIn = true;
+        
+        // Get user profile
+        const user = await dbUtils.getUser(username);
+        const userProfile = {
+            username: user.username,
+            has2FA: !!user.otpSecret,
+            hasPassword: !!user.password,
+            passwordCreationDate: user.passwordCreationDate
+        };
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Usuario registrado correctamente',
+            userProfile
+        });
+    } catch (error) {
+        console.error('Error completing registration:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al completar el registro' 
+        });
     }
 });
 
@@ -605,25 +690,20 @@ router.post('/registro/passkey/additional/fin', requireSession, async (req, res)
 
 // Add a new endpoint for canceling OTP verification and cleaning up the user
 router.post('/cancel-otp-verification', async (req, res) => {
-    const { username } = req.body;
-    console.log(`[OTP-CANCEL] Canceling verification for user: ${username}`);
+    console.log(`[OTP-CANCEL] Canceling pending registration`);
     
     try {
-        const user = await dbUtils.getUser(username);
-        if (!user) {
-            return res.status(200).json({ message: 'Usuario no encontrado o ya eliminado' });
-        }
-        
-        // Only delete if the user is still pending verification
-        if (user.pendingVerification) {
-            console.log(`[OTP-CANCEL] Removing pending user: ${username}`);
-            await dbUtils.deleteUser(username);
+        // Clear pending registration from session
+        if (req.session.pendingRegistration) {
+            const username = req.session.pendingRegistration.username;
+            console.log(`[OTP-CANCEL] Removing pending registration for: ${username}`);
+            delete req.session.pendingRegistration;
             return res.status(200).json({ success: true, message: 'Registro cancelado exitosamente' });
         }
         
-        return res.status(200).json({ success: false, message: 'El usuario ya está verificado' });
+        return res.status(200).json({ success: false, message: 'No hay registro pendiente' });
     } catch (error) {
-        console.error('[OTP-CANCEL] Database error:', error);
+        console.error('[OTP-CANCEL] Error:', error);
         return res.status(500).json({ message: 'Error interno del servidor' });
     }
 });
