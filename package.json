@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "cd passkeys_frontend && npm i && npm run build",
     "start": "cd passkeys_frontend && ng build --configuration production && cd .. && node server.js"
   },
   "keywords": [],

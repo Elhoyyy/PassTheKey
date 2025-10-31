@@ -1,12 +1,6 @@
 /* Base Styles */
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  font-family: 'Arial', sans-serif;
-  background: url("../assets/images/catedral-image.jpeg") center center fixed;
-  background-size: cover;
-  overflow-y: hidden; /* Prevent duplicate scrollbar */
+:host {
+  display: block;
 }
 
 
@@ -29,7 +23,10 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 20px;
-  background: rgba(115, 180, 233, 0.85);
+  padding-top: 100px; /* Espacio para el navbar */
+  background: linear-gradient(rgba(115, 180, 233, 0.85), rgba(115, 180, 233, 0.85)), url("../assets/images/catedral-image.jpeg") center center;
+  background-size: cover;
+  background-attachment: fixed;
   overflow-y: auto; /* Allow scrolling in this container */
   height: 100vh; /* Make it take the full viewport height */
   box-sizing: border-box; /* Include padding in height calculation */

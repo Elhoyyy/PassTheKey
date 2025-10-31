@@ -1,13 +1,6 @@
 /* Base Styles */
-body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Arial', sans-serif;
-  color: #333;
-  height: 100vh;
-  background: url("../assets/images/catedral-image.jpeg") center center fixed;
-  background-size: cover;
+:host {
+  display: block;
 }
 
 .wrapper {
@@ -18,8 +11,12 @@ body {
   width: 100%;
   min-height: 100vh;
   padding: 20px;
-  background: rgba(115, 180, 233, 0.85);
+  padding-top: 100px; /* Actualizado para el navbar más alto (80px) + margen */
+  background: linear-gradient(rgba(115, 180, 233, 0.85), rgba(115, 180, 233, 0.85)), url("../assets/images/catedral-image.jpeg") center center;
+  background-size: cover;
+  background-attachment: fixed;
 }
+
 .content {
   display: flex;
   justify-content: center;

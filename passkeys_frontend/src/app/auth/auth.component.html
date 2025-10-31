@@ -1,14 +1,12 @@
-<html> 
-  <body>   
-    <div class="wrapper">
-      <form class="login">
-        <p class="title">
-          <i class="bi bi-key-fill"></i>
-          {{ showOtpVerification ? 'Verificación de código' : 'Inicio de sesión' }}
-        </p>
+<div class="wrapper">
+  <form class="login">
+    <p class="title">
+      <i class="bi bi-key-fill"></i>
+      {{ showOtpVerification ? 'Verificación de código' : 'Inicio de sesión' }}
+    </p>
 
-        <!-- Campos normales de login (ocultos durante verificación OTP) -->
-        <div *ngIf="!showOtpVerification">
+    <!-- Campos normales de login (ocultos durante verificación OTP) -->
+    <div *ngIf="!showOtpVerification">
           <div class="input-group">
             <i class="bi bi-person"></i>
             <input 
@@ -109,13 +107,11 @@
               <span>{{ isVerifyingOtp ? 'Verificando...' : 'Verificar' }}</span>
             </button>
           </div>
-        </div>
-        
-        <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">
-          <i class="bi" [ngClass]="errorMessage.includes('exitoso') ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
-          {{ errorMessage }}
-        </div>
-      </form>
-    </div>
-  </body>
-</html>
+      </div>
+      
+      <div *ngIf="errorMessage" class="error-message" [class.success]="errorMessage.includes('exitoso')">
+        <i class="bi" [ngClass]="errorMessage.includes('exitoso') ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
+        {{ errorMessage }}
+      </div>
+    </form>
+  </div>
